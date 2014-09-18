@@ -3,13 +3,13 @@ package main
 import (
 	"crypto/sha1"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"os"
 	"time"
-//	"encoding/json"
 )
 
 var signatureAlgorithm = [...]string{
@@ -62,35 +62,21 @@ func SHA1Hash(data []byte) string {
 	return fmt.Sprintf("%X", h.Sum(nil))
 }
 
-//Need to decide about what charachteristics of the cartificate 
+//Need to decide about what charachteristics of the cartificate
 //are going to be saved in the observatory
 type SSLCerts struct {
-	SHA1                string
-	SubjectKeyId        string
-	Version             int
-	SignatureAlgorithm  string
-	PublicKeyAlgorithm  string
-	Subject             string
-	DNSNames            []string
-	NotBefore, NotAfter string
-	ExpiresIn           string
-	Issuer              string
-	AuthorityKeyId      string
-}
-
-type SSLCertsJSON struct {
-	SHA1                string `json:"sha1"`
-	SubjectKeyId        string `json:"subKeyID"`
-	Version             int	   `json:"version"`	
-	SignatureAlgorithm  string `json:"sigAlg"`
-	PublicKeyAlgorithm  string `json:"pubKeyAlg"`
-	Subject             string `json:"subject"`
-	DNSNames            []string `json:"domain(s)"`
-	NotBefore           string `json:"notBefore"`
-	NotAfter 			string `json:"notAfter"`
-	ExpiresIn           string `json:"Exp"`
-	Issuer              string `json:"issuer"`
-	AuthorityKeyId      string `json:"authKeyID"`
+	SHA1               string   `json:"sha1"`
+	SubjectKeyId       string   `json:"subKeyID"`
+	Version            int      `json:"version"`
+	SignatureAlgorithm string   `json:"sigAlg"`
+	PublicKeyAlgorithm string   `json:"pubKeyAlg"`
+	Subject            string   `json:"subject"`
+	DNSNames           []string `json:"domain(s)"`
+	NotBefore          string   `json:"notBefore"`
+	NotAfter           string   `json:"notAfter"`
+	ExpiresIn          string   `json:"Exp"`
+	Issuer             string   `json:"issuer"`
+	AuthorityKeyId     string   `json:"authKeyID"`
 }
 
 func checkHost(domainName string, skipVerify bool) ([]SSLCerts, error) {
@@ -132,11 +118,11 @@ func checkHost(domainName string, skipVerify bool) ([]SSLCerts, error) {
 			DNSNames:           cert.DNSNames,
 			//times are calcualated locally for the time being
 			//maybe this needs to change and keep the original time
-			NotBefore:          cert.NotBefore.Local().String(),
-			NotAfter:           cert.NotAfter.Local().String(),
-			ExpiresIn:          ExpiresIn(cert.NotAfter.Local()),
-			Issuer:             cert.Issuer.CommonName,
-			AuthorityKeyId:     fmt.Sprintf("%X", cert.AuthorityKeyId),
+			NotBefore:      cert.NotBefore.Local().String(),
+			NotAfter:       cert.NotAfter.Local().String(),
+			ExpiresIn:      ExpiresIn(cert.NotAfter.Local()),
+			Issuer:         cert.Issuer.CommonName,
+			AuthorityKeyId: fmt.Sprintf("%X", cert.AuthorityKeyId),
 		}
 
 		sslcerts[i] = s
@@ -146,21 +132,7 @@ func checkHost(domainName string, skipVerify bool) ([]SSLCerts, error) {
 	return sslcerts, nil
 }
 
-func OutputToJson(domainName string, certs []SSLCerts ) bool{
-
-	// for i, cert := range certs {
-
-	// 	fmt.Printf("%d",i)
-	// 	//var certificate []SSLCertsJSON
-	// 	//copy(certificate,cert)
-	// 	certif := &SSLCertsJSON(cert)
-	// 	out, _ = json.Marshal(certif)
-	// 	fmt.Printf(string(out))
-	// }
-	return true
-}
-
-func OutputToStd( canonicalName string, certs []SSLCerts ){
+func OutputToStd(canonicalName string, certs []SSLCerts) {
 
 	for i, cert := range certs {
 		if i == 0 {
@@ -181,7 +153,7 @@ func OutputToStd( canonicalName string, certs []SSLCerts ){
 }
 
 func Usage() {
-	fmt.Printf("Usage: %s -d <domain name> -p <port> -o <outfile>\n",programName)
+	fmt.Printf("Usage: %s -d <domain name> -p <port> -o <outfile>\n", programName)
 	flag.PrintDefaults()
 }
 
@@ -191,9 +163,10 @@ func main() {
 	flag.StringVar(&domainName, "d", "", "Domain name or IP Address of the host you want to check ssl certificates of.")
 	flag.StringVar(&port, "p", "443", "Port Number")
 	flag.StringVar(&outfile, "o", "output.json", "Output file")
+	var printJson = flag.Bool("j", false, "output certs in JSON format to stdout")
 	flag.Parse()
 
-	if len(os.Args)<3||(domainName == "") {
+	if len(os.Args) < 3 || (domainName == "") {
 		Usage()
 		os.Exit(1)
 	}
@@ -222,6 +195,13 @@ func main() {
 		fmt.Printf("WARNING ! :%s\n", ce)
 	}
 
-	OutputToStd(canonicalName, certs)
-	//OutputToJson(canonicalName, certs)
+	if *printJson {
+		jsonCerts, err := json.MarshalIndent(certs, "", "    ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%s\n", jsonCerts)
+	} else {
+		OutputToStd(canonicalName, certs)
+	}
 }
