@@ -4,15 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"github.com/goinggo/jobpool"
-	"time"
-	"log"
-	"io/ioutil"
 	"encoding/csv"
 	"io"
 
-
-	"github.com/mozilla/MWoSTLSObservatory/tlsretriever"
+	"github.com/streadway/amqp"
 )
 
 var programName = "tlsRetriever"
@@ -23,21 +18,10 @@ func Usage() {
 }
 
 
-type WorkProvider1 struct {
-	    Domain string
-	    Port   string
-}
-
-func (jobPool *WorkProvider1) RunJob(jobRoutine int) {
-
-    log.Printf("Started: %s\n", jobPool.Domain)
-    tlsretriever.Retrieve(jobPool.Domain, jobPool.Port)
-    log.Printf("DONE: %s\n", jobPool.Port)
-}
-
-func init() {
-	//Can be commented out to enable std Output logging
-    log.SetOutput(ioutil.Discard)
+func panicIf(err error) {
+	if err != nil {
+		panic(fmt.Sprintf("%s",err))
+	}
 }
 
 func main(){
@@ -53,7 +37,30 @@ func main(){
 		os.Exit(1)
 	}
 
-	jobPool := jobpool.New(2, 1000)
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	panicIf(err)
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	panicIf(err)
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(
+		"scan_ready_queue", // name
+		true,         // durable
+		false,        // delete when unused
+		false,        // exclusive
+		false,        // no-wait
+		nil,          // arguments
+	)
+	failOnError(err, "Failed to declare a queue")
+
+	err = ch.Qos(
+		3,     // prefetch count
+		0,     // prefetch size
+		false, // global
+	)
+	failOnError(err, "Failed to set QoS")
 
     if infile != "" {
 
@@ -63,6 +70,7 @@ func main(){
 		defer file.Close()
 		// 
 		reader := csv.NewReader(file)
+
 		// options are available at:
 		// http://golang.org/src/pkg/encoding/csv/reader.go?s=3213:3671#L94
 		reader.Comma = ','
@@ -81,21 +89,33 @@ func main(){
 			var domain string
 			domain = record[len(record)-1]
 
-			jobPool.QueueJob("main", &WorkProvider1{domain,port}, false)
+			err = ch.Publish(
+			"",           // exchange
+			"scan_ready_queue", // routing key
+			false,        // mandatory
+			false,
+			amqp.Publishing{
+				DeliveryMode: amqp.Persistent,
+				ContentType:  "text/plain",
+				Body:         []byte(domain),
+				})
+			panicIf(err)
 
 			lineCount += 1
 		}
 	}else{
 
-		jobPool.QueueJob("main", &WorkProvider1{domainName,port}, false)
+		err = ch.Publish(
+			"",           // exchange
+			"scan_ready_queue", // routing key
+			false,        // mandatory
+			false,
+			amqp.Publishing{
+				DeliveryMode: amqp.Persistent,
+				ContentType:  "text/plain",
+				Body:         []byte(domain),
+				})
+		panicIf(err)
+
 	}
-
-    for {
-    	if jobPool.ActiveRoutines() == 0 {
-    		break
-    	}
-    	time.Sleep(time.Millisecond)
-    }
-
-    defer jobPool.Shutdown("main")
 }
