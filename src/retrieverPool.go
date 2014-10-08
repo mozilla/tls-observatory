@@ -31,6 +31,7 @@ func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel){
 
 	for d := range msgs {
 		certs, err := tlsretriever.CheckHost(string(d.Body),"443")
+		d.Ack(false)
 
 		for _, cert := range certs {
 			err = ch.Publish(

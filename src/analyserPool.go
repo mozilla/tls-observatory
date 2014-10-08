@@ -39,6 +39,7 @@ func worker(msgs <-chan amqp.Delivery, db *sql.DB){
 		certif, err = x509.ParseCertificate(data)
 		panicIf(err)
 		db.Exec("insert into t(b) values($1)", base64.StdEncoding.EncodeToString(certif.Raw))
+		d.Ack(false)
 	}
 		
 	<-forever
@@ -53,7 +54,7 @@ func main() {
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
-	db, err := sql.Open("postgres", "user=tlsobsadmin dbname=tlsobs host=tlsobservatory.chrnadvfyed4.eu-west-1.rds.amazonaws.com password=rGjg7ytrZKyZuf8Swq9gvawPVVQKyxhn")
+	db, err := sql.Open("postgres", "user=tlsobsadmin dbname=tlsobs host=tlsobservatory.chrnadvfyed4.eu-west-1.rds.amazonaws.com password=P@sswordsareweak")
 	failOnError(err, "Failed to open DB")
 
 	ch, err := conn.Channel()
