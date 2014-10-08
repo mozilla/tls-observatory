@@ -34,9 +34,6 @@ func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel){
 	for d := range msgs {
 		certs, err := tlsretriever.CheckHost(string(d.Body),"443")
 
-		db, err := sql.Open("postgres", "user=tlsobsadmin dbname=tlsobs host=tlsobservatory.chrnadvfyed4.eu-west-1.rds.amazonaws.com password=rGjg7ytrZKyZuf8Swq9gvawPVVQKyxhn")
-		failOnError(err, "Failed to open DB")
-
 		for _, cert := range certs {
 			err = ch.Publish(
 				"",           // exchange
@@ -49,8 +46,6 @@ func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel){
 					Body:         []byte(base64.StdEncoding.EncodeToString(cert.Raw)),
 					})
 			panicIf(err)
-
-			db.Exec("insert into t(b) values($1)", base64.StdEncoding.EncodeToString(cert.Raw))
 		}
 	}
 		
