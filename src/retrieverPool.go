@@ -6,11 +6,9 @@ import (
 	"runtime"
 	"sync"
 	"encoding/base64"
-	"database/sql"
 
 	"github.com/mozilla/MWoSTLSObservatory/tlsretriever"
 	"github.com/streadway/amqp"
-	_ "github.com/lib/pq"
 )
 
 func failOnError(err error, msg string) {
