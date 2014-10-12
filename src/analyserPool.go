@@ -7,11 +7,11 @@ import (
 	"sync"
 	"encoding/base64"
 	"crypto/x509"
-	"database/sql"
-
+	"crypto/sha1"
 
 	"github.com/streadway/amqp"
-	_ "github.com/lib/pq"
+	"github.com/mattbaird/elastigo/api"
+	"github.com/mattbaird/elastigo/core"
 )
 
 func failOnError(err error, msg string) {
@@ -21,13 +21,19 @@ func failOnError(err error, msg string) {
 	}
 }
 
+func SHA1Hash(data []byte) string {
+	h := sha1.New()
+	h.Write(data)
+	return fmt.Sprintf("%X", h.Sum(nil))
+}
+
 func panicIf(err error) {
 	if err != nil {
 		panic(fmt.Sprintf("%s",err))
 	}
 }
 
-func worker(msgs <-chan amqp.Delivery, db *sql.DB){
+func worker(msgs <-chan amqp.Delivery){
 
 	forever := make(chan bool)
 	defer wg.Done()
@@ -38,7 +44,9 @@ func worker(msgs <-chan amqp.Delivery, db *sql.DB){
     	panicIf(err)
 		certif, err = x509.ParseCertificate(data)
 		panicIf(err)
-		db.Exec("insert into t(b) values($1)", base64.StdEncoding.EncodeToString(certif.Raw))
+		// Index a doc using Structs
+		_, err = core.Index("testindex", "user", SHA1Hash(certif.Raw), nil,`{"raw":"`+base64.StdEncoding.EncodeToString(certif.Raw)+`"}`)
+		panicIf(err)
 		d.Ack(false)
 	}
 		
@@ -54,8 +62,7 @@ func main() {
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
-	db, err := sql.Open("postgres", "user=tlsobsadmin dbname=tlsobs host=tlsobservatory.chrnadvfyed4.eu-west-1.rds.amazonaws.com password=P@sswordsareweak")
-	failOnError(err, "Failed to open DB")
+	api.Domain = "83.212.99.104:9200"
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
@@ -96,7 +103,7 @@ func main() {
 
 	for i := 0; i < cores; i++ {
         wg.Add(1)
-		go worker(msgs,db)
+		go worker(msgs)
     }
 
 	wg.Wait()
