@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
-	"os"
-	"encoding/csv"
 	"io"
+	"os"
 
 	"github.com/streadway/amqp"
 )
@@ -17,14 +17,13 @@ func Usage() {
 	flag.PrintDefaults()
 }
 
-
 func panicIf(err error) {
 	if err != nil {
-		panic(fmt.Sprintf("%s",err))
+		panic(fmt.Sprintf("%s", err))
 	}
 }
 
-func main(){
+func main() {
 	var domainName, port, infile string
 
 	flag.StringVar(&domainName, "d", "", "Domain name or IP Address of the host you want to check ssl certificates of.")
@@ -32,7 +31,7 @@ func main(){
 	flag.StringVar(&infile, "i", "", "Input file csv format")
 	flag.Parse()
 
-	if len(os.Args) < 3 || ((domainName == "") && (infile == ""))  {
+	if len(os.Args) < 3 || ((domainName == "") && (infile == "")) {
 		Usage()
 		os.Exit(1)
 	}
@@ -47,11 +46,11 @@ func main(){
 
 	q, err := ch.QueueDeclare(
 		"scan_ready_queue", // name
-		true,         // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+		true,               // durable
+		false,              // delete when unused
+		false,              // exclusive
+		false,              // no-wait
+		nil,                // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
@@ -62,13 +61,12 @@ func main(){
 	)
 	failOnError(err, "Failed to set QoS")
 
-    if infile != "" {
+	if infile != "" {
 
 		file, _ := os.Open(infile)
 
-
 		defer file.Close()
-		// 
+		//
 		reader := csv.NewReader(file)
 
 		// options are available at:
@@ -90,31 +88,31 @@ func main(){
 			domain = record[len(record)-1]
 
 			err = ch.Publish(
-			"",           // exchange
-			"scan_ready_queue", // routing key
-			false,        // mandatory
-			false,
-			amqp.Publishing{
-				DeliveryMode: amqp.Persistent,
-				ContentType:  "text/plain",
-				Body:         []byte(domain),
+				"",                 // exchange
+				"scan_ready_queue", // routing key
+				false,              // mandatory
+				false,
+				amqp.Publishing{
+					DeliveryMode: amqp.Persistent,
+					ContentType:  "text/plain",
+					Body:         []byte(domain),
 				})
 			panicIf(err)
 
 			lineCount += 1
 		}
-	}else{
+	} else {
 
 		err = ch.Publish(
-			"",           // exchange
+			"",                 // exchange
 			"scan_ready_queue", // routing key
-			false,        // mandatory
+			false,              // mandatory
 			false,
 			amqp.Publishing{
 				DeliveryMode: amqp.Persistent,
 				ContentType:  "text/plain",
 				Body:         []byte(domain),
-				})
+			})
 		panicIf(err)
 
 	}

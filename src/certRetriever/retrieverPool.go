@@ -1,13 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"runtime"
 	"sync"
-	"encoding/base64"
 
-	"github.com/mozilla/MWoSTLSObservatory/tlsretriever"
+	"tlsretriever"
+
 	"github.com/streadway/amqp"
 )
 
@@ -20,34 +21,34 @@ func failOnError(err error, msg string) {
 
 func panicIf(err error) {
 	if err != nil {
-		panic(fmt.Sprintf("%s",err))
+		panic(fmt.Sprintf("%s", err))
 	}
 }
 
-func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel){
+func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel) {
 
 	forever := make(chan bool)
 	defer wg.Done()
 
 	for d := range msgs {
-		certs, err := tlsretriever.CheckHost(string(d.Body),"443")
+		certs, err := tlsretriever.CheckHost(string(d.Body), "443")
 		d.Ack(false)
 
 		for _, cert := range certs {
 			err = ch.Publish(
-				"",           // exchange
+				"",                   // exchange
 				"scan_results_queue", // routing key
-				false,        // mandatory
+				false,                // mandatory
 				false,
 				amqp.Publishing{
 					DeliveryMode: amqp.Persistent,
 					ContentType:  "text/plain",
 					Body:         []byte(base64.StdEncoding.EncodeToString(cert.Raw)),
-					})
+				})
 			panicIf(err)
 		}
 	}
-		
+
 	<-forever
 }
 
@@ -65,23 +66,22 @@ func main() {
 
 	q, err := ch.QueueDeclare(
 		"scan_ready_queue", // name
-		true,         // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+		true,               // durable
+		false,              // delete when unused
+		false,              // exclusive
+		false,              // no-wait
+		nil,                // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
-
 
 	//In case it has not already been declared before...
 	_, err = ch.QueueDeclare(
 		"scan_results_queue", // name
-		true,         // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+		true,                 // durable
+		false,                // delete when unused
+		false,                // exclusive
+		false,                // no-wait
+		nil,                  // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
@@ -107,9 +107,9 @@ func main() {
 	runtime.GOMAXPROCS(cores)
 
 	for i := 0; i < cores; i++ {
-        wg.Add(1)
-		go worker(msgs,ch)
-    }
+		wg.Add(1)
+		go worker(msgs, ch)
+	}
 
 	wg.Wait()
 }
