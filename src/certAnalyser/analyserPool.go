@@ -10,8 +10,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/mattbaird/elastigo/api"
-	"github.com/mattbaird/elastigo/core"
+	elastigo "github.com/mattbaird/elastigo/lib"
 	"github.com/streadway/amqp"
 )
 
@@ -127,7 +126,7 @@ func panicIf(err error) {
 	}
 }
 
-func worker(msgs <-chan amqp.Delivery) {
+func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
 
 	forever := make(chan bool)
 	defer wg.Done()
@@ -141,7 +140,7 @@ func worker(msgs <-chan amqp.Delivery) {
 
 		jsonCert, err := json.MarshalIndent(certtoStored(certif), "", "    ")
 		// Index a doc using Structs
-		_, err = core.Index("certificates", "certificate", SHA1Hash(certif.Raw), nil, jsonCert)
+		_, err = es.Index("certificates", "certificate", SHA1Hash(certif.Raw), nil, jsonCert)
 		panicIf(err)
 		d.Ack(false)
 	}
@@ -176,7 +175,8 @@ func main() {
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
-	api.Domain = "83.212.99.104:9200"
+	es := elastigo.NewConn()
+	es.Domain = "localhost:9200"
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
@@ -217,7 +217,7 @@ func main() {
 
 	for i := 0; i < cores; i++ {
 		wg.Add(1)
-		go worker(msgs)
+		go worker(msgs, es)
 	}
 
 	wg.Wait()

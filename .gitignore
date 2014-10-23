@@ -1,3 +1,6 @@
+# 3rd party
+src/github.com/*
+
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.o
 *.a
