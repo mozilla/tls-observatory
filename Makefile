@@ -37,13 +37,13 @@ GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: go_get_deps retrieverWorker
+all: go_get_deps certRetriever certAnalyser webapi
 
 certRetriever:
-	echo building retrieverWorker for $(OS)/$(ARCH)
+	echo building certRetriever for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/retrieverWorker-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) certRetriever
-	[ -x "$(BINDIR)/retrieverWorker-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) certRetriever
+	[ -x "$(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 certAnalyser:
 	echo building certAnalyser for $(OS)/$(ARCH)
@@ -51,6 +51,11 @@ certAnalyser:
 	$(GO) build $(GOOPTS) -o $(BINDIR)/certAnalyser-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) certAnalyser
 	[ -x "$(BINDIR)/certAnalyser-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
+webapi:
+	echo building web-api for $(OS)/$(ARCH)
+	$(MKDIR) -p $(BINDIR)
+	$(GO) build $(GOOPTS) -o $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) web-api
+	[ -x "$(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 go_get_deps_into_system:
 	make GOGETTER="go get -u" go_get_deps
