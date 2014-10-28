@@ -9,6 +9,7 @@ import (
 	"log"
 	"runtime"
 	"sync"
+	// "strconv"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 	"github.com/streadway/amqp"
@@ -45,18 +46,6 @@ var extKeyUsage = [...]string{
 	"ExtKeyUsageNetscapeServerGatedCrypto",
 }
 
-var keyUsage = [...]string{
-	"KeyUsageDigitalSignature",
-	"KeyUsageContentCommitment",
-	"KeyUsageKeyEncipherment",
-	"KeyUsageDataEncipherment",
-	"KeyUsageKeyAgreement",
-	"KeyUsageCertSign",
-	"KeyUsageCRLSign",
-	"KeyUsageEncipherOnly",
-	"KeyUsageDecipherOnly",
-}
-
 var publicKeyAlgorithm = [...]string{
 	"UnknownPublicKeyAlgorithm",
 	"RSA",
@@ -71,18 +60,17 @@ type StoredCertificate struct {
 	Validity               certValidity             `json:"validity"`
 	Subject                certSubject              `json:"subject"`
 	SubjectPublicKeyInfo   certSubjectPublicKeyInfo `json:"subjectPublicKeyInfo"`
-	X509v3Extensions       [][]string               `json:"x509v3Extensions"`
-	X509v3ExtendedKeyUsage [][]string               `json:"x509v3ExtendedKeyUsage"`
+	X509v3Extensions       certExtensions           `json:"x509v3Extensions"`
 	X509v3BasicConstraints string                   `json:"x509v3BasicConstraints"`
 	CA                     bool                     `json:"ca"`
-	Analysis               interface{}              `json:"analysis"`
+	Analysis               interface{}              `json:"analysis"` //for future use...
 }
 
 type certIssuer struct {
-	Country      string `json:"c"`
-	Organisation string `json:"o"`
-	OrgUnit      string `json:"ou"`
-	CommonName   string `json:"cn"`
+	Country      []string `json:"c"`
+	Organisation []string `json:"o"`
+	OrgUnit      []string `json:"ou"`
+	CommonName   string   `json:"cn"`
 }
 
 type certValidity struct {
@@ -91,15 +79,26 @@ type certValidity struct {
 }
 
 type certSubject struct {
-	Country          string `json:"c"`
-	Organisation     string `json:"o"`
-	OrgUnit          string `json:"ou"`
-	CommonName       string `json:"cn"`
-	BusinessCategory string `json:"businessCategory"`
+	Country      []string `json:"c"`
+	Organisation []string `json:"o"`
+	OrgUnit      []string `json:"ou"`
+	CommonName   string   `json:"cn"`
 }
 
 type certSubjectPublicKeyInfo struct {
 	PublicKeyAlgorithm string `json:"publicKeyAlgorithm"`
+}
+
+//Currently exporting extension that already decoded into the x509 Certificate structure
+
+type certExtensions struct {
+	AuthorityKeyId         []byte   `json:"authorityKeyId"`
+	SubjectKeyId           []byte   `json:"subjectKeyId"`
+	KeyUsage               []string `json:"keyUsage"`
+	ExtendedKeyUsage       []string `json:"extendedKeyUsage"`
+	// Maybe need to create a struct to support Email and IPAddresses as long as DNSNames...
+	SubjectAlternativeName []string `json:"subjectAlternativeName"`
+	CRLDistributionPoints  []string `json:"crlDistributionPoints"`
 }
 
 type CertX509v3BasicConstraints struct {
@@ -122,7 +121,7 @@ func SHA1Hash(data []byte) string {
 
 func panicIf(err error) {
 	if err != nil {
-		panic(fmt.Sprintf("%s", err))
+		log.Println(fmt.Sprintf("%s", err))
 	}
 }
 
@@ -139,7 +138,7 @@ func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
 		panicIf(err)
 
 		jsonCert, err := json.MarshalIndent(certtoStored(certif), "", "    ")
-		// Index a doc using Structs
+		log.Println(string(jsonCert))
 		_, err = es.Index("certificates", "certificate", SHA1Hash(certif.Raw), nil, jsonCert)
 		panicIf(err)
 		d.Ack(false)
@@ -148,21 +147,131 @@ func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
 	<-forever
 }
 
+func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
+
+	usage := make([]string, len(cert.ExtKeyUsage))
+
+	for _, eku := range cert.ExtKeyUsage {
+
+		usage = append(usage, extKeyUsage[eku])
+	}
+
+	return usage
+}
+
+func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
+
+	var usage []string
+	keyUsage := cert.KeyUsage
+
+	//calculate included keyUsage from bitmap
+	//String values taken from OpenSSL
+
+	if keyUsage&x509.KeyUsageDigitalSignature != 0{
+		usage = append(usage, "Digital Signature")
+	}
+	if keyUsage&x509.KeyUsageContentCommitment != 0{
+		usage = append(usage, "Non Repudiation")
+	}
+
+	if keyUsage&x509.KeyUsageKeyEncipherment != 0{
+		usage = append(usage, "Key Encipherment")
+	}
+
+	if keyUsage&x509.KeyUsageDataEncipherment != 0{
+		usage = append(usage, "Data Encipherment")
+	}
+
+	if keyUsage&x509.KeyUsageKeyAgreement != 0{
+		usage = append(usage, "Key Agreement")
+	}
+
+	if keyUsage&x509.KeyUsageCertSign != 0{
+		usage = append(usage, "Certificate Sign")
+	}
+
+	if keyUsage&x509.KeyUsageCRLSign != 0{
+		usage = append(usage, "CRL Sign")
+	}
+
+	if keyUsage&x509.KeyUsageEncipherOnly != 0{
+		usage = append(usage, "Encipher Only")
+	}
+
+	if keyUsage&x509.KeyUsageDecipherOnly != 0{
+		usage = append(usage, "Decipher Only")
+	}
+
+	return usage
+}
+
+func getCertExtensions(cert *x509.Certificate) certExtensions{
+
+	extensions := certExtensions{}
+
+	extensions.AuthorityKeyId = []byte(base64.StdEncoding.EncodeToString(cert.AuthorityKeyId))
+	extensions.SubjectKeyId = []byte(base64.StdEncoding.EncodeToString(cert.SubjectKeyId))
+
+	extensions.KeyUsage = getKeyUsageAsStringArray(cert)
+
+	extensions.ExtendedKeyUsage = getExtKeyUsageAsStringArray(cert)
+
+	extensions.SubjectAlternativeName = cert.DNSNames
+
+	extensions.CRLDistributionPoints = cert.CRLDistributionPoints
+
+	return extensions
+
+}
+
 func certtoStored(cert *x509.Certificate) StoredCertificate {
 
 	var stored = StoredCertificate{}
 
+	//Print raw extension info
+
+	// for i, extension := range cert.Extensions{
+
+	// 	var numbers string
+	// 	for num ,num2 := range  extension.Id{
+
+	// 		numbers = numbers + " "+ "[" + strconv.Itoa(num)+ " " + strconv.Itoa(num2) + "]"
+
+	// 	}
+
+	// 	log.Println("//",strconv.Itoa(i),": {", numbers,"}",string(extension.Value) )
+
+	// }
+
 	stored.Version = float64(cert.Version)
+
 	stored.SignatureAlgorithm = signatureAlgorithm[cert.SignatureAlgorithm]
+
 	stored.SubjectPublicKeyInfo.PublicKeyAlgorithm = publicKeyAlgorithm[cert.PublicKeyAlgorithm]
-	// stored.Issuer.Country = cert.Issuer.Country
-	// stored.Issuer.Organistion = cert.Issuer.Organisation
-	// stored.Issuer.OrgUnit = cert.Issuer.OrganizationalUnit
+
+	stored.Issuer.Country = cert.Issuer.Country
+	stored.Issuer.Organisation = cert.Issuer.Organization
+	stored.Issuer.OrgUnit = cert.Issuer.OrganizationalUnit
 	stored.Issuer.CommonName = cert.Issuer.CommonName
-	stored.Validity.NotBefore = cert.NotBefore.Local().String()
-	stored.Validity.NotAfter = cert.NotAfter.Local().String()
+
+	stored.Subject.Country = cert.Subject.Country
+	stored.Subject.Organisation = cert.Subject.Organization
+	stored.Subject.OrgUnit = cert.Subject.OrganizationalUnit
 	stored.Subject.CommonName = cert.Subject.CommonName
 
+	stored.Validity.NotBefore = cert.NotBefore.Local().String()
+	stored.Validity.NotAfter = cert.NotAfter.Local().String()
+
+	stored.X509v3Extensions = getCertExtensions(cert)
+
+	if cert.BasicConstraintsValid {
+
+		stored.X509v3BasicConstraints = "Critical"
+		stored.CA = cert.IsCA
+	} else {
+		stored.X509v3BasicConstraints = ""
+		stored.CA = false
+	}
 	return stored
 
 }
