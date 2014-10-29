@@ -21,7 +21,7 @@ func failOnError(err error, msg string) {
 
 func panicIf(err error) {
 	if err != nil {
-		panic(fmt.Sprintf("%s", err))
+		log.Println(fmt.Sprintf("%s", err))
 	}
 }
 
@@ -33,6 +33,10 @@ func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel) {
 	for d := range msgs {
 		certs, err := tlsretriever.CheckHost(string(d.Body), "443")
 		d.Ack(false)
+		panicIf(err)
+		if certs == nil {
+			continue
+		}
 
 		for _, cert := range certs {
 			err = ch.Publish(

@@ -15,7 +15,7 @@ func CheckHost(domainName, port string) ([]*x509.Certificate, error) {
 	conn, err := tls.Dial("tcp", canonicalName, &config)
 
 	if err != nil{
-		panic(err)
+		return nil, err
 	}
 	defer conn.Close()
 
