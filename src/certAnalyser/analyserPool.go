@@ -92,10 +92,10 @@ type certSubjectPublicKeyInfo struct {
 //Currently exporting extension that already decoded into the x509 Certificate structure
 
 type certExtensions struct {
-	AuthorityKeyId         []byte   `json:"authorityKeyId"`
-	SubjectKeyId           []byte   `json:"subjectKeyId"`
-	KeyUsage               []string `json:"keyUsage"`
-	ExtendedKeyUsage       []string `json:"extendedKeyUsage"`
+	AuthorityKeyId   []byte   `json:"authorityKeyId"`
+	SubjectKeyId     []byte   `json:"subjectKeyId"`
+	KeyUsage         []string `json:"keyUsage"`
+	ExtendedKeyUsage []string `json:"extendedKeyUsage"`
 	// Maybe need to create a struct to support Email and IPAddresses as long as DNSNames...
 	SubjectAlternativeName []string `json:"subjectAlternativeName"`
 	CRLDistributionPoints  []string `json:"crlDistributionPoints"`
@@ -104,6 +104,11 @@ type certExtensions struct {
 type CertX509v3BasicConstraints struct {
 	CA       bool        `json:"ca"`
 	Analysis interface{} `json:"analysis"`
+}
+
+type CertChain struct {
+	Domain string   `json:"domain"`
+	Certs  []string `json:"certs"`
 }
 
 func failOnError(err error, msg string) {
@@ -131,16 +136,32 @@ func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
 	defer wg.Done()
 
 	for d := range msgs {
-		var certif *x509.Certificate
-		data, err := base64.StdEncoding.DecodeString(string(d.Body))
-		panicIf(err)
-		certif, err = x509.ParseCertificate(data)
-		panicIf(err)
+		var certs []*x509.Certificate
 
-		jsonCert, err := json.MarshalIndent(certtoStored(certif), "", "    ")
-		log.Println(string(jsonCert))
-		_, err = es.Index("certificates", "certificate", SHA1Hash(certif.Raw), nil, jsonCert)
+		chain := CertChain{}
+
+		err := json.Unmarshal(d.Body, &chain)
 		panicIf(err)
+		log.Println(chain)
+
+		for _, data := range chain.Certs {
+
+			certRaw, err := base64.StdEncoding.DecodeString(data)
+			panicIf(err)
+
+			var certif *x509.Certificate
+			certif, err = x509.ParseCertificate(certRaw)
+			panicIf(err)
+
+			certs = append(certs, certif)
+
+		}
+
+		// jsonCert, err := json.MarshalIndent(certtoStored(certif), "", "    ")
+		// panicIf(err)
+		// log.Println(string(jsonCert))
+		// _, err = es.Index("certificates", "certificate", SHA1Hash(certif.Raw), nil, jsonCert)
+		// panicIf(err)
 		d.Ack(false)
 	}
 
@@ -167,45 +188,45 @@ func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
 	//calculate included keyUsage from bitmap
 	//String values taken from OpenSSL
 
-	if keyUsage&x509.KeyUsageDigitalSignature != 0{
+	if keyUsage&x509.KeyUsageDigitalSignature != 0 {
 		usage = append(usage, "Digital Signature")
 	}
-	if keyUsage&x509.KeyUsageContentCommitment != 0{
+	if keyUsage&x509.KeyUsageContentCommitment != 0 {
 		usage = append(usage, "Non Repudiation")
 	}
 
-	if keyUsage&x509.KeyUsageKeyEncipherment != 0{
+	if keyUsage&x509.KeyUsageKeyEncipherment != 0 {
 		usage = append(usage, "Key Encipherment")
 	}
 
-	if keyUsage&x509.KeyUsageDataEncipherment != 0{
+	if keyUsage&x509.KeyUsageDataEncipherment != 0 {
 		usage = append(usage, "Data Encipherment")
 	}
 
-	if keyUsage&x509.KeyUsageKeyAgreement != 0{
+	if keyUsage&x509.KeyUsageKeyAgreement != 0 {
 		usage = append(usage, "Key Agreement")
 	}
 
-	if keyUsage&x509.KeyUsageCertSign != 0{
+	if keyUsage&x509.KeyUsageCertSign != 0 {
 		usage = append(usage, "Certificate Sign")
 	}
 
-	if keyUsage&x509.KeyUsageCRLSign != 0{
+	if keyUsage&x509.KeyUsageCRLSign != 0 {
 		usage = append(usage, "CRL Sign")
 	}
 
-	if keyUsage&x509.KeyUsageEncipherOnly != 0{
+	if keyUsage&x509.KeyUsageEncipherOnly != 0 {
 		usage = append(usage, "Encipher Only")
 	}
 
-	if keyUsage&x509.KeyUsageDecipherOnly != 0{
+	if keyUsage&x509.KeyUsageDecipherOnly != 0 {
 		usage = append(usage, "Decipher Only")
 	}
 
 	return usage
 }
 
-func getCertExtensions(cert *x509.Certificate) certExtensions{
+func getCertExtensions(cert *x509.Certificate) certExtensions {
 
 	extensions := certExtensions{}
 
@@ -285,7 +306,7 @@ func main() {
 	defer conn.Close()
 
 	es := elastigo.NewConn()
-	es.Domain = "localhost:9200"
+	es.Domain = "83.212.99.104:9200"
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"runtime"
@@ -25,32 +26,50 @@ func panicIf(err error) {
 	}
 }
 
+type CertChain struct {
+	Domain string   `json:"domain"`
+	Certs  []string `json:"certs"`
+}
+
 func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel) {
 
 	forever := make(chan bool)
 	defer wg.Done()
 
 	for d := range msgs {
-		certs, err := tlsretriever.CheckHost(string(d.Body), "443")
+		certs, err := tlsretriever.CheckHost(string(d.Body), "443", true)
 		d.Ack(false)
 		panicIf(err)
 		if certs == nil {
 			continue
 		}
 
+		var chain = CertChain{}
+
+		chain.Domain = string(d.Body)
+
 		for _, cert := range certs {
-			err = ch.Publish(
-				"",                   // exchange
-				"scan_results_queue", // routing key
-				false,                // mandatory
-				false,
-				amqp.Publishing{
-					DeliveryMode: amqp.Persistent,
-					ContentType:  "text/plain",
-					Body:         []byte(base64.StdEncoding.EncodeToString(cert.Raw)),
-				})
-			panicIf(err)
+
+			chain.Certs = append(chain.Certs, base64.StdEncoding.EncodeToString(cert.Raw))
+
 		}
+
+		log.Println(chain)
+
+		jsonCert, er := json.MarshalIndent(chain, "", "    ")
+		log.Println(string(jsonCert))
+		panicIf(er)
+		err = ch.Publish(
+			"",                   // exchange
+			"scan_results_queue", // routing key
+			false,                // mandatory
+			false,
+			amqp.Publishing{
+				DeliveryMode: amqp.Persistent,
+				ContentType:  "text/plain",
+				Body:         []byte(jsonCert),
+			})
+		panicIf(err)
 	}
 
 	<-forever
