@@ -1,15 +1,16 @@
 package main
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"runtime"
+	//"strconv"
+	//"strings"
 	"sync"
-	// "strconv"
 
 	elastigo "github.com/mattbaird/elastigo/lib"
 	"github.com/streadway/amqp"
@@ -64,6 +65,8 @@ type StoredCertificate struct {
 	X509v3BasicConstraints string                   `json:"x509v3BasicConstraints"`
 	CA                     bool                     `json:"ca"`
 	Analysis               interface{}              `json:"analysis"` //for future use...
+	ParentSignature        string                   `json:"parentSignature"`
+	IsChainValid		   string                   `json:"isChainValid"`//string displays error type along the validation chain...
 }
 
 type certIssuer struct {
@@ -89,7 +92,7 @@ type certSubjectPublicKeyInfo struct {
 	PublicKeyAlgorithm string `json:"publicKeyAlgorithm"`
 }
 
-//Currently exporting extension that already decoded into the x509 Certificate structure
+//Currently exporting extensions that are already decoded into the x509 Certificate structure
 
 type certExtensions struct {
 	AuthorityKeyId   []byte   `json:"authorityKeyId"`
@@ -111,6 +114,15 @@ type CertChain struct {
 	Certs  []string `json:"certs"`
 }
 
+type ids struct {
+	_type  string   `json:"type"`
+	values []string `json:"values"`
+}
+
+type JsonRawCert struct{
+	RawCert string `json:"rawCert"`
+}
+
 func failOnError(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
@@ -118,16 +130,20 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func SHA1Hash(data []byte) string {
-	h := sha1.New()
+func SHA256Hash(data []byte) string {
+	h := sha256.New()
 	h.Write(data)
 	return fmt.Sprintf("%X", h.Sum(nil))
+	//return hex.EncodeToString(h.Sum(nil))
 }
 
-func panicIf(err error) {
+func panicIf(err error) bool {
 	if err != nil {
 		log.Println(fmt.Sprintf("%s", err))
+		return true
 	}
+
+	return false
 }
 
 func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
@@ -136,37 +152,153 @@ func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
 	defer wg.Done()
 
 	for d := range msgs {
-		var certs []*x509.Certificate
 
 		chain := CertChain{}
 
 		err := json.Unmarshal(d.Body, &chain)
 		panicIf(err)
-		log.Println(chain)
 
-		for _, data := range chain.Certs {
+		log.Println(len(chain.Certs))
 
-			certRaw, err := base64.StdEncoding.DecodeString(data)
-			panicIf(err)
-
-			var certif *x509.Certificate
-			certif, err = x509.ParseCertificate(certRaw)
-			panicIf(err)
-
-			certs = append(certs, certif)
-
-		}
+		analyseAndPushCertificates(&chain, es)
 
 		// jsonCert, err := json.MarshalIndent(certtoStored(certif), "", "    ")
 		// panicIf(err)
 		// log.Println(string(jsonCert))
-		// _, err = es.Index("certificates", "certificate", SHA1Hash(certif.Raw), nil, jsonCert)
+		// _, err = es.Index("certificates", "certificateInfo", SHA256Hash(certif.Raw), nil, jsonCert)
+		// _, err = es.Index("certificates", "certificateRaw", SHA256Hash(certif.Raw), nil, base64.StdEncoding.EncodeToString(certif.Raw))
 		// panicIf(err)
 		d.Ack(false)
 	}
 
 	<-forever
 }
+
+func analyseAndPushCertificates(chain *CertChain, es *elastigo.Conn) {
+
+	var certs []*x509.Certificate
+
+	for i, data := range chain.Certs {
+
+		certRaw, err := base64.StdEncoding.DecodeString(data)
+		panicIf(err)
+
+		var certif *x509.Certificate
+		certif, err = x509.ParseCertificate(certRaw)
+		panicIf(err)
+
+		if i == 0{ // do this only for the leaf certificate as in most cases intermediate and CA certificate will already be in the DB
+			searchJson := `{
+		    "query" : {
+		        "term" : { "_id" : "` + SHA256Hash(certif.Raw) + `" }
+		    }
+		}`
+			res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
+			if !panicIf(e){
+				if res.Hits.Total>0{//probably gonna be 0|1
+					//certificate is already in the database. Abort??? return
+				}
+			}
+		}
+
+		certs = append(certs, certif)
+	}
+
+
+	inter:= x509.NewCertPool()
+
+	
+	for _,c := range certs[1:len(certs)]{
+		if c.Issuer.CommonName != ""{
+
+			log.Println("added to Intermediates"+c.Subject.CommonName)
+			inter.AddCert(c)
+		}
+	}
+
+	opts := x509.VerifyOptions{
+		DNSName: chain.Domain,
+		Intermediates: inter,
+	}
+
+	var chains [][]*x509.Certificate
+
+	chains, err := certs[0].Verify(opts)
+	
+
+	if len(chains)>0 && !panicIf(err){
+		CreateStoredChain(chains[0], "", es)
+	}else{
+		CreateStoredChain(certs,err.Error(), es)
+	}
+}
+
+func CreateStoredChain(certs []*x509.Certificate, validation_err string, es *elastigo.Conn){
+	for i, cert := range certs{
+
+		searchJson := `{
+		    "query" : {
+		        "term" : { "_id" : "` + SHA256Hash(cert.Raw) + `" }
+		    }
+		}`
+
+		res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
+		if !panicIf(e){
+			if res.Hits.Total>0{//probably gonna be 0|1
+				//certificate is already in the database. Abort??? return
+			}
+		}
+
+		stored := certtoStored(cert)
+		jsonCert, err := json.MarshalIndent(stored, "", "    ")
+		panicIf(err)
+
+		stored.IsChainValid = validation_err
+		if cert.Issuer.CommonName != "" && len(certs)>i+1{
+			stored.ParentSignature = SHA256Hash(certs[i+1].Raw)
+		}
+		_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
+		panicIf(err)
+
+		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
+		jsonCert, err = json.MarshalIndent(raw, "", "    ")
+		panicIf(err)
+		_, err = es.Index("certificates", "certificateRaw", SHA256Hash(cert.Raw), nil, jsonCert)
+		panicIf(err)
+	}
+}
+
+//Alternate method of Verifying
+
+// func analyseAndPushCertificates(chain *CertChain){
+
+// 	for i, data := range chain.Certs {
+
+// 		certRaw, err := base64.StdEncoding.DecodeString(data)
+// 		panicIf(err)
+
+// 		var certif *x509.Certificate
+// 		certif, err = x509.ParseCertificate(certRaw)
+// 		panicIf(err)
+
+// 		if i+1<len(chain.Certs){
+// 			certRaw, err = base64.StdEncoding.DecodeString(chain.Certs[i+1])
+// 			panicIf(err)
+
+// 			var certt *x509.Certificate
+// 			certt, err = x509.ParseCertificate(certRaw)
+// 			panicIf(err)
+
+// 			log.Println(certif.Subject.CommonName + " - "+ certt.Subject.CommonName )
+
+// 			err = certif.CheckSignatureFrom(certt)
+// 			panicIf(err)
+// 		}
+
+// 		certs = append(certs, certif)
+// 	}
+
+// }
 
 func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
 

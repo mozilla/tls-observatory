@@ -54,10 +54,7 @@ func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel) {
 
 		}
 
-		log.Println(chain)
-
 		jsonCert, er := json.MarshalIndent(chain, "", "    ")
-		log.Println(string(jsonCert))
 		panicIf(er)
 		err = ch.Publish(
 			"",                   // exchange
