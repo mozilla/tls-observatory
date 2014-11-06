@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"time"
 	//"strconv"
 	//"strings"
 	"sync"
@@ -67,6 +68,7 @@ type StoredCertificate struct {
 	Analysis               interface{}              `json:"analysis"` //for future use...
 	ParentSignature        string                   `json:"parentSignature"`
 	IsChainValid		   string                   `json:"isChainValid"`//string displays error type along the validation chain...
+	CollectionTimestamp    string                   `json:"collectionTimestamp"`
 }
 
 type certIssuer struct {
@@ -412,8 +414,8 @@ func certtoStored(cert *x509.Certificate) StoredCertificate {
 	stored.Subject.OrgUnit = cert.Subject.OrganizationalUnit
 	stored.Subject.CommonName = cert.Subject.CommonName
 
-	stored.Validity.NotBefore = cert.NotBefore.Local().String()
-	stored.Validity.NotAfter = cert.NotAfter.Local().String()
+	stored.Validity.NotBefore = cert.NotBefore.UTC().String()
+	stored.Validity.NotAfter = cert.NotAfter.UTC().String()
 
 	stored.X509v3Extensions = getCertExtensions(cert)
 
@@ -425,6 +427,8 @@ func certtoStored(cert *x509.Certificate) StoredCertificate {
 		stored.X509v3BasicConstraints = ""
 		stored.CA = false
 	}
+
+	stored.CollectionTimestamp = time.Now().UTC().String()
 	return stored
 
 }
