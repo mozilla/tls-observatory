@@ -208,8 +208,14 @@ func analyseAndPushCertificates(chain *CertChain, es *elastigo.Conn) {
 			}
 		}
 
+		dnsName := chain.Domain
+
+		if c.IsCA {
+			dnsName = c.Subject.CommonName
+		}
+
 		opts := x509.VerifyOptions{
-			DNSName:       chain.Domain,
+			DNSName:       dnsName,
 			Intermediates: inter,
 			//will add rootCAs from cfg file
 		}
