@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strconv"
 	"time"
-	//"strconv"
 	//"strings"
 	"sync"
 
@@ -66,9 +66,11 @@ type StoredCertificate struct {
 	X509v3BasicConstraints string                   `json:"x509v3BasicConstraints"`
 	CA                     bool                     `json:"ca"`
 	Analysis               interface{}              `json:"analysis"` //for future use...
-	ParentSignature        string                   `json:"parentSignature"`
-	IsChainValid		   string                   `json:"isChainValid"`//string displays error type along the validation chain...
+	ParentSignature        []string                 `json:"parentSignature"`
+	IsChainValid           bool                     `json:"isChainValid"`
+	ValidationError        string                   `json:"ValidationError"` //exists only if isChainValid is false
 	CollectionTimestamp    string                   `json:"collectionTimestamp"`
+	LastSeenTimestamp      string                   `json:"lastSeenTimestamp"`
 }
 
 type certIssuer struct {
@@ -97,11 +99,10 @@ type certSubjectPublicKeyInfo struct {
 //Currently exporting extensions that are already decoded into the x509 Certificate structure
 
 type certExtensions struct {
-	AuthorityKeyId   []byte   `json:"authorityKeyId"`
-	SubjectKeyId     []byte   `json:"subjectKeyId"`
-	KeyUsage         []string `json:"keyUsage"`
-	ExtendedKeyUsage []string `json:"extendedKeyUsage"`
-	// Maybe need to create a struct to support Email and IPAddresses as long as DNSNames...
+	AuthorityKeyId         []byte   `json:"authorityKeyId"`
+	SubjectKeyId           []byte   `json:"subjectKeyId"`
+	KeyUsage               []string `json:"keyUsage"`
+	ExtendedKeyUsage       []string `json:"extendedKeyUsage"`
 	SubjectAlternativeName []string `json:"subjectAlternativeName"`
 	CRLDistributionPoints  []string `json:"crlDistributionPoints"`
 }
@@ -121,7 +122,7 @@ type ids struct {
 	values []string `json:"values"`
 }
 
-type JsonRawCert struct{
+type JsonRawCert struct {
 	RawCert string `json:"rawCert"`
 }
 
@@ -160,16 +161,8 @@ func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
 		err := json.Unmarshal(d.Body, &chain)
 		panicIf(err)
 
-		log.Println(len(chain.Certs))
-
 		analyseAndPushCertificates(&chain, es)
 
-		// jsonCert, err := json.MarshalIndent(certtoStored(certif), "", "    ")
-		// panicIf(err)
-		// log.Println(string(jsonCert))
-		// _, err = es.Index("certificates", "certificateInfo", SHA256Hash(certif.Raw), nil, jsonCert)
-		// _, err = es.Index("certificates", "certificateRaw", SHA256Hash(certif.Raw), nil, base64.StdEncoding.EncodeToString(certif.Raw))
-		// panicIf(err)
 		d.Ack(false)
 	}
 
@@ -180,7 +173,7 @@ func analyseAndPushCertificates(chain *CertChain, es *elastigo.Conn) {
 
 	var certs []*x509.Certificate
 
-	for i, data := range chain.Certs {
+	for _, data := range chain.Certs { //create certificate chain from chain struct
 
 		certRaw, err := base64.StdEncoding.DecodeString(data)
 		panicIf(err)
@@ -189,118 +182,86 @@ func analyseAndPushCertificates(chain *CertChain, es *elastigo.Conn) {
 		certif, err = x509.ParseCertificate(certRaw)
 		panicIf(err)
 
-		if i == 0{ // do this only for the leaf certificate as in most cases intermediate and CA certificate will already be in the DB
-			searchJson := `{
-		    "query" : {
-		        "term" : { "_id" : "` + SHA256Hash(certif.Raw) + `" }
-		    }
-		}`
-			res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
-			if !panicIf(e){
-				if res.Hits.Total>0{//probably gonna be 0|1
-					//certificate is already in the database. Abort??? return
-				}
-			}
-		}
+		//gotta decide if we're going to keep this here
+		// 	searchJson := `{
+		//     "query" : {
+		//         "term" : { "_id" : "` + SHA256Hash(certif.Raw) + `" }
+		//     }
+		// }`
+		// 	res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
+		// 	if !panicIf(e){
+		// 		if res.Hits.Total>0{//Is certificate alreadycollected?
+		// 			renewLastSeenTime(storedCert string)
+		// 		}
+		// 	}
 
 		certs = append(certs, certif)
 	}
 
+	for i, c := range certs {
 
-	inter:= x509.NewCertPool()
+		inter := x509.NewCertPool()
 
-	
-	for _,c := range certs[1:len(certs)]{
-		if c.Issuer.CommonName != ""{
-
-			log.Println("added to Intermediates"+c.Subject.CommonName)
-			inter.AddCert(c)
-		}
-	}
-
-	opts := x509.VerifyOptions{
-		DNSName: chain.Domain,
-		Intermediates: inter,
-	}
-
-	var chains [][]*x509.Certificate
-
-	chains, err := certs[0].Verify(opts)
-	
-
-	if len(chains)>0 && !panicIf(err){
-		CreateStoredChain(chains[0], "", es)
-	}else{
-		CreateStoredChain(certs,err.Error(), es)
-	}
-}
-
-func CreateStoredChain(certs []*x509.Certificate, validation_err string, es *elastigo.Conn){
-	for i, cert := range certs{
-
-		searchJson := `{
-		    "query" : {
-		        "term" : { "_id" : "` + SHA256Hash(cert.Raw) + `" }
-		    }
-		}`
-
-		res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
-		if !panicIf(e){
-			if res.Hits.Total>0{//probably gonna be 0|1
-				//certificate is already in the database. Abort??? return
+		for _, cert := range certs[i+1 : len(certs)] {
+			if cert.Issuer.CommonName != "" {
+				inter.AddCert(cert)
 			}
 		}
 
-		stored := certtoStored(cert)
-		jsonCert, err := json.MarshalIndent(stored, "", "    ")
-		panicIf(err)
-
-		stored.IsChainValid = validation_err
-		if cert.Issuer.CommonName != "" && len(certs)>i+1{
-			stored.ParentSignature = SHA256Hash(certs[i+1].Raw)
+		opts := x509.VerifyOptions{
+			DNSName:       chain.Domain,
+			Intermediates: inter,
+			//will add rootCAs from cfg file
 		}
-		_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
-		panicIf(err)
 
-		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
-		jsonCert, err = json.MarshalIndent(raw, "", "    ")
-		panicIf(err)
-		_, err = es.Index("certificates", "certificateRaw", SHA256Hash(cert.Raw), nil, jsonCert)
-		panicIf(err)
+		var chains [][]*x509.Certificate
+
+		chains, err := c.Verify(opts)
+
+		if err == nil {
+			CreateStoredChain(chains[0], es)
+			break
+		} else {
+			parentSignature := ""
+			if c.Issuer.CommonName != "" && len(certs) > i+1 {
+				parentSignature = SHA256Hash(certs[i+1].Raw)
+			}
+			pushCertificate(c, parentSignature, err.Error(), es)
+		}
 	}
 }
 
-//Alternate method of Verifying
+func renewLastSeenTime(storedCert string) {
+	//create StoredCert struct and change last seen time and resubmit
+}
 
-// func analyseAndPushCertificates(chain *CertChain){
+func CreateStoredChain(certs []*x509.Certificate, es *elastigo.Conn) {
+	for i, cert := range certs {
 
-// 	for i, data := range chain.Certs {
+		parentSignature := ""
+		if cert.Issuer.CommonName != "" && len(certs) > i+1 {
+			parentSignature = SHA256Hash(certs[i+1].Raw)
+		}
+		pushCertificate(cert, parentSignature, "", es)
+	}
+}
 
-// 		certRaw, err := base64.StdEncoding.DecodeString(data)
-// 		panicIf(err)
+func pushCertificate(cert *x509.Certificate, parentSignature string, validationError string, es *elastigo.Conn) {
 
-// 		var certif *x509.Certificate
-// 		certif, err = x509.ParseCertificate(certRaw)
-// 		panicIf(err)
+	stored := certtoStored(cert, parentSignature, validationError)
+	jsonCert, err := json.MarshalIndent(stored, "", "    ")
+	panicIf(err)
 
-// 		if i+1<len(chain.Certs){
-// 			certRaw, err = base64.StdEncoding.DecodeString(chain.Certs[i+1])
-// 			panicIf(err)
+	_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
+	panicIf(err)
 
-// 			var certt *x509.Certificate
-// 			certt, err = x509.ParseCertificate(certRaw)
-// 			panicIf(err)
+	raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
+	jsonCert, err = json.MarshalIndent(raw, "", "    ")
+	panicIf(err)
+	_, err = es.Index("certificates", "certificateRaw", SHA256Hash(cert.Raw), nil, jsonCert)
+	panicIf(err)
 
-// 			log.Println(certif.Subject.CommonName + " - "+ certt.Subject.CommonName )
-
-// 			err = certif.CheckSignatureFrom(certt)
-// 			panicIf(err)
-// 		}
-
-// 		certs = append(certs, certif)
-// 	}
-
-// }
+}
 
 func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
 
@@ -360,6 +321,8 @@ func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
 	return usage
 }
 
+//This function currently stores only the extensions that are already exported by GoLang
+//(in the x509 Certificate Struct)
 func getCertExtensions(cert *x509.Certificate) certExtensions {
 
 	extensions := certExtensions{}
@@ -379,24 +342,9 @@ func getCertExtensions(cert *x509.Certificate) certExtensions {
 
 }
 
-func certtoStored(cert *x509.Certificate) StoredCertificate {
+func certtoStored(cert *x509.Certificate, parentSignature string, validationError string) StoredCertificate {
 
 	var stored = StoredCertificate{}
-
-	//Print raw extension info
-
-	// for i, extension := range cert.Extensions{
-
-	// 	var numbers string
-	// 	for num ,num2 := range  extension.Id{
-
-	// 		numbers = numbers + " "+ "[" + strconv.Itoa(num)+ " " + strconv.Itoa(num2) + "]"
-
-	// 	}
-
-	// 	log.Println("//",strconv.Itoa(i),": {", numbers,"}",string(extension.Value) )
-
-	// }
 
 	stored.Version = float64(cert.Version)
 
@@ -429,7 +377,34 @@ func certtoStored(cert *x509.Certificate) StoredCertificate {
 	}
 
 	stored.CollectionTimestamp = time.Now().UTC().String()
+	stored.LastSeenTimestamp = time.Now().UTC().String()
+
+	stored.IsChainValid = true
+	if validationError != "" {
+		stored.IsChainValid = false
+		stored.ValidationError = validationError
+	}
+
+	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
+
 	return stored
+
+}
+
+//Print raw extension info
+//for debugging purposes
+func printRawCertExtensions(cert *x509.Certificate) {
+
+	for i, extension := range cert.Extensions {
+
+		var numbers string
+		for num, num2 := range extension.Id {
+
+			numbers = numbers + " " + "[" + strconv.Itoa(num) + " " + strconv.Itoa(num2) + "]"
+
+		}
+		log.Println("//", strconv.Itoa(i), ": {", numbers, "}", string(extension.Value))
+	}
 
 }
 
