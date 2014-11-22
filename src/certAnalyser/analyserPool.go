@@ -253,39 +253,40 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, validationE
 	    }
 	}`
 	res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
-	if !panicIf(e) {
-		if res.Hits.Total > 0 { //Is certificate alreadycollected?
+	panicIf(e)
+	if res.Hits.Total > 0 { //Is certificate alreadycollected?
 
-			storedCert := StoredCertificate{}
+		storedCert := StoredCertificate{}
 
-			err := json.Unmarshal(*res.Hits.Hits[0].Source, &storedCert)
-			panicIf(err)
+		err := json.Unmarshal(*res.Hits.Hits[0].Source, &storedCert)
+		panicIf(err)
 
-			// _, err = es.Delete("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil)
-			// panicIf(err)
+		// _, err = es.Delete("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil)
+		// panicIf(err)
 
-			storedCert.LastSeenTimestamp = time.Now().UTC().String()
+		storedCert.LastSeenTimestamp = time.Now().UTC().String()
 
-			jsonCert, err := json.MarshalIndent(storedCert, "", "    ")
-			panicIf(err)
+		jsonCert, err := json.Marshal(storedCert)
+		panicIf(err)
 
-			_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
-			panicIf(err)
-		}
+		_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
+		panicIf(err)
+		log.Println("Updated cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
 	} else {
 
 		stored := certtoStored(cert, parentSignature, validationError)
-		jsonCert, err := json.MarshalIndent(stored, "", "    ")
+		jsonCert, err := json.Marshal(stored)
 		panicIf(err)
 
 		_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
 		panicIf(err)
 
 		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
-		jsonCert, err = json.MarshalIndent(raw, "", "    ")
+		jsonCert, err = json.Marshal(raw)
 		panicIf(err)
 		_, err = es.Index("certificates", "certificateRaw", SHA256Hash(cert.Raw), nil, jsonCert)
 		panicIf(err)
+		log.Println("Stored cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
 	}
 
 }
@@ -444,7 +445,7 @@ func main() {
 	defer conn.Close()
 
 	es := elastigo.NewConn()
-	es.Domain = "83.212.99.104:9200"
+	es.Domain = "127.0.0.1:9200"
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
