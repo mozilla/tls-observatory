@@ -182,19 +182,6 @@ func analyseAndPushCertificates(chain *CertChain, es *elastigo.Conn) {
 		certif, err = x509.ParseCertificate(certRaw)
 		panicIf(err)
 
-		//gotta decide if we're going to keep this here
-		// 	searchJson := `{
-		//     "query" : {
-		//         "term" : { "_id" : "` + SHA256Hash(certif.Raw) + `" }
-		//     }
-		// }`
-		// 	res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
-		// 	if !panicIf(e){
-		// 		if res.Hits.Total>0{//Is certificate alreadycollected?
-		// 			renewLastSeenTime(storedCert string)
-		// 		}
-		// 	}
-
 		certs = append(certs, certif)
 	}
 
@@ -237,9 +224,15 @@ func analyseAndPushCertificates(chain *CertChain, es *elastigo.Conn) {
 	}
 }
 
-func renewLastSeenTime(storedCert string) {
-	//create StoredCert struct and change last seen time and resubmit
-}
+// func renewLastSeenTimeandPush(remoteCert string) {
+// 	storedCert := StoredCertificate{}
+
+// 	err := json.Unmarshal(remoteCert, &storedCert)
+// 	panicIf(err)
+
+// 	log.Println("found cert\n" + remoteCert)
+
+// }
 
 func CreateStoredChain(certs []*x509.Certificate, es *elastigo.Conn) {
 	for i, cert := range certs {
@@ -254,18 +247,46 @@ func CreateStoredChain(certs []*x509.Certificate, es *elastigo.Conn) {
 
 func pushCertificate(cert *x509.Certificate, parentSignature string, validationError string, es *elastigo.Conn) {
 
-	stored := certtoStored(cert, parentSignature, validationError)
-	jsonCert, err := json.MarshalIndent(stored, "", "    ")
-	panicIf(err)
+	searchJson := `{
+	    "query" : {
+	        "term" : { "_id" : "` + SHA256Hash(cert.Raw) + `" }
+	    }
+	}`
+	res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
+	if !panicIf(e) {
+		if res.Hits.Total > 0 { //Is certificate alreadycollected?
 
-	_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
-	panicIf(err)
+			storedCert := StoredCertificate{}
 
-	raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
-	jsonCert, err = json.MarshalIndent(raw, "", "    ")
-	panicIf(err)
-	_, err = es.Index("certificates", "certificateRaw", SHA256Hash(cert.Raw), nil, jsonCert)
-	panicIf(err)
+			err := json.Unmarshal(*res.Hits.Hits[0].Source, &storedCert)
+			panicIf(err)
+
+			// _, err = es.Delete("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil)
+			// panicIf(err)
+
+			storedCert.LastSeenTimestamp = time.Now().UTC().String()
+
+			jsonCert, err := json.MarshalIndent(storedCert, "", "    ")
+			panicIf(err)
+
+			_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
+			panicIf(err)
+		}
+	} else {
+
+		stored := certtoStored(cert, parentSignature, validationError)
+		jsonCert, err := json.MarshalIndent(stored, "", "    ")
+		panicIf(err)
+
+		_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
+		panicIf(err)
+
+		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
+		jsonCert, err = json.MarshalIndent(raw, "", "    ")
+		panicIf(err)
+		_, err = es.Index("certificates", "certificateRaw", SHA256Hash(cert.Raw), nil, jsonCert)
+		panicIf(err)
+	}
 
 }
 
