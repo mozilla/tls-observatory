@@ -4,10 +4,10 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"github.com/streadway/amqp"
 	"io"
 	"os"
 	"time"
-	"github.com/streadway/amqp"
 )
 
 var programName = "tlsRetriever"
@@ -100,7 +100,7 @@ func main() {
 			panicIf(err)
 
 			lineCount += 1
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(5 * time.Millisecond)
 		}
 	} else {
 
