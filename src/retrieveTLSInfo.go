@@ -44,7 +44,7 @@ func main() {
 	panicIf(err)
 	defer ch.Close()
 
-	q, err := ch.QueueDeclare(
+	_, err = ch.QueueDeclare(
 		"scan_ready_queue", // name
 		true,               // durable
 		false,              // delete when unused
@@ -52,14 +52,14 @@ func main() {
 		false,              // no-wait
 		nil,                // arguments
 	)
-	failOnError(err, "Failed to declare a queue")
+	panicIf(err)
 
 	err = ch.Qos(
 		3,     // prefetch count
 		0,     // prefetch size
 		false, // global
 	)
-	failOnError(err, "Failed to set QoS")
+	panicIf(err)
 
 	if infile != "" {
 
@@ -111,7 +111,7 @@ func main() {
 			amqp.Publishing{
 				DeliveryMode: amqp.Persistent,
 				ContentType:  "text/plain",
-				Body:         []byte(domain),
+				Body:         []byte(domainName),
 			})
 		panicIf(err)
 
