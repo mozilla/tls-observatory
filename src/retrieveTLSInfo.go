@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-
+	"time"
 	"github.com/streadway/amqp"
 )
 
@@ -100,6 +100,7 @@ func main() {
 			panicIf(err)
 
 			lineCount += 1
+			time.Sleep(50 * time.Millisecond)
 		}
 	} else {
 
