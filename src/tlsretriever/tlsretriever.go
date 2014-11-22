@@ -6,9 +6,9 @@ import (
 	"errors"
 )
 
-func CheckHost(domainName, port string) ([]*x509.Certificate, error) {
+func CheckHost(domainName, port string, skipVerify bool) ([]*x509.Certificate, error) {
 
-	config := tls.Config{}
+	config := tls.Config{InsecureSkipVerify: skipVerify}
 
 	canonicalName := domainName + ":" + port
 
