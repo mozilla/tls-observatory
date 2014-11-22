@@ -31,45 +31,37 @@ type CertChain struct {
 	Certs  []string `json:"certs"`
 }
 
-func worker(msgs <-chan amqp.Delivery, ch *amqp.Channel) {
+func worker(msg []byte, ch *amqp.Channel) {
 
-	forever := make(chan bool)
-	defer wg.Done()
-
-	for d := range msgs {
-		certs, err := tlsretriever.CheckHost(string(d.Body), "443", true)
-		d.Ack(false)
-		panicIf(err)
-		if certs == nil {
-			continue
-		}
-
-		var chain = CertChain{}
-
-		chain.Domain = string(d.Body)
-
-		for _, cert := range certs {
-
-			chain.Certs = append(chain.Certs, base64.StdEncoding.EncodeToString(cert.Raw))
-
-		}
-
-		jsonCert, er := json.MarshalIndent(chain, "", "    ")
-		panicIf(er)
-		err = ch.Publish(
-			"",                   // exchange
-			"scan_results_queue", // routing key
-			false,                // mandatory
-			false,
-			amqp.Publishing{
-				DeliveryMode: amqp.Persistent,
-				ContentType:  "text/plain",
-				Body:         []byte(jsonCert),
-			})
-		panicIf(err)
+	certs, err := tlsretriever.CheckHost(string(msg), "443", true)
+	panicIf(err)
+	if certs == nil {
+		log.Println("no certificate retrieved from", string(msg))
 	}
 
-	<-forever
+	var chain = CertChain{}
+
+	chain.Domain = string(msg)
+
+	for _, cert := range certs {
+
+		chain.Certs = append(chain.Certs, base64.StdEncoding.EncodeToString(cert.Raw))
+
+	}
+
+	jsonCert, er := json.MarshalIndent(chain, "", "    ")
+	panicIf(er)
+	err = ch.Publish(
+		"",                   // exchange
+		"scan_results_queue", // routing key
+		false,                // mandatory
+		false,
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/plain",
+			Body:         []byte(jsonCert),
+		})
+	panicIf(err)
 }
 
 var wg sync.WaitGroup
@@ -115,7 +107,7 @@ func main() {
 	msgs, err := ch.Consume(
 		q.Name, // queue
 		"",     // consumer
-		false,  // auto-ack
+		true,   // auto-ack
 		false,  // exclusive
 		false,  // no-local
 		false,  // no-wait
@@ -126,9 +118,8 @@ func main() {
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores)
 
-	for i := 0; i < cores; i++ {
-		wg.Add(1)
-		go worker(msgs, ch)
+	for d := range msgs {
+		go worker(d.Body, ch)
 	}
 
 	wg.Wait()
