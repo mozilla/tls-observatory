@@ -264,7 +264,9 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, validationE
 		// _, err = es.Delete("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil)
 		// panicIf(err)
 
-		storedCert.LastSeenTimestamp = time.Now().UTC().String()
+		t := time.Now().UTC()
+
+		storedCert.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 
 		jsonCert, err := json.Marshal(storedCert)
 		panicIf(err)
@@ -404,8 +406,10 @@ func certtoStored(cert *x509.Certificate, parentSignature string, validationErro
 		stored.CA = false
 	}
 
-	stored.CollectionTimestamp = time.Now().UTC().String()
-	stored.LastSeenTimestamp = time.Now().UTC().String()
+	t := time.Now().UTC()
+
+	stored.CollectionTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	stored.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 
 	stored.IsChainValid = true
 	if validationError != "" {

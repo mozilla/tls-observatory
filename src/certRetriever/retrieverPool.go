@@ -37,6 +37,7 @@ func worker(msg []byte, ch *amqp.Channel) {
 	panicIf(err)
 	if certs == nil {
 		log.Println("no certificate retrieved from", string(msg))
+		return
 	}
 
 	var chain = CertChain{}
