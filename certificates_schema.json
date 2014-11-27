@@ -173,7 +173,7 @@
                     }
                 },
                 "x509v3BasicConstraints": {
-                    "type": "long",
+                    "type": "string",
                     "fields": {
                         "raw": {
                             "index": "not_analyzed",
