@@ -1,0 +1,146 @@
+{
+    "certificates": {
+        "mappings": {
+            "certificateInfo": {
+                "_timestamp": {
+                    "enabled": true,
+                    "path": "lastSeenTimestamp",
+                    "store": true
+                },
+                "properties": {
+                    "ValidationError": {
+                        "index": "not_analyzed",
+                        "type": "string"
+                    },
+                    "ca": {
+                        "type": "boolean"
+                    },
+                    "collectionTimestamp": {
+                        "format": "date_hour_minute_second",
+                        "type": "date"
+                    },
+                    "isChainValid": {
+                        "index": "not_analyzed",
+                        "type": "boolean"
+                    },
+                    "issuer": {
+                        "properties": {
+                            "c": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "cn": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "o": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "ou": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "lastSeenTimestamp": {
+                        "format": "date_hour_minute_second",
+                        "type": "date"
+                    },
+                    "parentSignature": {
+                        "index": "not_analyzed",
+                        "type": "string"
+                    },
+                    "signatureAlgorithm": {
+                        "index": "not_analyzed",
+                        "type": "string"
+                    },
+                    "subject": {
+                        "properties": {
+                            "c": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "cn": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "o": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "ou": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "subjectPublicKeyInfo": {
+                        "properties": {
+                            "publicKeyAlgorithm": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "validity": {
+                        "properties": {
+                            "notAfter": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "notBefore": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "version": {
+                        "index": "not_analyzed",
+                        "type": "long"
+                    },
+                    "x509v3BasicConstraints": {
+                        "index": "not_analyzed",
+                        "type": "string"
+                    },
+                    "x509v3Extensions": {
+                        "properties": {
+                            "authorityKeyId": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "crlDistributionPoints": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "extendedKeyUsage": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "keyUsage": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "subjectAlternativeName": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            },
+                            "subjectKeyId": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "certificateRaw": {
+                "properties": {
+                    "rawCert": {
+                        "index": "not_analyzed",
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
