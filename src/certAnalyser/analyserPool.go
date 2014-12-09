@@ -56,6 +56,8 @@ var publicKeyAlgorithm = [...]string{
 }
 
 type StoredCertificate struct {
+	Domains                []string                 `json:"domains"`
+	IPs                    []string                 `json:"ips"`
 	Version                float64                  `json:"version"`
 	SignatureAlgorithm     string                   `json:"signatureAlgorithm"`
 	Issuer                 certIssuer               `json:"issuer"`
@@ -114,6 +116,7 @@ type CertX509v3BasicConstraints struct {
 
 type CertChain struct {
 	Domain string   `json:"domain"`
+	IP     string   `json:"ip"`
 	Certs  []string `json:"certs"`
 }
 
@@ -212,40 +215,26 @@ func analyseAndPushCertificates(chain *CertChain, es *elastigo.Conn) {
 		chains, err := c.Verify(opts)
 
 		if err == nil {
-			CreateStoredChain(chains[0], es)
+			for i, cert := range chains[0] {
+
+				parentSignature := ""
+				if cert.Issuer.CommonName != "" && len(certs) > i+1 {
+					parentSignature = SHA256Hash(certs[i+1].Raw)
+				}
+				pushCertificate(cert, parentSignature, chain.Domain, chain.IP, "", es)
+			}
 			break
 		} else {
 			parentSignature := ""
 			if c.Issuer.CommonName != "" && len(certs) > i+1 {
 				parentSignature = SHA256Hash(certs[i+1].Raw)
 			}
-			pushCertificate(c, parentSignature, err.Error(), es)
+			pushCertificate(c, parentSignature, chain.Domain, chain.IP, err.Error(), es)
 		}
 	}
 }
 
-// func renewLastSeenTimeandPush(remoteCert string) {
-// 	storedCert := StoredCertificate{}
-
-// 	err := json.Unmarshal(remoteCert, &storedCert)
-// 	panicIf(err)
-
-// 	log.Println("found cert\n" + remoteCert)
-
-// }
-
-func CreateStoredChain(certs []*x509.Certificate, es *elastigo.Conn) {
-	for i, cert := range certs {
-
-		parentSignature := ""
-		if cert.Issuer.CommonName != "" && len(certs) > i+1 {
-			parentSignature = SHA256Hash(certs[i+1].Raw)
-		}
-		pushCertificate(cert, parentSignature, "", es)
-	}
-}
-
-func pushCertificate(cert *x509.Certificate, parentSignature string, validationError string, es *elastigo.Conn) {
+func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip, validationError string, es *elastigo.Conn) {
 
 	searchJson := `{
 	    "query" : {
@@ -261,12 +250,39 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, validationE
 		err := json.Unmarshal(*res.Hits.Hits[0].Source, &storedCert)
 		panicIf(err)
 
-		// _, err = es.Delete("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil)
-		// panicIf(err)
-
 		t := time.Now().UTC()
 
 		storedCert.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+
+		if !storedCert.CA {
+
+			log.Println("domain is " + domain)
+			domainFound := false
+
+			for _, d := range storedCert.Domains {
+				if domain == d {
+					domainFound = true
+					break
+				}
+			}
+
+			if !domainFound {
+				storedCert.Domains = append(storedCert.Domains, domain)
+			}
+
+			ipFound := false
+
+			for _, i := range storedCert.IPs {
+				if ip == i {
+					ipFound = true
+					break
+				}
+			}
+
+			if !ipFound {
+				storedCert.IPs = append(storedCert.IPs, ip)
+			}
+		}
 
 		jsonCert, err := json.Marshal(storedCert)
 		panicIf(err)
@@ -276,7 +292,7 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, validationE
 		log.Println("Updated cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
 	} else {
 
-		stored := certtoStored(cert, parentSignature, validationError)
+		stored := certtoStored(cert, parentSignature, domain, ip, validationError)
 		jsonCert, err := json.Marshal(stored)
 		panicIf(err)
 
@@ -372,7 +388,7 @@ func getCertExtensions(cert *x509.Certificate) certExtensions {
 
 }
 
-func certtoStored(cert *x509.Certificate, parentSignature string, validationError string) StoredCertificate {
+func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, validationError string) StoredCertificate {
 
 	var stored = StoredCertificate{}
 
@@ -419,6 +435,9 @@ func certtoStored(cert *x509.Certificate, parentSignature string, validationErro
 
 	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
 
+	stored.Domains = append(stored.Domains, domain)
+	stored.IPs = append(stored.IPs, ip)
+
 	return stored
 
 }
@@ -449,7 +468,7 @@ func main() {
 	defer conn.Close()
 
 	es := elastigo.NewConn()
-	es.Domain = "127.0.0.1:9200"
+	es.Domain = "83.212.99.104:9200"
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")

@@ -28,12 +28,13 @@ func panicIf(err error) {
 
 type CertChain struct {
 	Domain string   `json:"domain"`
+	IP     string   `json:"ip"`
 	Certs  []string `json:"certs"`
 }
 
 func worker(msg []byte, ch *amqp.Channel) {
 
-	certs, err := tlsretriever.CheckHost(string(msg), "443", true)
+	certs, ip, err := tlsretriever.CheckHost(string(msg), "443", true)
 	panicIf(err)
 	if certs == nil {
 		log.Println("no certificate retrieved from", string(msg))
@@ -44,13 +45,15 @@ func worker(msg []byte, ch *amqp.Channel) {
 
 	chain.Domain = string(msg)
 
+	chain.IP = ip
+
 	for _, cert := range certs {
 
 		chain.Certs = append(chain.Certs, base64.StdEncoding.EncodeToString(cert.Raw))
 
 	}
 
-	jsonCert, er := json.MarshalIndent(chain, "", "    ")
+	jsonChain, er := json.MarshalIndent(chain, "", "    ")
 	panicIf(er)
 	err = ch.Publish(
 		"",                   // exchange
@@ -60,7 +63,7 @@ func worker(msg []byte, ch *amqp.Channel) {
 		amqp.Publishing{
 			DeliveryMode: amqp.Persistent,
 			ContentType:  "text/plain",
-			Body:         []byte(jsonCert),
+			Body:         []byte(jsonChain),
 		})
 	panicIf(err)
 }
