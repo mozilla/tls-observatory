@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/dsa"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
@@ -51,7 +54,7 @@ var extKeyUsage = [...]string{
 var publicKeyAlgorithm = [...]string{
 	"UnknownPublicKeyAlgorithm",
 	"RSA",
-	"DAS",
+	"DSA",
 	"ECDSA",
 }
 
@@ -95,7 +98,16 @@ type certSubject struct {
 }
 
 type certSubjectPublicKeyInfo struct {
-	PublicKeyAlgorithm string `json:"publicKeyAlgorithm"`
+	PublicKeyAlgorithm string  `json:"publicKeyAlgorithm,omitempty"`
+	RSAModulousSize    float64 `json:"rsaModulousSize,omitempty"`
+	RSAExponent        float64 `json:"rsaExponent,omitempty"`
+	DSA_P              string  `json:"DSA_P,omitempty"`
+	DSA_Q              string  `json:"DSA_Q,omitempty"`
+	DSA_G              string  `json:"DSA_G,omitempty"`
+	DSA_Y              string  `json:"DSA_Y,omitempty"`
+	ECDSACurveType     string  `json:"ecdsaCurveType,omitempty"`
+	ECDSA_X            float64 `json:"ECDSA_X,omitempty"`
+	ECDSA_Y            float64 `json:"ECDSA_Y,omitempty"`
 }
 
 //Currently exporting extensions that are already decoded into the x509 Certificate structure
@@ -388,6 +400,61 @@ func getCertExtensions(cert *x509.Certificate) certExtensions {
 
 }
 
+func getPublicKeyInfo(cert *x509.Certificate) certSubjectPublicKeyInfo {
+
+	var pubInfo = certSubjectPublicKeyInfo{}
+
+	pubInfo.PublicKeyAlgorithm = publicKeyAlgorithm[cert.PublicKeyAlgorithm]
+
+	switch pub := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		pubInfo.RSAModulousSize = float64(pub.N.BitLen())
+		pubInfo.RSAExponent = float64(pub.E)
+
+	case *dsa.PublicKey:
+		textInt, err := pub.G.MarshalText()
+
+		if err == nil {
+			pubInfo.DSA_G = string(textInt)
+		} else {
+			panicIf(err)
+		}
+
+		textInt, err = pub.P.MarshalText()
+
+		if err == nil {
+			pubInfo.DSA_P = string(textInt)
+		} else {
+			panicIf(err)
+		}
+
+		textInt, err = pub.Q.MarshalText()
+
+		if err == nil {
+			pubInfo.DSA_Q = string(textInt)
+		} else {
+			panicIf(err)
+		}
+
+		textInt, err = pub.Y.MarshalText()
+
+		if err == nil {
+			pubInfo.DSA_Y = string(textInt)
+		} else {
+			panicIf(err)
+		}
+
+	case *ecdsa.PublicKey:
+
+		pubInfo.ECDSACurveType = strconv.Itoa(pub.Curve.Params().BitSize)
+		pubInfo.ECDSA_Y = float64(pub.Y.BitLen())
+		pubInfo.ECDSA_X = float64(pub.X.BitLen())
+	}
+
+	return pubInfo
+
+}
+
 func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, validationError string) StoredCertificate {
 
 	var stored = StoredCertificate{}
@@ -396,7 +463,7 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, va
 
 	stored.SignatureAlgorithm = signatureAlgorithm[cert.SignatureAlgorithm]
 
-	stored.SubjectPublicKeyInfo.PublicKeyAlgorithm = publicKeyAlgorithm[cert.PublicKeyAlgorithm]
+	stored.SubjectPublicKeyInfo = getPublicKeyInfo(cert)
 
 	stored.Issuer.Country = cert.Issuer.Country
 	stored.Issuer.Organisation = cert.Issuer.Organization
@@ -435,8 +502,10 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, va
 
 	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
 
-	stored.Domains = append(stored.Domains, domain)
-	stored.IPs = append(stored.IPs, ip)
+	if !cert.IsCA {
+		stored.Domains = append(stored.Domains, domain)
+		stored.IPs = append(stored.IPs, ip)
+	}
 
 	return stored
 
@@ -468,7 +537,7 @@ func main() {
 	defer conn.Close()
 
 	es := elastigo.NewConn()
-	es.Domain = "83.212.99.104:9200"
+	es.Domain = "127.0.0.1:9200"
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
