@@ -325,9 +325,9 @@ func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
 
 	usage := make([]string, len(cert.ExtKeyUsage))
 
-	for _, eku := range cert.ExtKeyUsage {
+	for i, eku := range cert.ExtKeyUsage {
 
-		usage = append(usage, extKeyUsage[eku])
+		usage[i] = extKeyUsage[eku]
 	}
 
 	return usage
