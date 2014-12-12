@@ -99,7 +99,7 @@ type certSubject struct {
 
 type certSubjectPublicKeyInfo struct {
 	PublicKeyAlgorithm string  `json:"publicKeyAlgorithm,omitempty"`
-	RSAModulousSize    float64 `json:"rsaModulousSize,omitempty"`
+	RSAModulousSize    float64 `json:"rsaModulusSize,omitempty"`
 	RSAExponent        float64 `json:"rsaExponent,omitempty"`
 	DSA_P              string  `json:"DSA_P,omitempty"`
 	DSA_Q              string  `json:"DSA_Q,omitempty"`
