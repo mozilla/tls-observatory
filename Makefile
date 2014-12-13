@@ -70,6 +70,7 @@ go_get_deps:
 	$(GOGETTER) github.com/streadway/amqp
 	$(GOGETTER) github.com/mattbaird/elastigo/lib
 	$(GOGETTER) github.com/gorilla/mux
+	$(GOGETTER) code.google.com/p/gcfg
 
 clean:
 	rm -rf bin
