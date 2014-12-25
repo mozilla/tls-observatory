@@ -8,6 +8,7 @@ https://wiki.mozilla.org/Security/Mentorships/MWoS/2014/Compliance_checking_of_T
  * github.com/gorilla/mux
  * github.com/streadway/amqp
  * github.com/mattbaird/elastigo
+ * code.google.com/p/gcfg
 
 ###You need to have a running rabbitmq server...###
 
