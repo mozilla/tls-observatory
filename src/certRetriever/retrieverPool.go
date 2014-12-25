@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 	"runtime"
-	"sync"
 
+	"config"
 	"tlsretriever"
 
 	"github.com/streadway/amqp"
@@ -32,7 +32,16 @@ type CertChain struct {
 	Certs  []string `json:"certs"`
 }
 
+func releaseSemaphore() {
+	sem <- true
+}
+
 func worker(msg []byte, ch *amqp.Channel) {
+
+	log.Println("waiting for channel")
+	<-sem
+	defer releaseSemaphore()
+	log.Println("arrived")
 
 	certs, ip, err := tlsretriever.CheckHost(string(msg), "443", true)
 	panicIf(err)
@@ -68,11 +77,21 @@ func worker(msg []byte, ch *amqp.Channel) {
 	panicIf(err)
 }
 
-var wg sync.WaitGroup
+var sem chan bool
 
 func main() {
 
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conf := config.ObserverConfig{}
+
+	var er error
+	conf, er = config.ConfigLoad("observer.cfg")
+
+	if er != nil {
+		panicIf(er)
+		conf = config.GetDefaults()
+	}
+
+	conn, err := amqp.Dial(conf.General.RabbitMQRelay)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -122,9 +141,15 @@ func main() {
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores)
 
+	maxSimConnections := conf.General.MaxSimConns
+
+	//use channels as semaphores not to exhaust file descriptors
+	sem = make(chan bool, maxSimConnections)
+	for i := 0; i < maxSimConnections; i++ {
+		sem <- true
+	}
+
 	for d := range msgs {
 		go worker(d.Body, ch)
 	}
-
-	wg.Wait()
 }
