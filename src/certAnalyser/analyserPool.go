@@ -16,6 +16,8 @@ import (
 	//"strings"
 	"sync"
 
+	"config"
+
 	elastigo "github.com/mattbaird/elastigo/lib"
 	"github.com/streadway/amqp"
 )
@@ -532,12 +534,21 @@ var wg sync.WaitGroup
 
 func main() {
 
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conf := config.ObserverConfig{}
+
+	var er error
+	conf, er = config.ConfigLoad("observer.cfg")
+
+	if er != nil {
+		conf = config.GetDefaults()
+	}
+
+	conn, err := amqp.Dial(conf.General.RabbitMQRelay)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
 	es := elastigo.NewConn()
-	es.Domain = "127.0.0.1:9200"
+	es.Domain = conf.General.ElasticSearch
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")

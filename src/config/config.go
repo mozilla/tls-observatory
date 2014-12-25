@@ -10,10 +10,11 @@ type ObserverConfig struct {
 	General struct {
 		RabbitMQRelay string
 		ElasticSearch string
+		MaxSimConns   int // Max simultaneous active retriever connections ( to avoid fd limit problems )
 	}
 	TrustStores struct {
-		TrustStoreName []string
-		TrustStorePath []string
+		Name []string
+		Path []string
 	}
 }
 
@@ -33,9 +34,10 @@ func GetDefaults() ObserverConfig {
 	conf := ObserverConfig{}
 
 	conf.General.RabbitMQRelay = "amqp://guest:guest@localhost:5672/"
-	conf.TrustStores.TrustStoreName = append(conf.TrustStores.TrustStoreName, "")
-	conf.TrustStores.TrustStorePath = append(conf.TrustStores.TrustStorePath, "")
+	conf.TrustStores.Name = append(conf.TrustStores.Name, "")
+	conf.TrustStores.Path = append(conf.TrustStores.Path, "")
 	conf.General.ElasticSearch = "127.0.0.1:9200"
+	conf.General.MaxSimConns = 50
 
 	return conf
 }
