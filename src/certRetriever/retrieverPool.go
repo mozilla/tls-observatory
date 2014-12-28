@@ -38,10 +38,8 @@ func releaseSemaphore() {
 
 func worker(msg []byte, ch *amqp.Channel) {
 
-	log.Println("waiting for channel")
 	<-sem
 	defer releaseSemaphore()
-	log.Println("arrived")
 
 	certs, ip, err := tlsretriever.CheckHost(string(msg), "443", true)
 	panicIf(err)
