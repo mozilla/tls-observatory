@@ -151,7 +151,7 @@ type TrustStore struct {
 type certValidationInfo struct {
 	IsValid         bool   `json:"isValid"`
 	ValidationError string `json:"validationError"`
-	OddBehaviour    string `json:"oddBehaviour,omitempty"`
+	Anomalies    string `json:"anomalies,omitempty"`
 }
 
 func failOnError(err error, msg string) {
