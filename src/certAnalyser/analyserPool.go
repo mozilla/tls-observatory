@@ -606,17 +606,31 @@ func printRawCertExtensions(cert *x509.Certificate) {
 
 }
 
+func printIntro() {
+	fmt.Println(`
+	##################################
+	#         CertAnalyzer           #
+	##################################
+	`)
+}
+
 var wg sync.WaitGroup
 var trustStores []TrustStore
 var es *elastigo.Conn
 
 func main() {
 
+	printIntro()
+
 	conf := config.AnalyzerConfig{}
 
 	var cfgFile string
 	flag.StringVar(&cfgFile, "c", "", "Input file csv format")
 	flag.Parse()
+
+	if cfgFile == "" {
+		fmt.Println("You can use -c <cfg filepath> to import custom configuration")
+	}
 
 	var er error
 	conf, er = config.AnalyzerConfigLoad(cfgFile)

@@ -76,15 +76,29 @@ func worker(msg []byte, ch *amqp.Channel) {
 	panicIf(err)
 }
 
+func printIntro() {
+	fmt.Println(`
+	##################################
+	#         CertRetriever          #
+	##################################
+	`)
+}
+
 var sem chan bool
 
 func main() {
+
+	printIntro()
 
 	conf := config.RetrieverConfig{}
 
 	var cfgFile string
 	flag.StringVar(&cfgFile, "c", "", "Input file csv format")
 	flag.Parse()
+
+	if cfgFile == "" {
+		fmt.Println("You can use -c <cfg filepath> to import custom configuration")
+	}
 
 	var er error
 	conf, er = config.RetrieverConfigLoad(cfgFile)
