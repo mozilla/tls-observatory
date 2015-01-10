@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"runtime"
@@ -79,14 +80,18 @@ var sem chan bool
 
 func main() {
 
-	conf := config.ObserverConfig{}
+	conf := config.RetrieverConfig{}
+
+	var cfgFile string
+	flag.StringVar(&cfgFile, "c", "", "Input file csv format")
+	flag.Parse()
 
 	var er error
-	conf, er = config.ConfigLoad("observer.cfg")
+	conf, er = config.RetrieverConfigLoad(cfgFile)
 
 	if er != nil {
 		panicIf(er)
-		conf = config.GetDefaults()
+		conf = config.GetRetrieverDefaults()
 	}
 
 	conn, err := amqp.Dial(conf.General.RabbitMQRelay)

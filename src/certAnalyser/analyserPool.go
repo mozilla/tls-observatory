@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -151,7 +152,7 @@ type TrustStore struct {
 type certValidationInfo struct {
 	IsValid         bool   `json:"isValid"`
 	ValidationError string `json:"validationError"`
-	Anomalies    string `json:"anomalies,omitempty"`
+	Anomalies       string `json:"anomalies,omitempty"`
 }
 
 func failOnError(err error, msg string) {
@@ -611,13 +612,18 @@ var es *elastigo.Conn
 
 func main() {
 
-	conf := config.ObserverConfig{}
+	conf := config.AnalyzerConfig{}
+
+	var cfgFile string
+	flag.StringVar(&cfgFile, "c", "", "Input file csv format")
+	flag.Parse()
 
 	var er error
-	conf, er = config.ConfigLoad("observer.cfg")
+	conf, er = config.AnalyzerConfigLoad(cfgFile)
 
 	if er != nil {
-		conf = config.GetDefaults()
+		panicIf(er)
+		conf = config.GetAnalyzerDefaults()
 	}
 
 	conn, err := amqp.Dial(conf.General.RabbitMQRelay)
