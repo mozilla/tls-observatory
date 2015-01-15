@@ -8,7 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"runtime"
 	"strconv"
@@ -61,23 +63,22 @@ var publicKeyAlgorithm = [...]string{
 }
 
 type StoredCertificate struct {
-	Domains                []string                 `json:"domains"`
-	IPs                    []string                 `json:"ips"`
-	Version                float64                  `json:"version"`
-	SignatureAlgorithm     string                   `json:"signatureAlgorithm"`
-	Issuer                 certIssuer               `json:"issuer"`
-	Validity               certValidity             `json:"validity"`
-	Subject                certSubject              `json:"subject"`
-	SubjectPublicKeyInfo   certSubjectPublicKeyInfo `json:"subjectPublicKeyInfo"`
-	X509v3Extensions       certExtensions           `json:"x509v3Extensions"`
-	X509v3BasicConstraints string                   `json:"x509v3BasicConstraints"`
-	CA                     bool                     `json:"ca"`
-	Analysis               interface{}              `json:"analysis"` //for future use...
-	ParentSignature        []string                 `json:"parentSignature"`
-	IsChainValid           bool                     `json:"isChainValid"`
-	ValidationError        string                   `json:"ValidationError"` //exists only if isChainValid is false
-	CollectionTimestamp    string                   `json:"collectionTimestamp"`
-	LastSeenTimestamp      string                   `json:"lastSeenTimestamp"`
+	Domains                []string                      `json:"domains,omitempty"`
+	IPs                    []string                      `json:"ips,omitempty"`
+	Version                float64                       `json:"version"`
+	SignatureAlgorithm     string                        `json:"signatureAlgorithm"`
+	Issuer                 certIssuer                    `json:"issuer"`
+	Validity               certValidity                  `json:"validity"`
+	Subject                certSubject                   `json:"subject"`
+	SubjectPublicKeyInfo   certSubjectPublicKeyInfo      `json:"subjectPublicKeyInfo"`
+	X509v3Extensions       certExtensions                `json:"x509v3Extensions"`
+	X509v3BasicConstraints string                        `json:"x509v3BasicConstraints"`
+	CA                     bool                          `json:"ca"`
+	Analysis               interface{}                   `json:"analysis"` //for future use...
+	ParentSignature        []string                      `json:"parentSignature"`
+	ValidationInfo         map[string]certValidationInfo `json:"validationInfo"`
+	CollectionTimestamp    string                        `json:"collectionTimestamp"`
+	LastSeenTimestamp      string                        `json:"lastSeenTimestamp"`
 }
 
 type certIssuer struct {
@@ -143,6 +144,17 @@ type JsonRawCert struct {
 	RawCert string `json:"rawCert"`
 }
 
+type TrustStore struct {
+	Name  string
+	Certs *x509.CertPool
+}
+
+type certValidationInfo struct {
+	IsValid         bool   `json:"isValid"`
+	ValidationError string `json:"validationError"`
+	Anomalies       string `json:"anomalies,omitempty"`
+}
+
 func failOnError(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
@@ -166,7 +178,7 @@ func panicIf(err error) bool {
 	return false
 }
 
-func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
+func worker(msgs <-chan amqp.Delivery) {
 
 	forever := make(chan bool)
 	defer wg.Done()
@@ -178,7 +190,7 @@ func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
 		err := json.Unmarshal(d.Body, &chain)
 		panicIf(err)
 
-		analyseAndPushCertificates(&chain, es)
+		analyseAndPushCertificates(&chain)
 
 		d.Ack(false)
 	}
@@ -186,69 +198,135 @@ func worker(msgs <-chan amqp.Delivery, es *elastigo.Conn) {
 	<-forever
 }
 
-func analyseAndPushCertificates(chain *CertChain, es *elastigo.Conn) {
+func analyseAndPushCertificates(chain *CertChain) {
 
-	var certs []*x509.Certificate
+	var intermediates []*x509.Certificate
+	var leafCert *x509.Certificate
+	leafCert = nil
 
 	for _, data := range chain.Certs { //create certificate chain from chain struct
 
 		certRaw, err := base64.StdEncoding.DecodeString(data)
 		panicIf(err)
 
-		var certif *x509.Certificate
-		certif, err = x509.ParseCertificate(certRaw)
+		var cert *x509.Certificate
+		cert, err = x509.ParseCertificate(certRaw)
 		panicIf(err)
 
-		certs = append(certs, certif)
+		if !cert.IsCA {
+			leafCert = cert
+		} else {
+			intermediates = append(intermediates, cert)
+		}
 	}
 
-	for i, c := range certs {
+	if leafCert == nil {
+		log.Println("No Server certificate found in chain received by:" + chain.Domain)
+	}
 
-		inter := x509.NewCertPool()
+	//validate against each truststore
+	for _, curTS := range trustStores {
 
-		for _, cert := range certs[i+1 : len(certs)] {
-			if cert.Issuer.CommonName != "" {
-				inter.AddCert(cert)
+		if leafCert != nil {
+
+			if HandleCertChain(leafCert, intermediates, &curTS, chain.Domain, chain.IP) {
+				continue
 			}
 		}
 
-		dnsName := chain.Domain
+		// to end up here either there was no leaf certificate retrieved
+		// or it was retrieved but it was not valid so we must check the remainder of the chain
+		for i, cert := range intermediates {
 
-		if c.IsCA {
-			dnsName = c.Subject.CommonName
+			inter := append(intermediates[:i], intermediates[i+1:]...)
+
+			HandleCertChain(cert, inter, &curTS, chain.Domain, chain.IP)
+			//should we break if/when this validates?
 		}
 
-		opts := x509.VerifyOptions{
-			DNSName:       dnsName,
-			Intermediates: inter,
-			//will add rootCAs from cfg file
-		}
-
-		var chains [][]*x509.Certificate
-
-		chains, err := c.Verify(opts)
-
-		if err == nil {
-			for i, cert := range chains[0] {
-
-				parentSignature := ""
-				if cert.Issuer.CommonName != "" && len(certs) > i+1 {
-					parentSignature = SHA256Hash(certs[i+1].Raw)
-				}
-				pushCertificate(cert, parentSignature, chain.Domain, chain.IP, "", es)
-			}
-			break
-		} else {
-			parentSignature := ""
-			if c.Issuer.CommonName != "" && len(certs) > i+1 {
-				parentSignature = SHA256Hash(certs[i+1].Raw)
-			}
-			pushCertificate(c, parentSignature, chain.Domain, chain.IP, err.Error(), es)
-		}
 	}
 }
 
-func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip, validationError string, es *elastigo.Conn) {
+func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string) bool {
+
+	valInfo := &certValidationInfo{}
+
+	valInfo.IsValid = true
+
+	inter := x509.NewCertPool()
+	for _, in := range intermediates {
+		inter.AddCert(in)
+	}
+
+	dnsName := domain
+
+	if certificate.IsCA {
+		dnsName = certificate.Subject.CommonName
+	}
+
+	opts := x509.VerifyOptions{
+		DNSName:       dnsName,
+		Intermediates: inter,
+		Roots:         curTS.Certs,
+	}
+
+	chains, err := certificate.Verify(opts)
+
+	if err == nil {
+
+		for i, ch := range chains {
+			for _, cert := range ch {
+
+				log.Println("Trust chain no:" + strconv.Itoa(i))
+
+				parentSignature := ""
+				c := getFirstParent(cert, ch)
+
+				if c != nil {
+					parentSignature = SHA256Hash(c.Raw)
+				} else {
+					log.Println("could not retrieve parent for " + dnsName)
+				}
+				pushCertificate(cert, parentSignature, domain, IP, curTS.Name, valInfo)
+			}
+		}
+		return true
+	} else {
+		if len(chains) > 0 {
+			log.Println("validation error but validation chain populated for: " + dnsName)
+		}
+
+		valInfo.ValidationError = err.Error()
+		valInfo.IsValid = false
+
+		parentSignature := ""
+		c := getFirstParent(certificate, intermediates)
+
+		if c != nil {
+			parentSignature = SHA256Hash(c.Raw)
+		} else {
+			log.Println("could not retrieve parent for " + dnsName)
+		}
+
+		pushCertificate(certificate, parentSignature, domain, IP, curTS.Name, valInfo)
+
+		return false
+	}
+
+}
+
+//Returns the first parent found for a certificate in a given certificate list ( does not verify signature)
+func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Certificate {
+	for _, c := range certs {
+		if cert.Issuer.CommonName == c.Subject.CommonName { //TODO : consider changing this check with validating check
+			return c
+		}
+	}
+	//parent not found
+	return nil
+}
+
+func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo) {
 
 	searchJson := `{
 	    "query" : {
@@ -270,7 +348,6 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 
 		if !storedCert.CA {
 
-			log.Println("domain is " + domain)
 			domainFound := false
 
 			for _, d := range storedCert.Domains {
@@ -298,6 +375,8 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 			}
 		}
 
+		storedCert.ValidationInfo[TSName] = *valInfo
+
 		jsonCert, err := json.Marshal(storedCert)
 		panicIf(err)
 
@@ -306,7 +385,7 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 		log.Println("Updated cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
 	} else {
 
-		stored := certtoStored(cert, parentSignature, domain, ip, validationError)
+		stored := certtoStored(cert, parentSignature, domain, ip, TSName, valInfo)
 		jsonCert, err := json.Marshal(stored)
 		panicIf(err)
 
@@ -457,7 +536,7 @@ func getPublicKeyInfo(cert *x509.Certificate) certSubjectPublicKeyInfo {
 
 }
 
-func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, validationError string) StoredCertificate {
+func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *certValidationInfo) StoredCertificate {
 
 	var stored = StoredCertificate{}
 
@@ -496,18 +575,15 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, va
 	stored.CollectionTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 	stored.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 
-	stored.IsChainValid = true
-	if validationError != "" {
-		stored.IsChainValid = false
-		stored.ValidationError = validationError
-	}
-
 	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
 
 	if !cert.IsCA {
 		stored.Domains = append(stored.Domains, domain)
 		stored.IPs = append(stored.IPs, ip)
 	}
+
+	stored.ValidationInfo = make(map[string]certValidationInfo)
+	stored.ValidationInfo[TSName] = *valInfo
 
 	return stored
 
@@ -530,24 +606,45 @@ func printRawCertExtensions(cert *x509.Certificate) {
 
 }
 
+func printIntro() {
+	fmt.Println(`
+	##################################
+	#         CertAnalyzer           #
+	##################################
+	`)
+}
+
 var wg sync.WaitGroup
+var trustStores []TrustStore
+var es *elastigo.Conn
 
 func main() {
 
-	conf := config.ObserverConfig{}
+	printIntro()
+
+	conf := config.AnalyzerConfig{}
+
+	var cfgFile string
+	flag.StringVar(&cfgFile, "c", "", "Input file csv format")
+	flag.Parse()
+
+	if cfgFile == "" {
+		fmt.Println("You can use -c <cfg filepath> to import custom configuration")
+	}
 
 	var er error
-	conf, er = config.ConfigLoad("observer.cfg")
+	conf, er = config.AnalyzerConfigLoad(cfgFile)
 
 	if er != nil {
-		conf = config.GetDefaults()
+		panicIf(er)
+		conf = config.GetAnalyzerDefaults()
 	}
 
 	conn, err := amqp.Dial(conf.General.RabbitMQRelay)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
-	es := elastigo.NewConn()
+	es = elastigo.NewConn()
 	es.Domain = conf.General.ElasticSearch
 
 	ch, err := conn.Channel()
@@ -584,12 +681,40 @@ func main() {
 
 	failOnError(err, "Failed to register a consumer")
 
+	//Register truststores
+	for i, name := range conf.TrustStores.Name {
+
+		poolData, e := ioutil.ReadFile(conf.TrustStores.Path[i])
+
+		if panicIf(e) {
+			continue
+		}
+
+		certPool := x509.NewCertPool()
+
+		ok := certPool.AppendCertsFromPEM(poolData)
+
+		if !ok {
+			log.Println("Could not parse certificates for: " + name)
+			continue
+		} else {
+			trustStores = append(trustStores, TrustStore{name, certPool})
+		}
+
+	}
+
+	if len(trustStores) == 0 {
+		defaultName := "default-" + runtime.GOOS
+		// nil Root certPool will result in the system defaults being loaded
+		trustStores = append(trustStores, TrustStore{defaultName, nil})
+	}
+
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores)
 
 	for i := 0; i < cores; i++ {
 		wg.Add(1)
-		go worker(msgs, es)
+		go worker(msgs)
 	}
 
 	wg.Wait()

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"runtime"
@@ -38,10 +39,8 @@ func releaseSemaphore() {
 
 func worker(msg []byte, ch *amqp.Channel) {
 
-	log.Println("waiting for channel")
 	<-sem
 	defer releaseSemaphore()
-	log.Println("arrived")
 
 	certs, ip, err := tlsretriever.CheckHost(string(msg), "443", true)
 	panicIf(err)
@@ -77,18 +76,36 @@ func worker(msg []byte, ch *amqp.Channel) {
 	panicIf(err)
 }
 
+func printIntro() {
+	fmt.Println(`
+	##################################
+	#         CertRetriever          #
+	##################################
+	`)
+}
+
 var sem chan bool
 
 func main() {
 
-	conf := config.ObserverConfig{}
+	printIntro()
+
+	conf := config.RetrieverConfig{}
+
+	var cfgFile string
+	flag.StringVar(&cfgFile, "c", "", "Input file csv format")
+	flag.Parse()
+
+	if cfgFile == "" {
+		fmt.Println("You can use -c <cfg filepath> to import custom configuration")
+	}
 
 	var er error
-	conf, er = config.ConfigLoad("observer.cfg")
+	conf, er = config.RetrieverConfigLoad(cfgFile)
 
 	if er != nil {
 		panicIf(er)
-		conf = config.GetDefaults()
+		conf = config.GetRetrieverDefaults()
 	}
 
 	conn, err := amqp.Dial(conf.General.RabbitMQRelay)
