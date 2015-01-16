@@ -44,7 +44,7 @@ retrieveTLSInfo:
 	$(MKDIR) -p $(BINDIR)
 	$(GO) build $(GOOPTS) -o $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) src/retrieveTLSInfo.go
 	[ -x "$(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-	
+
 certRetriever:
 	echo building certRetriever for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
@@ -71,6 +71,21 @@ go_get_deps:
 	$(GOGETTER) github.com/mattbaird/elastigo/lib
 	$(GOGETTER) github.com/gorilla/mux
 	$(GOGETTER) code.google.com/p/gcfg
+
+deb-pkg: all
+	rm -fr tmp
+	$(MKDIR) -p tmp/opt/observer/bin tmp/etc/observer/
+	$(INSTALL) -D -m 0755 $(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX) tmp/opt/observer/bin/certRetriever-$(BUILDREV)$(BINSUFFIX)
+	$(INSTALL) -D -m 0755 $(BINDIR)/certAnalyser-$(BUILDREV)$(BINSUFFIX) tmp/opt/observer/bin/certAnalyser-$(BUILDREV)$(BINSUFFIX)
+	$(INSTALL) -D -m 0755 $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) tmp/opt/observer/bin/web-api-$(BUILDREV)$(BINSUFFIX)
+	$(INSTALL) -D -m 0755 $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) tmp/opt/observer/bin/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX)
+	$(INSTALL) -D -m 0755 retriever.cfg tmp/etc/observer/retriever.cfg.inc
+	$(INSTALL) -D -m 0755 analyzer.cfg tmp/etc/observer/analyzer.cfg.inc
+	$(INSTALL) -D -m 0755 moz-CAs.crt tmp/etc/observer/moz-CAs.crt
+	$(INSTALL) -D -m 0755 top-1m.csv tmp/etc/observer/top-1m.csv
+	fpm -C tmp -n mozilla-tls-observer --license GPL --vendor mozilla --description "Mozilla TLS Observer" \
+		-m "Mozilla OpSec" --url https://github.com/mozilla/TLS-Observer --architecture $(FPMARCH) -v $(BUILDREV) \
+		-s dir -t deb .
 
 clean:
 	rm -rf bin
