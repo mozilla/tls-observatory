@@ -1,0 +1,3 @@
+[submodule "truststores"]
+	path = truststores
+	url = https://github.com/kirei/catt.git
