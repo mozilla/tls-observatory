@@ -29,7 +29,7 @@ BINDIR		:= bin/$(OS)/$(ARCH)
 GCC			:= gcc
 CFLAGS		:=
 LDFLAGS		:=
-GOOPTS		:=
+GOOPTS		:= -tags netgo
 GO 			:= GOPATH=$(shell go env GOROOT)/bin:$(shell pwd) GOOS=$(OS) GOARCH=$(ARCH) go
 GOGETTER	:= GOPATH=$(shell pwd) GOOS=$(OS) GOARCH=$(ARCH) go get -u
 GOLDFLAGS	:= -ldflags "-X main.version $(BUILDREV)"
