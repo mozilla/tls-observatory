@@ -1,6 +1,11 @@
 # 3rd party
 src/github.com/*
 
+# local builds
+bin/
+tmp/
+tmppkg/
+
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.o
 *.a
