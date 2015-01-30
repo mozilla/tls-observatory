@@ -85,6 +85,7 @@ deb-pkg: all
 	$(INSTALL) -D -m 0755 conf/tlsobserver-analyzer.conf tmppkg/etc/init/tlsobserver-analyzer.conf
 	$(INSTALL) -D -m 0755 moz-CAs.crt tmppkg/etc/observer/moz-CAs.crt
 	$(INSTALL) -D -m 0755 top-1m.csv tmppkg/etc/observer/top-1m.csv
+	$(INSTALL) -D -m 0755 certificates_schema.json tmppkg/etc/observer/certificates_schema.json
 	fpm -C tmppkg -n mozilla-tls-observer --license GPL --vendor mozilla --description "Mozilla TLS Observer" \
 		-m "Mozilla OpSec" --url https://github.com/mozilla/TLS-Observer --architecture $(FPMARCH) -v $(BUILDREV) \
 		-s dir -t deb .
