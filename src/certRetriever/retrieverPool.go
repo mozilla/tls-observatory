@@ -1,16 +1,20 @@
 package main
 
 import (
+	// stdlib packages
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"runtime"
 
+	// custom packages
 	"config"
 	"tlsretriever"
 
+	// 3rd party dependencies
 	"github.com/streadway/amqp"
 )
 
@@ -87,24 +91,25 @@ func printIntro() {
 var sem chan bool
 
 func main() {
+	var (
+		err error
+	)
+	cores := runtime.NumCPU()
+	runtime.GOMAXPROCS(cores * 2)
 
 	printIntro()
 
 	conf := config.RetrieverConfig{}
 
 	var cfgFile string
-	flag.StringVar(&cfgFile, "c", "", "Input file csv format")
+	flag.StringVar(&cfgFile, "c", "/etc/observer/retriever.cfg", "Input file csv format")
 	flag.Parse()
 
-	if cfgFile == "" {
-		fmt.Println("You can use -c <cfg filepath> to import custom configuration")
-	}
+	_, err = os.Stat(cfgFile)
+	failOnError(err, "Missing configuration file from '-c' or /etc/observer/retriever.cfg")
 
-	var er error
-	conf, er = config.RetrieverConfigLoad(cfgFile)
-
-	if er != nil {
-		panicIf(er)
+	conf, err = config.RetrieverConfigLoad(cfgFile)
+	if err != nil {
 		conf = config.GetRetrieverDefaults()
 	}
 
@@ -154,9 +159,6 @@ func main() {
 		nil,    // args
 	)
 	failOnError(err, "Failed to register a consumer")
-
-	cores := runtime.NumCPU()
-	runtime.GOMAXPROCS(cores)
 
 	maxSimConnections := conf.General.MaxSimConns
 

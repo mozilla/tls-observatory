@@ -1,6 +1,7 @@
 package main
 
 import (
+	// stdlib packages
 	"crypto/dsa"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -12,14 +13,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"runtime"
 	"strconv"
-	"time"
-	//"strings"
 	"sync"
+	"time"
 
+	// custom packages
 	"config"
 
+	// 3rd party dependencies
 	elastigo "github.com/mattbaird/elastigo/lib"
 	"github.com/streadway/amqp"
 )
@@ -619,24 +622,25 @@ var trustStores []TrustStore
 var es *elastigo.Conn
 
 func main() {
+	var (
+		err error
+	)
+	cores := runtime.NumCPU()
+	runtime.GOMAXPROCS(cores * 2)
 
 	printIntro()
 
 	conf := config.AnalyzerConfig{}
 
 	var cfgFile string
-	flag.StringVar(&cfgFile, "c", "", "Input file csv format")
+	flag.StringVar(&cfgFile, "c", "/etc/observer/analyzer.cfg", "Input file csv format")
 	flag.Parse()
 
-	if cfgFile == "" {
-		fmt.Println("You can use -c <cfg filepath> to import custom configuration")
-	}
+	_, err = os.Stat(cfgFile)
+	failOnError(err, "Missing configuration file from '-c' or /etc/observer/retriever.cfg")
 
-	var er error
-	conf, er = config.AnalyzerConfigLoad(cfgFile)
-
-	if er != nil {
-		panicIf(er)
+	conf, err = config.AnalyzerConfigLoad(cfgFile)
+	if err != nil {
 		conf = config.GetAnalyzerDefaults()
 	}
 
@@ -708,9 +712,6 @@ func main() {
 		// nil Root certPool will result in the system defaults being loaded
 		trustStores = append(trustStores, TrustStore{defaultName, nil})
 	}
-
-	cores := runtime.NumCPU()
-	runtime.GOMAXPROCS(cores)
 
 	for i := 0; i < cores; i++ {
 		wg.Add(1)
