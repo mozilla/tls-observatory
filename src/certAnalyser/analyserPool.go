@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -278,9 +279,8 @@ func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certif
 	if err == nil {
 
 		for i, ch := range chains {
+			log.Println("Trust chain no:", strconv.Itoa(i), "length: ", len(ch))
 			for _, cert := range ch {
-
-				log.Println("Trust chain no:" + strconv.Itoa(i))
 
 				parentSignature := ""
 				c := getFirstParent(cert, ch)
@@ -290,6 +290,7 @@ func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certif
 				} else {
 					log.Println("could not retrieve parent for " + dnsName)
 				}
+
 				pushCertificate(cert, parentSignature, domain, IP, curTS.Name, valInfo)
 			}
 		}
@@ -348,6 +349,20 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 		t := time.Now().UTC()
 
 		storedCert.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+
+		parentFound := false
+
+		for _, p := range storedCert.ParentSignature {
+
+			if parentSignature == p {
+				parentFound = true
+				break
+			}
+		}
+
+		if !parentFound {
+			storedCert.ParentSignature = append(storedCert.ParentSignature, parentSignature)
+		}
 
 		if !storedCert.CA {
 
@@ -564,13 +579,23 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 
 	stored.X509v3Extensions = getCertExtensions(cert)
 
-	if cert.BasicConstraintsValid {
+	//below check tries to hack around the basic constraints extension
+	//not being available in versions < 3.
+	//Only the IsCa variable is set, as setting X509v3BasicConstraints
+	//messes up the validation procedure.
+	if cert.Version < 3 {
 
-		stored.X509v3BasicConstraints = "Critical"
 		stored.CA = cert.IsCA
+
 	} else {
-		stored.X509v3BasicConstraints = ""
-		stored.CA = false
+		if cert.BasicConstraintsValid {
+
+			stored.X509v3BasicConstraints = "Critical"
+			stored.CA = cert.IsCA
+		} else {
+			stored.X509v3BasicConstraints = ""
+			stored.CA = false
+		}
 	}
 
 	t := time.Now().UTC()
@@ -696,14 +721,32 @@ func main() {
 
 		certPool := x509.NewCertPool()
 
-		ok := certPool.AppendCertsFromPEM(poolData)
+		for len(poolData) > 0 {
 
-		if !ok {
-			log.Println("Could not parse certificates for: " + name)
-			continue
-		} else {
-			trustStores = append(trustStores, TrustStore{name, certPool})
+			var block *pem.Block
+			block, poolData = pem.Decode(poolData)
+			if block == nil {
+				break
+			}
+			if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+				continue
+			}
+
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+
+				log.Println("Could not parse current certificate from :" + name)
+				continue
+			}
+
+			if cert.Version < 3 { //solution for older x509 certificate versions that do not have a CA part
+				cert.IsCA = true
+			}
+
+			certPool.AddCert(cert)
 		}
+
+		trustStores = append(trustStores, TrustStore{name, certPool})
 
 	}
 
