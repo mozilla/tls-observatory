@@ -43,7 +43,6 @@ func releaseSemaphore() {
 
 func worker(msg []byte, ch *amqp.Channel) {
 
-	<-sem
 	defer releaseSemaphore()
 
 	certs, ip, err := tlsretriever.CheckHost(string(msg), "443", true)
@@ -169,6 +168,7 @@ func main() {
 	}
 
 	for d := range msgs {
+		<-sem
 		go worker(d.Body, ch)
 	}
 }
