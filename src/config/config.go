@@ -17,6 +17,7 @@ type AnalyzerConfig struct {
 	General struct {
 		RabbitMQRelay string
 		ElasticSearch string
+		GoRoutines    int // * cores = The Max number of spawned Goroutines
 	}
 	TrustStores struct {
 		Name []string
@@ -64,6 +65,7 @@ func GetAnalyzerDefaults() AnalyzerConfig {
 	conf.TrustStores.Name = append(conf.TrustStores.Name, "")
 	conf.TrustStores.Path = append(conf.TrustStores.Path, "")
 	conf.General.ElasticSearch = "127.0.0.1:9200"
+	conf.General.GoRoutines = 10
 
 	return conf
 }

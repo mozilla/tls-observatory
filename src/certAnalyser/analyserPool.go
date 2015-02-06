@@ -650,8 +650,6 @@ func main() {
 	var (
 		err error
 	)
-	cores := runtime.NumCPU()
-	runtime.GOMAXPROCS(cores * 2)
 
 	printIntro()
 
@@ -668,6 +666,9 @@ func main() {
 	if err != nil {
 		conf = config.GetAnalyzerDefaults()
 	}
+
+	cores := runtime.NumCPU()
+	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
 
 	conn, err := amqp.Dial(conf.General.RabbitMQRelay)
 	failOnError(err, "Failed to connect to RabbitMQ")
