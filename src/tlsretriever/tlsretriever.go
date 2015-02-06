@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"net"
 	"strings"
+	"time"
 )
 
 func CheckHost(domainName, port string, skipVerify bool) ([]*x509.Certificate, string, error) {
@@ -15,7 +17,11 @@ func CheckHost(domainName, port string, skipVerify bool) ([]*x509.Certificate, s
 
 	ip := ""
 
-	conn, err := tls.Dial("tcp", canonicalName, &config)
+	dialer := &net.Dialer{
+		Timeout: 3 * time.Second,
+	}
+
+	conn, err := tls.DialWithDialer(dialer, "tcp", canonicalName, &config)
 
 	if err != nil {
 		return nil, ip, err
