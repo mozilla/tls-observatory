@@ -319,6 +319,38 @@ func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certif
 
 }
 
+func waitForIndexedCert(ID string) bool {
+
+	wasIndexed := false
+
+	maxwait := time.Second * 2
+
+	start := time.Now()
+
+	for {
+		searchJson := `{
+	    "query" : {
+	        "term" : { "_id" : "` + ID + `" }
+	    }
+		}`
+		res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
+		panicIf(e)
+		if res.Hits.Total > 0 {
+			wasIndexed = true
+			break
+		}
+
+		if time.Now().After(start.Add(maxwait)) {
+			log.Println("Timeout passed waiting for cert:", ID)
+			break
+		}
+
+		time.Sleep(time.Millisecond * 5)
+	}
+
+	return wasIndexed
+}
+
 //Returns the first parent found for a certificate in a given certificate list ( does not verify signature)
 func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Certificate {
 	for _, c := range certs {
@@ -417,6 +449,9 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 		panicIf(err)
 		log.Println("Stored cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
 	}
+
+	//wait for the certificate to get indexed in ES
+	waitForIndexedCert(SHA256Hash(cert.Raw))
 
 }
 
