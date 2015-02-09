@@ -323,7 +323,7 @@ func waitForIndexedCert(ID string) bool {
 
 	wasIndexed := false
 
-	maxwait := time.Second * 2
+	maxwait := time.Second * 4
 
 	start := time.Now()
 
@@ -345,7 +345,7 @@ func waitForIndexedCert(ID string) bool {
 			break
 		}
 
-		time.Sleep(time.Millisecond * 5)
+		time.Sleep(time.Millisecond * 300)
 	}
 
 	return wasIndexed
