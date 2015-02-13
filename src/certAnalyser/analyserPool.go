@@ -67,7 +67,7 @@ var publicKeyAlgorithm = [...]string{
 }
 
 type StoredCertificate struct {
-	Domains                []string                      `json:"domains,omitempty"`
+	Domain                 string                        `json:"domain,omitempty"`
 	IPs                    []string                      `json:"ips,omitempty"`
 	Version                float64                       `json:"version"`
 	SignatureAlgorithm     string                        `json:"signatureAlgorithm"`
@@ -364,9 +364,13 @@ func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Cer
 
 func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo) {
 
+	id := SHA256Hash(cert.Raw)
+	if !cert.IsCA {
+		id = id + "--" + domain
+	}
 	searchJson := `{
 	    "query" : {
-	        "term" : { "_id" : "` + SHA256Hash(cert.Raw) + `" }
+	        "term" : { "_id" : "` + id + `" }
 	    }
 	}`
 	res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
@@ -398,19 +402,11 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 
 		if !storedCert.CA {
 
-			domainFound := false
-
-			for _, d := range storedCert.Domains {
-				if domain == d {
-					domainFound = true
-					break
-				}
+			if storedCert.Domain != domain {
+				log.Println("Stored Cert - ", SHA256Hash(cert.Raw), " - Domain found:", domain, "Domain Stored: ", storedCert.Domain)
 			}
 
-			if !domainFound {
-				storedCert.Domains = append(storedCert.Domains, domain)
-			}
-
+			//add IP ( single domain may be served by multiple IPs )
 			ipFound := false
 
 			for _, i := range storedCert.IPs {
@@ -430,16 +426,16 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 		jsonCert, err := json.Marshal(storedCert)
 		panicIf(err)
 
-		_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
+		_, err = es.Index("certificates", "certificateInfo", id, nil, jsonCert)
 		panicIf(err)
-		log.Println("Updated cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
+		log.Println("Updated cert id", id, "subject cn", cert.Subject.CommonName)
 	} else {
 
 		stored := certtoStored(cert, parentSignature, domain, ip, TSName, valInfo)
 		jsonCert, err := json.Marshal(stored)
 		panicIf(err)
 
-		_, err = es.Index("certificates", "certificateInfo", SHA256Hash(cert.Raw), nil, jsonCert)
+		_, err = es.Index("certificates", "certificateInfo", id, nil, jsonCert)
 		panicIf(err)
 
 		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
@@ -641,7 +637,7 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
 
 	if !cert.IsCA {
-		stored.Domains = append(stored.Domains, domain)
+		stored.Domain = domain
 		stored.IPs = append(stored.IPs, ip)
 	}
 
