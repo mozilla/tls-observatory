@@ -37,7 +37,13 @@ GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: go_get_deps certRetriever certAnalyser webapi retrieveTLSInfo
+all: go_get_deps certRetriever certAnalyser webapi retrieveTLSInfo makeDomainsList
+
+makeDomainsList:
+	echo building makeDomainsList for $(OS)/$(ARCH)
+	$(MKDIR) -p $(BINDIR)
+	$(GO) build $(GOOPTS) -o $(BINDIR)/makeDomainsList-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) src/makeDomainsList.go
+	[ -x "$(BINDIR)/makeDomainsList-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 retrieveTLSInfo:
 	echo building retrieveTLSInfo for $(OS)/$(ARCH)
