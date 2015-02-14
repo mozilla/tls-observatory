@@ -7,34 +7,53 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-	"io"
-	"os"
-	"time"
-
-	// 3rd party dependencies
 	elastigo "github.com/mattbaird/elastigo/lib"
+	"github.com/streadway/amqp"
+	"time"
 )
 
 type StoredCertificate struct {
 	Domains []string `json:"domains,omitempty"`
-	IPs     []string `json:"ips,omitempty"`
 }
 
 func main() {
 	var (
-		es       *elastigo.Conn
-		from, to time.Time
+		esaddr, mqaddr, window string
+		es                     *elastigo.Conn
+		from, to               time.Time
 	)
+	flag.StringVar(&esaddr, "e", "localhost:9200", "Address of the ElasticSearch database")
+	flag.StringVar(&mqaddr, "m", "amqp://guest:guest@localhost:5672/", "Address of the RabbitMQ broker")
+	flag.StringVar(&window, "w", "360h", "Time window to cover, in hours (360h = 15 days)")
+	flag.Parse()
+
+	es = elastigo.NewConn()
+	es.Domain = esaddr
+
+	mqconn, err := amqp.Dial(mqaddr)
+	if err != nil {
+		panic(err)
+	}
+	defer mqconn.Close()
+
+	mqch, err := mqconn.Channel()
+	if err != nil {
+		panic(err)
+	}
+	defer mqch.Close()
+
 	dctr := 0
 	domains := make(map[string]int)
-	ictr := 0
-	ips := make(map[string]int)
-	es = elastigo.NewConn()
-	es.Domain = os.Args[1]
-	// start the search at 15 days ago, iterate over all certs by chunks of 5 minutes,
+
+	// start the search at now - window, iterate over all certs by chunks of 5 minutes,
 	// and build a list of unique domains
-	to = time.Now().Add(-15 * 24 * time.Hour)
+	dur, err := time.ParseDuration(window)
+	if err != nil {
+		panic(err)
+	}
+	to = time.Now().Add(-dur)
 	for {
 		// advance the window by 5 minutes
 		from = to
@@ -60,7 +79,6 @@ func main() {
 		}
 		fmt.Println(len(res.Hits.Hits), "records found for time window [", from.String(), ",", to.String(), "]")
 		for _, storedCert := range res.Hits.Hits {
-			fmt.Println("processing cert id", storedCert.Id)
 			cert := new(StoredCertificate)
 			err = json.Unmarshal(*storedCert.Source, cert)
 			if err != nil {
@@ -68,44 +86,25 @@ func main() {
 			}
 			for _, d := range cert.Domains {
 				if _, ok := domains[d]; !ok {
+					err = mqch.Publish(
+						"",                 // exchange
+						"scan_ready_queue", // routing key
+						false,              // mandatory
+						false,
+						amqp.Publishing{
+							DeliveryMode: amqp.Persistent,
+							ContentType:  "text/plain",
+							Body:         []byte(d),
+						})
+					if err != nil {
+						panic(err)
+					}
 					dctr++
 					domains[d] = dctr
-					fmt.Println("Added domain", d, "in position", dctr)
-				}
-				for _, ip := range cert.IPs {
-					if _, ok := ips[ip]; !ok {
-						ictr++
-						ips[ip] = ictr
-						fmt.Println("Added IP", ip, "in position", ictr)
-					}
+					fmt.Println("send domain", d, "to scan_ready_queue")
 				}
 			}
 		}
 	}
-	// write to file
-	outfile := fmt.Sprintf("/tmp/domains_%d", time.Now().Unix())
-	fd, err := os.Create(outfile)
-	if err != nil {
-		panic(err)
-	}
-	for domain, ctr := range domains {
-		_, err := io.WriteString(fd, fmt.Sprintf("%d,%s\n", ctr, domain))
-		if err != nil {
-			panic(err)
-		}
-	}
-	fd.Close()
-
-	outfile = fmt.Sprintf("/tmp/ips_%d", time.Now().Unix())
-	fd, err = os.Create(outfile)
-	if err != nil {
-		panic(err)
-	}
-	for ip, ctr := range ips {
-		_, err := io.WriteString(fd, fmt.Sprintf("%d,%s\n", ctr, ip))
-		if err != nil {
-			panic(err)
-		}
-	}
-	fd.Close()
+	fmt.Println("Done.", dctr, "domains sent to scanning queue.")
 }
