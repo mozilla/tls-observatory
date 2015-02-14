@@ -26,6 +26,26 @@
                 "isChainValid": {
                     "type": "boolean"
                 },
+                "domain":{
+                    "type": "string",
+                        "fields": {
+                            "raw": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            }
+                        }
+
+                },
+                "ips":{
+                    "type": "string",
+                        "fields": {
+                            "raw": {
+                                "index": "not_analyzed",
+                                "type": "string"
+                            }
+                        }
+
+                },
                 "issuer": {
                     "properties": {
                         "c": {
