@@ -2,21 +2,28 @@ package main
 
 import (
 	// stdlib packages
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"runtime"
+	"strings"
+	"time"
 
 	// custom packages
 	"config"
-	"tlsretriever"
 
 	// 3rd party dependencies
 	"github.com/streadway/amqp"
 )
+
+var workerCount int
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -37,15 +44,12 @@ type CertChain struct {
 	Certs  []string `json:"certs"`
 }
 
-func releaseSemaphore() {
-	sem <- true
-}
-
 func worker(msg []byte, ch *amqp.Channel) {
+	defer func() {
+		workerCount--
+	}()
 
-	defer releaseSemaphore()
-
-	certs, ip, err := tlsretriever.CheckHost(string(msg), "443", true)
+	certs, ip, err := retrieveCertFromHost(string(msg), "443", true)
 	panicIf(err)
 	if certs == nil {
 		log.Println("no certificate retrieved from", string(msg))
@@ -77,6 +81,36 @@ func worker(msg []byte, ch *amqp.Channel) {
 			Body:         []byte(jsonChain),
 		})
 	panicIf(err)
+}
+
+func retrieveCertFromHost(domainName, port string, skipVerify bool) ([]*x509.Certificate, string, error) {
+
+	config := tls.Config{InsecureSkipVerify: skipVerify}
+
+	canonicalName := domainName + ":" + port
+
+	ip := ""
+
+	dialer := &net.Dialer{
+		Timeout: 10 * time.Second,
+	}
+
+	conn, err := tls.DialWithDialer(dialer, "tcp", canonicalName, &config)
+
+	if err != nil {
+		return nil, ip, err
+	}
+	defer conn.Close()
+
+	ip = strings.TrimRight(conn.RemoteAddr().String(), ":443")
+
+	certs := conn.ConnectionState().PeerCertificates
+
+	if certs == nil {
+		return nil, ip, errors.New("Could not get server's certificate from the TLS connection.")
+	}
+
+	return certs, ip, nil
 }
 
 func printIntro() {
@@ -142,7 +176,7 @@ func main() {
 	failOnError(err, "Failed to declare a queue")
 
 	err = ch.Qos(
-		3,     // prefetch count
+		1,     // prefetch count
 		0,     // prefetch size
 		false, // global
 	)
@@ -151,7 +185,7 @@ func main() {
 	msgs, err := ch.Consume(
 		q.Name, // queue
 		"",     // consumer
-		true,   // auto-ack
+		false,  // auto-ack
 		false,  // exclusive
 		false,  // no-local
 		false,  // no-wait
@@ -159,16 +193,20 @@ func main() {
 	)
 	failOnError(err, "Failed to register a consumer")
 
-	maxSimConnections := conf.General.MaxSimConns
-
-	//use channels as semaphores not to exhaust file descriptors
-	sem = make(chan bool, maxSimConnections)
-	for i := 0; i < maxSimConnections; i++ {
-		sem <- true
-	}
-
 	for d := range msgs {
-		<-sem
+		// block until a worker is available
+		for {
+			if workerCount < conf.General.MaxSimConns {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		workerCount++
 		go worker(d.Body, ch)
+		err = d.Ack(false)
+		if err != nil {
+			log.Fatal("Failed to ack amqp delivery")
+		}
+		log.Printf("Domain %s sent to worker. %d workers currently active.", d.Body, workerCount)
 	}
 }
