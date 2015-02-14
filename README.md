@@ -1,8 +1,6 @@
 TLS-Observer
 ============
 
-https://wiki.mozilla.org/Security/Mentorships/MWoS/2014/Compliance_checking_of_TLS_configuration
-
 ##Dependencies##
 
  * github.com/gorilla/mux
@@ -10,13 +8,25 @@ https://wiki.mozilla.org/Security/Mentorships/MWoS/2014/Compliance_checking_of_T
  * github.com/mattbaird/elastigo
  * code.google.com/p/gcfg
 
-###You need to have a running rabbitmq server...###
+##Architecture##
+You need a RabbitMQ and an ElasticSearch server.
 
-src/ 
->* retrieverPool.go: runs a pool of retrievers listening for messages ( domain names ) on scan\_ready\_queue and scans them publishing the results on  results\_ready\_queue.
+###Components###
 
->* analyserPool.go: creates a pool of analyser routines that listen for messages on results\_ready\_queue analysing and storing them.
+ * retrieverPool.go: runs a pool of workers that retrieve certificates from domains. The retriever listens for messages (domain names) on the scan\_ready\_queue and sends retrieved certificates to the results\_ready\_queue.
+ * analyserPool.go: runs a pool of workers that analyze certificates received on the results\_ready\_queue, verifies their trust against several truststores (NSS, ...), and stores the results into the certificates index in elasticsearch.
+ * web-api.go: a basic api that receives domains to scan and publishes them into the scan\_ready\_queue. The format is `http://localhost:8083/website/{domain_name}`.
 
->* retrieveTLS.go: provides a command line API for the tools.
+####tools####
 
->* web-api.go: runs and creates a web api listening for connections of form: http://localhost:8083/website/{domain_name}
+ * retrieveTLS.go: reads a list of domains and publish them the scan\_ready\_queue.
+ * makeDomainsList.go: queries existing certificates in elasticsearch, extracts the domains from it, and sends it to the scan\_ready\_queue for rescanning.
+
+##Authors##
+
+ * Dimitris Bachtis
+ * Julien Vehent
+
+##License##
+
+ * Mozilla Public License Version 2.0
