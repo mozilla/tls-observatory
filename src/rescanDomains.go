@@ -102,6 +102,12 @@ func main() {
 			dlist := cert.X509v3Extensions.SubjectAlternativeName
 			dlist = append(dlist, cert.Subject.CommonName)
 			for _, d := range dlist {
+				// if a wildcard cert is found, replace it with a scan
+				// of the domain itself, and another one of its www host
+				if len(d) > 2 && d[0:2] == "*." {
+					d = d[2:]
+					dlist = append(dlist, "www."+d)
+				}
 				if _, ok := domains[d]; !ok {
 					err = mqch.Publish(
 						"",                 // exchange
