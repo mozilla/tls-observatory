@@ -14,8 +14,17 @@ import (
 	"time"
 )
 
+// limit the structs to just the amount of data we need: domain names and CA status
 type StoredCertificate struct {
-	Domains []string `json:"domains,omitempty"`
+	Subject          certSubject    `json:"subject"`
+	X509v3Extensions certExtensions `json:"x509v3Extensions"`
+	CA               bool           `json:"ca"`
+}
+type certSubject struct {
+	CommonName string `json:"cn"`
+}
+type certExtensions struct {
+	SubjectAlternativeName []string `json:"subjectAlternativeName"`
 }
 
 func main() {
@@ -84,7 +93,15 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			for _, d := range cert.Domains {
+			// skip certificate authorities
+			if cert.CA {
+				continue
+			}
+			// build a list of domains from the certs SAN records and its subject.CN
+			// then scan the ones that haven't been scanned yet
+			dlist := cert.X509v3Extensions.SubjectAlternativeName
+			dlist = append(dlist, cert.Subject.CommonName)
+			for _, d := range dlist {
 				if _, ok := domains[d]; !ok {
 					err = mqch.Publish(
 						"",                 // exchange
