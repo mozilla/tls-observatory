@@ -1,5 +1,6 @@
 # 3rd party
 src/github.com/*
+src/code.google.com/*
 
 # local builds
 bin/
