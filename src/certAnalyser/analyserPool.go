@@ -742,19 +742,20 @@ func main() {
 
 	failOnError(err, "Failed to register a consumer")
 
-	//Register truststores
+	// Load truststores from configuration. We expect that the truststore names and path
+	// are ordered correctly in the configuration, thus if truststore "mozilla" is at
+	// position 0 in conf.TrustStores.Name, its path will be found at conf.TrustStores.Path[0]
 	for i, name := range conf.TrustStores.Name {
-
-		poolData, e := ioutil.ReadFile(conf.TrustStores.Path[i])
-
-		if panicIf(e) {
-			continue
+		// load the entire trustore into pooldata, then iterate over each PEM block
+		// until all of pooldata is read
+		poolData, err := ioutil.ReadFile(conf.TrustStores.Path[i])
+		if err != nil {
+			log.Fatal("Failed to load", name, "truststore:", err)
 		}
-
 		certPool := x509.NewCertPool()
-
+		poollen := 0
 		for len(poolData) > 0 {
-
+			// read the next PEM block, ignore non CERTIFICATE entires
 			var block *pem.Block
 			block, poolData = pem.Decode(poolData)
 			if block == nil {
@@ -763,26 +764,27 @@ func main() {
 			if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 				continue
 			}
-
+			// parse the current PEM block into a certificate, ignore failures
 			cert, err := x509.ParseCertificate(block.Bytes)
 			if err != nil {
-
-				log.Println("Could not parse current certificate from :" + name)
+				log.Println("Warning: could not parse PEM block from", name, "truststore:", err)
 				continue
 			}
-
-			if cert.Version < 3 { //solution for older x509 certificate versions that do not have a CA part
+			// if the cert version is 1 or 2, the cert will not contain a CA: True extension
+			// so we set it manually instead. This assumes that all certs found in truststores
+			// should be considered valid certificate authorities
+			if cert.Version < 3 {
 				cert.IsCA = true
 			}
-
 			certPool.AddCert(cert)
+			poollen++
 		}
-
 		trustStores = append(trustStores, TrustStore{name, certPool})
-
+		log.Println("successfully loaded", poollen, "CA certs from", name, "truststore")
 	}
 
 	if len(trustStores) == 0 {
+		log.Println("Warning: no loadable trustore found in configuration, using system default")
 		defaultName := "default-" + runtime.GOOS
 		// nil Root certPool will result in the system defaults being loaded
 		trustStores = append(trustStores, TrustStore{defaultName, nil})
