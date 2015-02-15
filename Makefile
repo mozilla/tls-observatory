@@ -80,7 +80,7 @@ go_get_deps:
 
 deb-pkg: all
 	rm -fr tmppkg
-	$(MKDIR) -p tmppkg/opt/observer/bin tmppkg/etc/observer/ tmppkg/etc/init/
+	$(MKDIR) -p tmppkg/opt/observer/bin tmppkg/etc/observer/truststores tmppkg/etc/init/
 	$(INSTALL) -D -m 0755 $(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/certRetriever
 	$(INSTALL) -D -m 0755 $(BINDIR)/certAnalyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/certAnalyzer
 	$(INSTALL) -D -m 0755 $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/web-api
@@ -90,7 +90,13 @@ deb-pkg: all
 	$(INSTALL) -D -m 0755 conf/tlsobserver-retriever.conf tmppkg/etc/init/tlsobserver-retriever.conf
 	$(INSTALL) -D -m 0755 conf/analyzer.cfg tmppkg/etc/observer/analyzer.cfg.inc
 	$(INSTALL) -D -m 0755 conf/tlsobserver-analyzer.conf tmppkg/etc/init/tlsobserver-analyzer.conf
-	$(INSTALL) -D -m 0755 moz-CAs.crt tmppkg/etc/observer/moz-CAs.crt
+	$(INSTALL) -D -m 0755 CA_apple_10.10.0.crt tmppkg/etc/observer/truststores
+	$(INSTALL) -D -m 0755 CA_apple_10.8.5.crt tmppkg/etc/observer/truststores
+	$(INSTALL) -D -m 0755 CA_apple_10.9.5.crt tmppkg/etc/observer/truststores
+	$(INSTALL) -D -m 0755 CA_java.crt tmppkg/etc/observer/truststores
+	$(INSTALL) -D -m 0755 CA_microsoft.crt tmppkg/etc/observer/truststores
+	$(INSTALL) -D -m 0755 CA_mozilla_nss.crt tmppkg/etc/observer/truststores
+	$(INSTALL) -D -m 0755 CA_ubuntu_12.04.crt tmppkg/etc/observer/truststores
 	$(INSTALL) -D -m 0755 top-1m.csv tmppkg/etc/observer/top-1m.csv
 	$(INSTALL) -D -m 0755 certificates_schema.json tmppkg/etc/observer/certificates_schema.json
 	fpm -C tmppkg -n mozilla-tls-observer --license GPL --vendor mozilla --description "Mozilla TLS Observer" \
