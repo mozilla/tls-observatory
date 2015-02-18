@@ -447,7 +447,7 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 	}
 
 	//wait for the certificate to get indexed in ES
-	waitForIndexedCert(SHA256Hash(cert.Raw))
+	waitForIndexedCert(id)
 
 }
 
