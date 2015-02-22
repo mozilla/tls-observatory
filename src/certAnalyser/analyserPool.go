@@ -22,10 +22,8 @@ import (
 
 	// custom packages
 	"config"
-
-	// 3rd party dependencies
-	elastigo "github.com/mattbaird/elastigo/lib"
-	"github.com/streadway/amqp"
+	"modules/amqpmodule"
+	es "modules/elasticsearchmodule"
 )
 
 var signatureAlgorithm = [...]string{
@@ -65,6 +63,11 @@ var publicKeyAlgorithm = [...]string{
 	"DSA",
 	"ECDSA",
 }
+
+const rxQueue = "scan_results_queue"
+const esIndex = "certificates"
+const esinfoType = "certificateInfo"
+const esrawType = "certificateRaw"
 
 type StoredCertificate struct {
 	Domain                 string                        `json:"domain,omitempty"`
@@ -182,7 +185,7 @@ func panicIf(err error) bool {
 	return false
 }
 
-func worker(msgs <-chan amqp.Delivery) {
+func worker(msgs <-chan []byte) {
 
 	forever := make(chan bool)
 	defer wg.Done()
@@ -191,12 +194,10 @@ func worker(msgs <-chan amqp.Delivery) {
 
 		chain := CertChain{}
 
-		err := json.Unmarshal(d.Body, &chain)
+		err := json.Unmarshal(d, &chain)
 		panicIf(err)
 
 		analyseAndPushCertificates(&chain)
-
-		d.Ack(false)
 	}
 
 	<-forever
@@ -328,14 +329,9 @@ func waitForIndexedCert(ID string) bool {
 	start := time.Now()
 
 	for {
-		searchJson := `{
-	    "query" : {
-	        "term" : { "_id" : "` + ID + `" }
-	    }
-		}`
-		res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
+		res, e := es.SearchbyID(esIndex, esinfoType, ID)
 		panicIf(e)
-		if res.Hits.Total > 0 {
+		if res.Total > 0 {
 			wasIndexed = true
 			break
 		}
@@ -368,18 +364,14 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 	if !cert.IsCA {
 		id = id + "--" + domain
 	}
-	searchJson := `{
-	    "query" : {
-	        "term" : { "_id" : "` + id + `" }
-	    }
-	}`
-	res, e := es.Search("certificates", "certificateInfo", nil, searchJson)
-	panicIf(e)
-	if res.Hits.Total > 0 { //Is certificate alreadycollected?
+
+	res, err := es.SearchbyID(esIndex, esinfoType, id)
+	panicIf(err)
+	if res.Total > 0 { //Is certificate alreadycollected?
 
 		storedCert := StoredCertificate{}
 
-		err := json.Unmarshal(*res.Hits.Hits[0].Source, &storedCert)
+		err := json.Unmarshal(*res.Hits[0].Source, &storedCert)
 		panicIf(err)
 
 		t := time.Now().UTC()
@@ -426,7 +418,7 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 		jsonCert, err := json.Marshal(storedCert)
 		panicIf(err)
 
-		_, err = es.Index("certificates", "certificateInfo", id, nil, jsonCert)
+		err = es.Push("certificates", "certificateInfo", id, jsonCert)
 		panicIf(err)
 		log.Println("Updated cert id", id, "subject cn", cert.Subject.CommonName)
 	} else {
@@ -435,13 +427,13 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 		jsonCert, err := json.Marshal(stored)
 		panicIf(err)
 
-		_, err = es.Index("certificates", "certificateInfo", id, nil, jsonCert)
+		err = es.Push("certificates", "certificateInfo", id, jsonCert)
 		panicIf(err)
 
 		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
 		jsonCert, err = json.Marshal(raw)
 		panicIf(err)
-		_, err = es.Index("certificates", "certificateRaw", SHA256Hash(cert.Raw), nil, jsonCert)
+		err = es.Push("certificates", "certificateRaw", SHA256Hash(cert.Raw), jsonCert)
 		panicIf(err)
 		log.Println("Stored cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
 	}
@@ -675,7 +667,6 @@ func printIntro() {
 
 var wg sync.WaitGroup
 var trustStores []TrustStore
-var es *elastigo.Conn
 
 func main() {
 	var (
@@ -701,46 +692,13 @@ func main() {
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
 
-	conn, err := amqp.Dial(conf.General.RabbitMQRelay)
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	es.RegisterConnection(conf.General.ElasticSearch)
 
-	es = elastigo.NewConn()
-	es.Domain = conf.General.ElasticSearch
+	err = amqpmodule.RegisterURL(conf.General.RabbitMQRelay)
 
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
+	failOnError(err, "Failed to register RabbitMQ")
 
-	q, err := ch.QueueDeclare(
-		"scan_results_queue", // name
-		true,                 // durable
-		false,                // delete when unused
-		false,                // exclusive
-		false,                // no-wait
-		nil,                  // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-
-	err = ch.Qos(
-		3,     // prefetch count
-		0,     // prefetch size
-		false, // global
-	)
-
-	failOnError(err, "Failed to set QoS")
-
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		false,  // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
-
-	failOnError(err, "Failed to register a consumer")
+	msgs, err := amqpmodule.Consume(rxQueue)
 
 	// Load truststores from configuration. We expect that the truststore names and path
 	// are ordered correctly in the configuration, thus if truststore "mozilla" is at
