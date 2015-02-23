@@ -96,7 +96,7 @@ func retrieveCertFromHost(domainName, port string, skipVerify bool) ([]*x509.Cer
 	}
 	defer conn.Close()
 
-	ip = strings.TrimRight(conn.RemoteAddr().String(), ":443")
+	ip = strings.TrimSuffix(conn.RemoteAddr().String(), ":443")
 
 	certs := conn.ConnectionState().PeerCertificates
 
