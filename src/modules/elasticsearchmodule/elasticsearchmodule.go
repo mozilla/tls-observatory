@@ -14,13 +14,7 @@ func RegisterConnection(URL string) {
 
 func SearchbyID(index, doctype, id string) (elastigo.Hits, error) {
 
-	searchJson := `{
-	    "query" : {
-	        "term" : { "_id" : "` + id + `" }
-	    }
-		}`
-	res, err := es.Search(index, doctype, nil, searchJson)
-	return res.Hits, err
+	return SearchbyTerm(index, doctype, "_id", id)
 }
 
 func SearchbyTerm(index, doctype, termname, termvalue string) (elastigo.Hits, error) {
