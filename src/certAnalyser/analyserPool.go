@@ -162,6 +162,11 @@ type certValidationInfo struct {
 	Anomalies       string `json:"anomalies,omitempty"`
 }
 
+type certStruct struct {
+	certInfo StoredCertificate
+	certRaw  []byte
+}
+
 func failOnError(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
@@ -205,6 +210,8 @@ func worker(msgs <-chan []byte) {
 
 func analyseAndPushCertificates(chain *CertChain) {
 
+	start := time.Now()
+
 	var intermediates []*x509.Certificate
 	var leafCert *x509.Certificate
 	leafCert = nil
@@ -229,7 +236,7 @@ func analyseAndPushCertificates(chain *CertChain) {
 		log.Println("No Server certificate found in chain received by:" + chain.Domain)
 	}
 
-	var certmap = make(map[string]StoredCertificate)
+	var certmap = make(map[string]certStruct)
 
 	//validate against each truststore
 	for _, curTS := range trustStores {
@@ -253,14 +260,18 @@ func analyseAndPushCertificates(chain *CertChain) {
 
 	}
 
-	for key, value := range certmap {
+	for id, certS := range certmap {
 
-		pushCertificate(key, value)
+		pushCertificate(id, certS.certInfo, certS.certRaw)
 
 	}
+
+	duration := time.Since(start)
+
+	log.Println(duration)
 }
 
-func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string, certmap map[string]StoredCertificate) bool {
+func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string, certmap map[string]certStruct) bool {
 
 	valInfo := &certValidationInfo{}
 
@@ -301,8 +312,6 @@ func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certif
 				}
 
 				updateCert(cert, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
-
-				//pushCertificate(cert, parentSignature, domain, IP, curTS.Name, valInfo)
 			}
 		}
 		return true
@@ -324,8 +333,6 @@ func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certif
 		}
 
 		updateCert(certificate, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
-
-		//pushCertificate(certificate, parentSignature, domain, IP, curTS.Name, valInfo)
 
 		return false
 	}
@@ -370,13 +377,20 @@ func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Cer
 	return nil
 }
 
-func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo, certmap map[string]StoredCertificate) {
+func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo, certmap map[string]certStruct) {
 
-	if storedCert, ok := certmap[SHA256Hash(cert.Raw)]; !ok {
+	id := SHA256Hash(cert.Raw)
+	if !cert.IsCA {
+		id = id + "--" + domain
+	}
 
-		certmap[SHA256Hash(cert.Raw)] = certtoStored(cert, parentSignature, domain, ip, TSName, valInfo)
+	if storedStruct, ok := certmap[id]; !ok {
+
+		certmap[id] = certStruct{certInfo: certtoStored(cert, parentSignature, domain, ip, TSName, valInfo), certRaw: cert.Raw}
 
 	} else {
+
+		storedCert := storedStruct.certInfo
 
 		parentFound := false
 
@@ -395,7 +409,7 @@ func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSNa
 		if !storedCert.CA {
 
 			if storedCert.Domain != domain {
-				log.Println("Stored Cert - ", SHA256Hash(cert.Raw), " - Domain found:", domain, "Domain Stored: ", storedCert.Domain)
+				log.Println("Stored Cert - ", id, " - Domain found:", domain, "Domain Stored: ", storedCert.Domain)
 			}
 
 			//add IP ( single domain may be served by multiple IPs )
@@ -415,18 +429,98 @@ func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSNa
 
 		storedCert.ValidationInfo[TSName] = *valInfo
 
-		certmap[SHA256Hash(cert.Raw)] = storedCert
+		certmap[id] = certStruct{certInfo: storedCert, certRaw: cert.Raw}
 	}
 
 }
 
-func pushCertificate(id string, c StoredCertificate) {
-	jsonCert, err := json.Marshal(c)
-	panicIf(err)
+func pushCertificate(id string, c StoredCertificate, certRaw []byte) {
 
-	err = es.Push("certificates", "certificateInfo", id, jsonCert)
+	retCert, err := getCert(id)
+
+	var jsonCert []byte
+
+	if err != nil {
+		panicIf(err)
+		jsonCert, err = json.Marshal(c)
+		panicIf(err)
+
+		raw := JsonRawCert{base64.StdEncoding.EncodeToString(certRaw)}
+		jsonRaw, err := json.Marshal(raw)
+		panicIf(err)
+		err = es.Push(esIndex, esrawType, id, jsonRaw)
+		panicIf(err)
+
+	} else {
+
+		retCert.LastSeenTimestamp = c.LastSeenTimestamp
+
+		m := make(map[string]bool)
+
+		for _, p := range retCert.ParentSignature {
+
+			m[p] = true
+			if _, seen := m[p]; !seen {
+				m[p] = true
+			}
+		}
+
+		for _, p := range c.ParentSignature {
+
+			if _, seen := m[p]; !seen {
+				retCert.ParentSignature = append(retCert.ParentSignature, p)
+				m[p] = true
+			}
+		}
+
+		if !retCert.CA {
+
+			if retCert.Domain != c.Domain {
+				log.Println("Stored Cert - ", id, " - Domain found:", c.Domain, "Domain Stored: ", retCert.Domain)
+			}
+
+			ip := make(map[string]bool)
+
+			for _, p := range retCert.IPs {
+
+				ip[p] = true
+			}
+
+			for _, p := range c.IPs {
+
+				if _, seen := ip[p]; !seen {
+					retCert.IPs = append(retCert.IPs, p)
+					ip[p] = true
+				}
+			}
+		}
+
+		retCert.ValidationInfo = c.ValidationInfo
+		//TODO consider saving any TS valinfo that is not in the newly created struct
+		//( The problem is that this will partly invalidate the "LastSeenTimeStamp" )
+
+		jsonCert, err = json.Marshal(retCert)
+		panicIf(err)
+	}
+
+	err = es.Push(esIndex, esinfoType, id, jsonCert)
 	panicIf(err)
-	log.Println("Updated cert id", id, "subject cn", c.Subject.CommonName)
+}
+
+func getCert(id string) (StoredCertificate, error) {
+
+	stored := StoredCertificate{}
+	res, err := es.SearchbyID(esIndex, esinfoType, id)
+
+	if res.Total > 0 { //Is certificate alreadycollected?
+
+		err = json.Unmarshal(*res.Hits[0].Source, &stored)
+	} else {
+
+		return stored, fmt.Errorf("No certificate Retrieved for id: %s", id)
+	}
+
+	return stored, err
 }
 
 // func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo) {
