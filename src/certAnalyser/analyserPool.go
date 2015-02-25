@@ -229,12 +229,14 @@ func analyseAndPushCertificates(chain *CertChain) {
 		log.Println("No Server certificate found in chain received by:" + chain.Domain)
 	}
 
+	var certmap = make(map[string]StoredCertificate)
+
 	//validate against each truststore
 	for _, curTS := range trustStores {
 
 		if leafCert != nil {
 
-			if HandleCertChain(leafCert, intermediates, &curTS, chain.Domain, chain.IP) {
+			if HandleCertChain(leafCert, intermediates, &curTS, chain.Domain, chain.IP, certmap) {
 				continue
 			}
 		}
@@ -245,14 +247,20 @@ func analyseAndPushCertificates(chain *CertChain) {
 
 			inter := append(intermediates[:i], intermediates[i+1:]...)
 
-			HandleCertChain(cert, inter, &curTS, chain.Domain, chain.IP)
+			HandleCertChain(cert, inter, &curTS, chain.Domain, chain.IP, certmap)
 			//should we break if/when this validates?
 		}
 
 	}
+
+	for key, value := range certmap {
+
+		pushCertificate(key, value)
+
+	}
 }
 
-func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string) bool {
+func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string, certmap map[string]StoredCertificate) bool {
 
 	valInfo := &certValidationInfo{}
 
@@ -292,7 +300,9 @@ func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certif
 					log.Println("could not retrieve parent for " + dnsName)
 				}
 
-				pushCertificate(cert, parentSignature, domain, IP, curTS.Name, valInfo)
+				updateCert(cert, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
+
+				//pushCertificate(cert, parentSignature, domain, IP, curTS.Name, valInfo)
 			}
 		}
 		return true
@@ -313,7 +323,9 @@ func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certif
 			log.Println("could not retrieve parent for " + dnsName)
 		}
 
-		pushCertificate(certificate, parentSignature, domain, IP, curTS.Name, valInfo)
+		updateCert(certificate, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
+
+		//pushCertificate(certificate, parentSignature, domain, IP, curTS.Name, valInfo)
 
 		return false
 	}
@@ -358,25 +370,13 @@ func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Cer
 	return nil
 }
 
-func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo) {
+func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo, certmap map[string]StoredCertificate) {
 
-	id := SHA256Hash(cert.Raw)
-	if !cert.IsCA {
-		id = id + "--" + domain
-	}
+	if storedCert, ok := certmap[SHA256Hash(cert.Raw)]; !ok {
 
-	res, err := es.SearchbyID(esIndex, esinfoType, id)
-	panicIf(err)
-	if res.Total > 0 { //Is certificate alreadycollected?
+		certmap[SHA256Hash(cert.Raw)] = certtoStored(cert, parentSignature, domain, ip, TSName, valInfo)
 
-		storedCert := StoredCertificate{}
-
-		err := json.Unmarshal(*res.Hits[0].Source, &storedCert)
-		panicIf(err)
-
-		t := time.Now().UTC()
-
-		storedCert.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	} else {
 
 		parentFound := false
 
@@ -415,33 +415,104 @@ func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip,
 
 		storedCert.ValidationInfo[TSName] = *valInfo
 
-		jsonCert, err := json.Marshal(storedCert)
-		panicIf(err)
-
-		err = es.Push("certificates", "certificateInfo", id, jsonCert)
-		panicIf(err)
-		log.Println("Updated cert id", id, "subject cn", cert.Subject.CommonName)
-	} else {
-
-		stored := certtoStored(cert, parentSignature, domain, ip, TSName, valInfo)
-		jsonCert, err := json.Marshal(stored)
-		panicIf(err)
-
-		err = es.Push("certificates", "certificateInfo", id, jsonCert)
-		panicIf(err)
-
-		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
-		jsonCert, err = json.Marshal(raw)
-		panicIf(err)
-		err = es.Push("certificates", "certificateRaw", SHA256Hash(cert.Raw), jsonCert)
-		panicIf(err)
-		log.Println("Stored cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
+		certmap[SHA256Hash(cert.Raw)] = storedCert
 	}
 
-	//wait for the certificate to get indexed in ES
-	waitForIndexedCert(id)
-
 }
+
+func pushCertificate(id string, c StoredCertificate) {
+	jsonCert, err := json.Marshal(c)
+	panicIf(err)
+
+	err = es.Push("certificates", "certificateInfo", id, jsonCert)
+	panicIf(err)
+	log.Println("Updated cert id", id, "subject cn", c.Subject.CommonName)
+}
+
+// func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo) {
+
+// 	id := SHA256Hash(cert.Raw)
+// 	if !cert.IsCA {
+// 		id = id + "--" + domain
+// 	}
+
+// 	res, err := es.SearchbyID(esIndex, esinfoType, id)
+// 	panicIf(err)
+// 	if res.Total > 0 { //Is certificate alreadycollected?
+
+// 		storedCert := StoredCertificate{}
+
+// 		err := json.Unmarshal(*res.Hits[0].Source, &storedCert)
+// 		panicIf(err)
+
+// 		t := time.Now().UTC()
+
+// 		storedCert.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+
+// 		parentFound := false
+
+// 		for _, p := range storedCert.ParentSignature {
+
+// 			if parentSignature == p {
+// 				parentFound = true
+// 				break
+// 			}
+// 		}
+
+// 		if !parentFound {
+// 			storedCert.ParentSignature = append(storedCert.ParentSignature, parentSignature)
+// 		}
+
+// 		if !storedCert.CA {
+
+// 			if storedCert.Domain != domain {
+// 				log.Println("Stored Cert - ", SHA256Hash(cert.Raw), " - Domain found:", domain, "Domain Stored: ", storedCert.Domain)
+// 			}
+
+// 			//add IP ( single domain may be served by multiple IPs )
+// 			ipFound := false
+
+// 			for _, i := range storedCert.IPs {
+// 				if ip == i {
+// 					ipFound = true
+// 					break
+// 				}
+// 			}
+
+// 			if !ipFound {
+// 				storedCert.IPs = append(storedCert.IPs, ip)
+// 			}
+// 		}
+
+// 		storedCert.ValidationInfo[TSName] = *valInfo
+
+// 		jsonCert, err := json.Marshal(storedCert)
+// 		panicIf(err)
+
+// 		err = es.Push("certificates", "certificateInfo", id, jsonCert)
+// 		panicIf(err)
+// 		log.Println("Updated cert id", id, "subject cn", cert.Subject.CommonName)
+// 	} else {
+
+// 		stored := certtoStored(cert, parentSignature, domain, ip, TSName, valInfo)
+// 		jsonCert, err := json.Marshal(stored)
+// 		panicIf(err)
+
+// 		err = es.Push("certificates", "certificateInfo", id, jsonCert)
+// 		panicIf(err)
+
+// 		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
+// 		jsonCert, err = json.Marshal(raw)
+// 		panicIf(err)
+// 		err = es.Push("certificates", "certificateRaw", SHA256Hash(cert.Raw), jsonCert)
+// 		panicIf(err)
+// 		log.Println("Stored cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
+// 	}
+
+// 	//wait for the certificate to get indexed in ES
+// 	waitForIndexedCert(id)
+
+// }
 
 func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
 
