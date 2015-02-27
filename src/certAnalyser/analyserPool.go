@@ -1,3 +1,5 @@
+//certAnalyser provides a client that receives certificates from a queue, processes them and
+//indexes them in an ElasticSearch database. The StoredCertificate struct is used as the storage document template
 package main
 
 import (
@@ -121,7 +123,6 @@ type certSubjectPublicKeyInfo struct {
 }
 
 //Currently exporting extensions that are already decoded into the x509 Certificate structure
-
 type certExtensions struct {
 	AuthorityKeyId         []byte   `json:"authorityKeyId"`
 	SubjectKeyId           []byte   `json:"subjectKeyId"`
@@ -190,6 +191,7 @@ func panicIf(err error) bool {
 	return false
 }
 
+//worker is the main body of the goroutine that handles each received message ( collection of certificates )
 func worker(msgs <-chan []byte) {
 
 	forever := make(chan bool)
@@ -202,15 +204,15 @@ func worker(msgs <-chan []byte) {
 		err := json.Unmarshal(d, &chain)
 		panicIf(err)
 
-		analyseAndPushCertificates(&chain)
+		handleCertChain(&chain)
 	}
 
 	<-forever
 }
 
-func analyseAndPushCertificates(chain *CertChain) {
-
-	start := time.Now()
+//handleCertChain takes the chain retrieved from the queue and tries to validate it
+//against each of the truststores provided.
+func handleCertChain(chain *CertChain) {
 
 	var intermediates []*x509.Certificate
 	var leafCert *x509.Certificate
@@ -243,7 +245,7 @@ func analyseAndPushCertificates(chain *CertChain) {
 
 		if leafCert != nil {
 
-			if HandleCertChain(leafCert, intermediates, &curTS, chain.Domain, chain.IP, certmap) {
+			if isChainValid(leafCert, intermediates, &curTS, chain.Domain, chain.IP, certmap) {
 				continue
 			}
 		}
@@ -254,7 +256,7 @@ func analyseAndPushCertificates(chain *CertChain) {
 
 			inter := append(intermediates[:i], intermediates[i+1:]...)
 
-			HandleCertChain(cert, inter, &curTS, chain.Domain, chain.IP, certmap)
+			isChainValid(cert, inter, &curTS, chain.Domain, chain.IP, certmap)
 			//should we break if/when this validates?
 		}
 
@@ -265,13 +267,12 @@ func analyseAndPushCertificates(chain *CertChain) {
 		pushCertificate(id, certS.certInfo, certS.certRaw)
 
 	}
-
-	duration := time.Since(start)
-
-	log.Println(duration)
 }
 
-func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string, certmap map[string]certStruct) bool {
+//isChainValid creates the valid certificate chains by combining the chain retrieved with the provided truststore.
+//It return true if it finds at least on validation chain or false if no valid chain of trust can be created.
+//It also updates the certificate map which gets pushed at the end of each iteration.
+func isChainValid(certificate *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string, certmap map[string]certStruct) bool {
 
 	valInfo := &certValidationInfo{}
 
@@ -339,7 +340,9 @@ func HandleCertChain(certificate *x509.Certificate, intermediates []*x509.Certif
 
 }
 
-func waitForIndexedCert(ID string) bool {
+//isCertIndexed tries to retrieve a certificate with the id provided from the database
+//it waits for 4 seconds and checks every 300ms. It returns true if the cert is found and false otherwise
+func isCertIndexed(ID string) bool {
 
 	wasIndexed := false
 
@@ -366,7 +369,7 @@ func waitForIndexedCert(ID string) bool {
 	return wasIndexed
 }
 
-//Returns the first parent found for a certificate in a given certificate list ( does not verify signature)
+//getFirstParent returns the first parent found for a certificate in a given certificate list ( does not verify signature)
 func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Certificate {
 	for _, c := range certs {
 		if cert.Issuer.CommonName == c.Subject.CommonName { //TODO : consider changing this check with validating check
@@ -377,6 +380,8 @@ func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Cer
 	return nil
 }
 
+//updateCert takes the input certificate and updates the map holding all the certificates to be pushed.
+//If the certificates has already been inserted it updates the existing record else it creates it.
 func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo, certmap map[string]certStruct) {
 
 	id := SHA256Hash(cert.Raw)
@@ -434,6 +439,8 @@ func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSNa
 
 }
 
+//pushCertificate pushes each certificate as a document to the database.
+//It checks if the certificate already exists and if this is true it updates the existing record.
 func pushCertificate(id string, c StoredCertificate, certRaw []byte) {
 
 	retCert, err := getCert(id)
@@ -507,6 +514,8 @@ func pushCertificate(id string, c StoredCertificate, certRaw []byte) {
 	panicIf(err)
 }
 
+//getCert tries to retrieve a stored certificate from the database.
+//If the document is not found it returns an error.
 func getCert(id string) (StoredCertificate, error) {
 
 	stored := StoredCertificate{}
@@ -522,91 +531,6 @@ func getCert(id string) (StoredCertificate, error) {
 
 	return stored, err
 }
-
-// func pushCertificate(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo) {
-
-// 	id := SHA256Hash(cert.Raw)
-// 	if !cert.IsCA {
-// 		id = id + "--" + domain
-// 	}
-
-// 	res, err := es.SearchbyID(esIndex, esinfoType, id)
-// 	panicIf(err)
-// 	if res.Total > 0 { //Is certificate alreadycollected?
-
-// 		storedCert := StoredCertificate{}
-
-// 		err := json.Unmarshal(*res.Hits[0].Source, &storedCert)
-// 		panicIf(err)
-
-// 		t := time.Now().UTC()
-
-// 		storedCert.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-
-// 		parentFound := false
-
-// 		for _, p := range storedCert.ParentSignature {
-
-// 			if parentSignature == p {
-// 				parentFound = true
-// 				break
-// 			}
-// 		}
-
-// 		if !parentFound {
-// 			storedCert.ParentSignature = append(storedCert.ParentSignature, parentSignature)
-// 		}
-
-// 		if !storedCert.CA {
-
-// 			if storedCert.Domain != domain {
-// 				log.Println("Stored Cert - ", SHA256Hash(cert.Raw), " - Domain found:", domain, "Domain Stored: ", storedCert.Domain)
-// 			}
-
-// 			//add IP ( single domain may be served by multiple IPs )
-// 			ipFound := false
-
-// 			for _, i := range storedCert.IPs {
-// 				if ip == i {
-// 					ipFound = true
-// 					break
-// 				}
-// 			}
-
-// 			if !ipFound {
-// 				storedCert.IPs = append(storedCert.IPs, ip)
-// 			}
-// 		}
-
-// 		storedCert.ValidationInfo[TSName] = *valInfo
-
-// 		jsonCert, err := json.Marshal(storedCert)
-// 		panicIf(err)
-
-// 		err = es.Push("certificates", "certificateInfo", id, jsonCert)
-// 		panicIf(err)
-// 		log.Println("Updated cert id", id, "subject cn", cert.Subject.CommonName)
-// 	} else {
-
-// 		stored := certtoStored(cert, parentSignature, domain, ip, TSName, valInfo)
-// 		jsonCert, err := json.Marshal(stored)
-// 		panicIf(err)
-
-// 		err = es.Push("certificates", "certificateInfo", id, jsonCert)
-// 		panicIf(err)
-
-// 		raw := JsonRawCert{base64.StdEncoding.EncodeToString(cert.Raw)}
-// 		jsonCert, err = json.Marshal(raw)
-// 		panicIf(err)
-// 		err = es.Push("certificates", "certificateRaw", SHA256Hash(cert.Raw), jsonCert)
-// 		panicIf(err)
-// 		log.Println("Stored cert id", SHA256Hash(cert.Raw), "subject cn", cert.Subject.CommonName)
-// 	}
-
-// 	//wait for the certificate to get indexed in ES
-// 	waitForIndexedCert(id)
-
-// }
 
 func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
 
@@ -666,7 +590,7 @@ func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
 	return usage
 }
 
-//This function currently stores only the extensions that are already exported by GoLang
+//getCertExtensions currently stores only the extensions that are already exported by GoLang
 //(in the x509 Certificate Struct)
 func getCertExtensions(cert *x509.Certificate) certExtensions {
 
@@ -742,6 +666,7 @@ func getPublicKeyInfo(cert *x509.Certificate) certSubjectPublicKeyInfo {
 
 }
 
+//certtoStored returns a StoredCertificate struct created from a X509.Certificate
 func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *certValidationInfo) StoredCertificate {
 
 	var stored = StoredCertificate{}
@@ -805,7 +730,7 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 
 }
 
-//Print raw extension info
+//printRawCertExtensions Print raw extension info
 //for debugging purposes
 func printRawCertExtensions(cert *x509.Certificate) {
 
@@ -831,6 +756,9 @@ func printIntro() {
 }
 
 var wg sync.WaitGroup
+
+//trustStores holds all the truststored we want to validate against.
+//It is populated by the provided cfg file.
 var trustStores []TrustStore
 
 func main() {
