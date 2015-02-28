@@ -785,7 +785,9 @@ func main() {
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
 
-	es.RegisterConnection(conf.General.ElasticSearch)
+	err = es.RegisterConnection(conf.General.ElasticSearch)
+
+	failOnError(err, "Failed to register ElasticSearch")
 
 	err = amqpmodule.RegisterURL(conf.General.RabbitMQRelay)
 
