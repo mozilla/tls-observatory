@@ -1,3 +1,5 @@
+//certRetriever tries to connect to a domain received by a queue (rxQueue). If it succeeds it retrieves the certificate
+//chain provided by that domain and publishes it to another queue(txQueue).
 package main
 
 import (
@@ -19,8 +21,6 @@ import (
 	// custom packages
 	"config"
 	"modules/amqpmodule"
-
-	// 3rd party dependencies
 )
 
 const rxQueue = "scan_ready_queue"
@@ -47,6 +47,7 @@ type CertChain struct {
 	Certs  []string `json:"certs"`
 }
 
+//worker is the body of each goroutine spawned by teh retriever.
 func worker(msg []byte) {
 	defer func() {
 		workerCount--
@@ -77,6 +78,8 @@ func worker(msg []byte) {
 	amqpmodule.Publish(txQueue, []byte(jsonChain))
 }
 
+//retrieveCertFromHost checks the host connectivity and returns the certificate chain ( if any ) provided
+//by the domain or an error in every other case.
 func retrieveCertFromHost(domainName, port string, skipVerify bool) ([]*x509.Certificate, string, error) {
 
 	config := tls.Config{InsecureSkipVerify: skipVerify}
@@ -114,8 +117,6 @@ func printIntro() {
 	##################################
 	`)
 }
-
-var sem chan bool
 
 func main() {
 	var (
