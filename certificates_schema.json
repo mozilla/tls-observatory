@@ -7,110 +7,6 @@
                 "store": true
             },
             "properties": {
-                "validationInfo": {
-                    "properties": {
-                        "Mozilla": {
-                            "properties": {
-                                "validationError": {
-                                    "type": "string",
-                                    "fields": {
-                                        "raw": {
-                                            "index": "not_analyzed",
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "Apple_10_10_0": {
-                            "properties": {
-                                "validationError": {
-                                    "type": "string",
-                                    "fields": {
-                                        "raw": {
-                                            "index": "not_analyzed",
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "Apple_10_8_5": {
-                            "properties": {
-                                "validationError": {
-                                    "type": "string",
-                                    "fields": {
-                                        "raw": {
-                                            "index": "not_analyzed",
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "Apple_10_9_5": {
-                            "properties": {
-                                "validationError": {
-                                    "type": "string",
-                                    "fields": {
-                                        "raw": {
-                                            "index": "not_analyzed",
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "Java": {
-                            "properties": {
-                                "validationError": {
-                                    "type": "string",
-                                    "fields": {
-                                        "raw": {
-                                            "index": "not_analyzed",
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "Microsoft": {
-                            "properties": {
-                                "validationError": {
-                                    "type": "string",
-                                    "fields": {
-                                        "raw": {
-                                            "index": "not_analyzed",
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "Ubuntu_12_04": {
-                            "properties": {
-                                "validationError": {
-                                    "type": "string",
-                                    "fields": {
-                                        "raw": {
-                                            "index": "not_analyzed",
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "ValidationError": {
-                    "type": "string",
-                    "fields": {
-                        "raw": {
-                            "index": "not_analyzed",
-                            "type": "string"
-                        }
-                    }
-                },
                 "ca": {
                     "type": "boolean"
                 },
@@ -118,66 +14,64 @@
                     "format": "date_hour_minute_second",
                     "type": "date"
                 },
+                "domain": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
+                },
+                "ips": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
+                },
                 "isChainValid": {
                     "type": "boolean"
-                },
-                "domain":{
-                    "type": "string",
-                        "fields": {
-                            "raw": {
-                                "index": "not_analyzed",
-                                "type": "string"
-                            }
-                        }
-
-                },
-                "ips":{
-                    "type": "string",
-                        "fields": {
-                            "raw": {
-                                "index": "not_analyzed",
-                                "type": "string"
-                            }
-                        }
-
                 },
                 "issuer": {
                     "properties": {
                         "c": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "cn": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "o": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "ou": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         }
                     }
                 },
@@ -186,69 +80,129 @@
                     "type": "date"
                 },
                 "parentSignature": {
-                    "type": "string",
                     "fields": {
                         "raw": {
                             "index": "not_analyzed",
                             "type": "string"
                         }
-                    }
+                    },
+                    "type": "string"
                 },
                 "signatureAlgorithm": {
-                    "type": "string",
                     "fields": {
                         "raw": {
                             "index": "not_analyzed",
                             "type": "string"
                         }
-                    }
+                    },
+                    "type": "string"
                 },
                 "subject": {
                     "properties": {
                         "c": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "cn": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "o": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "ou": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         }
                     }
                 },
                 "subjectPublicKeyInfo": {
                     "properties": {
                         "publicKeyAlgorithm": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        }
+                    }
+                },
+                "validationInfo": {
+                    "properties": {
+                        "Apple_10_10_0": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Apple_10_8_5": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Apple_10_9_5": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Java": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Microsoft": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Mozilla": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Ubuntu_12_04": {
+                            "properties": {
+                                "validationError": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
@@ -259,98 +213,98 @@
                 "validity": {
                     "properties": {
                         "notAfter": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "notBefore": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         }
                     }
                 },
                 "version": {
-                    "type": "long",
                     "fields": {
                         "raw": {
                             "index": "not_analyzed",
                             "type": "string"
                         }
-                    }
+                    },
+                    "type": "long"
                 },
                 "x509v3BasicConstraints": {
-                    "type": "string",
                     "fields": {
                         "raw": {
                             "index": "not_analyzed",
                             "type": "string"
                         }
-                    }
+                    },
+                    "type": "string"
                 },
                 "x509v3Extensions": {
                     "properties": {
                         "authorityKeyId": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "crlDistributionPoints": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "extendedKeyUsage": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "keyUsage": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "subjectAlternativeName": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         },
                         "subjectKeyId": {
-                            "type": "string",
                             "fields": {
                                 "raw": {
                                     "index": "not_analyzed",
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "type": "string"
                         }
                     }
                 }
