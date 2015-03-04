@@ -7,6 +7,101 @@
                 "store": true
             },
             "properties": {
+                "validationInfo": {
+                    "properties": {
+                        "Mozilla": {
+                            "properties": {
+                                "validationError": {
+                                    "type": "string",
+                                    "fields": {
+                                        "raw": {
+                                            "index": "not_analyzed",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "Apple_10_10_0": {
+                            "properties": {
+                                "validationError": {
+                                    "type": "string",
+                                    "fields": {
+                                        "raw": {
+                                            "index": "not_analyzed",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "Apple_10_8_5": {
+                            "properties": {
+                                "validationError": {
+                                    "type": "string",
+                                    "fields": {
+                                        "raw": {
+                                            "index": "not_analyzed",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "Apple_10_9_5": {
+                            "properties": {
+                                "validationError": {
+                                    "type": "string",
+                                    "fields": {
+                                        "raw": {
+                                            "index": "not_analyzed",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "Java": {
+                            "properties": {
+                                "validationError": {
+                                    "type": "string",
+                                    "fields": {
+                                        "raw": {
+                                            "index": "not_analyzed",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "Microsoft": {
+                            "properties": {
+                                "validationError": {
+                                    "type": "string",
+                                    "fields": {
+                                        "raw": {
+                                            "index": "not_analyzed",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "Ubuntu_12_04": {
+                            "properties": {
+                                "validationError": {
+                                    "type": "string",
+                                    "fields": {
+                                        "raw": {
+                                            "index": "not_analyzed",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "ValidationError": {
                     "type": "string",
                     "fields": {
