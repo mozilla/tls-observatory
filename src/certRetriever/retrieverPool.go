@@ -1,3 +1,5 @@
+//certRetriever tries to connect to a domain received by a queue (rxQueue). If it succeeds it retrieves the certificate
+//chain provided by that domain and publishes it to another queue(txQueue).
 package main
 
 import (
@@ -18,10 +20,11 @@ import (
 
 	// custom packages
 	"config"
-
-	// 3rd party dependencies
-	"github.com/streadway/amqp"
+	"modules/amqpmodule"
 )
+
+const rxQueue = "scan_ready_queue"
+const txQueue = "scan_results_queue"
 
 var workerCount int
 
@@ -44,7 +47,8 @@ type CertChain struct {
 	Certs  []string `json:"certs"`
 }
 
-func worker(msg []byte, ch *amqp.Channel) {
+//worker is the body of each goroutine spawned by teh retriever.
+func worker(msg []byte) {
 	defer func() {
 		workerCount--
 	}()
@@ -70,19 +74,12 @@ func worker(msg []byte, ch *amqp.Channel) {
 
 	jsonChain, er := json.MarshalIndent(chain, "", "    ")
 	panicIf(er)
-	err = ch.Publish(
-		"",                   // exchange
-		"scan_results_queue", // routing key
-		false,                // mandatory
-		false,
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "text/plain",
-			Body:         []byte(jsonChain),
-		})
-	panicIf(err)
+
+	amqpmodule.Publish(txQueue, []byte(jsonChain))
 }
 
+//retrieveCertFromHost checks the host connectivity and returns the certificate chain ( if any ) provided
+//by the domain or an error in every other case.
 func retrieveCertFromHost(domainName, port string, skipVerify bool) ([]*x509.Certificate, string, error) {
 
 	config := tls.Config{InsecureSkipVerify: skipVerify}
@@ -102,7 +99,7 @@ func retrieveCertFromHost(domainName, port string, skipVerify bool) ([]*x509.Cer
 	}
 	defer conn.Close()
 
-	ip = strings.TrimRight(conn.RemoteAddr().String(), ":443")
+	ip = strings.TrimSuffix(conn.RemoteAddr().String(), ":443")
 
 	certs := conn.ConnectionState().PeerCertificates
 
@@ -120,8 +117,6 @@ func printIntro() {
 	##################################
 	`)
 }
-
-var sem chan bool
 
 func main() {
 	var (
@@ -146,52 +141,11 @@ func main() {
 		conf = config.GetRetrieverDefaults()
 	}
 
-	conn, err := amqp.Dial(conf.General.RabbitMQRelay)
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	err = amqpmodule.RegisterURL(conf.General.RabbitMQRelay)
 
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
+	failOnError(err, "Failed to register RabbitMQ")
 
-	q, err := ch.QueueDeclare(
-		"scan_ready_queue", // name
-		true,               // durable
-		false,              // delete when unused
-		false,              // exclusive
-		false,              // no-wait
-		nil,                // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-
-	//In case it has not already been declared before...
-	_, err = ch.QueueDeclare(
-		"scan_results_queue", // name
-		true,                 // durable
-		false,                // delete when unused
-		false,                // exclusive
-		false,                // no-wait
-		nil,                  // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-
-	err = ch.Qos(
-		1,     // prefetch count
-		0,     // prefetch size
-		false, // global
-	)
-	failOnError(err, "Failed to set QoS")
-
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		false,  // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
-	failOnError(err, "Failed to register a consumer")
+	msgs, err := amqpmodule.Consume(rxQueue)
 
 	for d := range msgs {
 		// block until a worker is available
@@ -202,11 +156,7 @@ func main() {
 			time.Sleep(100 * time.Millisecond)
 		}
 		workerCount++
-		go worker(d.Body, ch)
-		err = d.Ack(false)
-		if err != nil {
-			log.Fatal("Failed to ack amqp delivery")
-		}
-		log.Printf("Domain %s sent to worker. %d workers currently active.", d.Body, workerCount)
+		go worker(d)
+		log.Printf("Domain %s sent to worker. %d workers currently active.", d, workerCount)
 	}
 }
