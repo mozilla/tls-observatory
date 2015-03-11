@@ -6,30 +6,25 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type broker struct {
+type Broker struct {
 	ConnectionURL string
 	channel       *amqp.Channel
 	Queues        []string
 }
 
-var bro broker
+func (b *Broker) Publish(qname string, data []byte) error {
+	log.Println(b.isQueueDeclared(qname))
 
-func init() {
-	bro = broker{}
-}
+	if !b.isQueueDeclared(qname) {
 
-func Publish(qname string, data []byte) error {
-
-	if !bro.isQueueDeclared(qname) {
-
-		err := bro.declareQueue(qname)
+		err := b.declareQueue(qname)
 
 		if err != nil {
 			return err
 		}
 	}
 
-	err := bro.channel.Publish(
+	err := b.channel.Publish(
 		"",    // exchange
 		qname, // routing key
 		false, // mandatory
@@ -44,18 +39,19 @@ func Publish(qname string, data []byte) error {
 
 }
 
-func Consume(qname string) (<-chan []byte, error) {
+func (b *Broker) Consume(qname string) (<-chan []byte, error) {
 
-	if !bro.isQueueDeclared(qname) {
+	log.Println(b.isQueueDeclared(qname))
+	if !b.isQueueDeclared(qname) {
 
-		err := bro.declareQueue(qname)
+		err := b.declareQueue(qname)
 
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	msgs, err := bro.channel.Consume(
+	msgs, err := b.channel.Consume(
 		qname, // queue
 		"",    // consumer
 		false, // auto-ack
@@ -86,20 +82,22 @@ func Consume(qname string) (<-chan []byte, error) {
 	return msgChan, nil
 }
 
-func RegisterURL(URL string) error {
+func RegisterURL(URL string) (*Broker, error) {
 
-	bro.ConnectionURL = URL
+	b := &Broker{}
+
+	b.ConnectionURL = URL
 
 	conn, err := amqp.Dial(URL)
 	if err != nil {
 		conn.Close()
-		return err
+		return b, err
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
 		ch.Close()
-		return err
+		return b, err
 	}
 
 	err = ch.Qos(
@@ -110,15 +108,15 @@ func RegisterURL(URL string) error {
 
 	if err != nil {
 		ch.Close()
-		return err
+		return b, err
 	}
 
-	bro.channel = ch
+	b.channel = ch
 
-	return nil
+	return b, nil
 }
 
-func (b broker) declareQueue(qname string) error {
+func (b *Broker) declareQueue(qname string) error {
 
 	_, err := b.channel.QueueDeclare(
 		qname, // name
@@ -137,7 +135,8 @@ func (b broker) declareQueue(qname string) error {
 	}
 }
 
-func (b broker) isQueueDeclared(qname string) bool {
+func (b *Broker) isQueueDeclared(qname string) bool {
+	log.Println(b.Queues)
 	for i := 0; i < len(b.Queues); i++ {
 		if qname == b.Queues[i] {
 			return true
