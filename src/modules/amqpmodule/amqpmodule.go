@@ -41,7 +41,6 @@ func (b *Broker) Publish(qname string, data []byte) error {
 
 func (b *Broker) Consume(qname string) (<-chan []byte, error) {
 
-	log.Println(b.isQueueDeclared(qname))
 	if !b.isQueueDeclared(qname) {
 
 		err := b.declareQueue(qname)
@@ -136,7 +135,6 @@ func (b *Broker) declareQueue(qname string) error {
 }
 
 func (b *Broker) isQueueDeclared(qname string) bool {
-	log.Println(b.Queues)
 	for i := 0; i < len(b.Queues); i++ {
 		if qname == b.Queues[i] {
 			return true
