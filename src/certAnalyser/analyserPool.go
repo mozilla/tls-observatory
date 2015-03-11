@@ -797,6 +797,8 @@ func main() {
 
 	msgs, err := broker.Consume(rxQueue)
 
+	var TSmap = make(map[string]certStruct)
+
 	// Load truststores from configuration. We expect that the truststore names and path
 	// are ordered correctly in the configuration, thus if truststore "mozilla" is at
 	// position 0 in conf.TrustStores.Name, its path will be found at conf.TrustStores.Path[0]
@@ -832,6 +834,17 @@ func main() {
 				cert.IsCA = true
 			}
 			certPool.AddCert(cert)
+
+			//Push current certificate to DB as trusted
+			v := &certValidationInfo{}
+			v.IsValid = true
+
+			parentSignature := ""
+			if cert.Subject.CommonName == cert.Issuer.CommonName {
+				parentSignature = SHA256Hash(cert.Raw)
+			}
+			updateCert(cert, parentSignature, "", "", name, v, TSmap)
+
 			poollen++
 		}
 		trustStores = append(trustStores, TrustStore{name, certPool})
@@ -843,6 +856,12 @@ func main() {
 		defaultName := "default-" + runtime.GOOS
 		// nil Root certPool will result in the system defaults being loaded
 		trustStores = append(trustStores, TrustStore{defaultName, nil})
+	}
+
+	for id, certS := range TSmap {
+
+		pushCertificate(id, certS.certInfo, certS.certRaw)
+
 	}
 
 	for i := 0; i < cores; i++ {
