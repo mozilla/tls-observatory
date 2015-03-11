@@ -71,6 +71,8 @@ const esIndex = "certificates"
 const esinfoType = "certificateInfo"
 const esrawType = "certificateRaw"
 
+var broker *amqpmodule.Broker
+
 type StoredCertificate struct {
 	Domain                 string                        `json:"domain,omitempty"`
 	IPs                    []string                      `json:"ips,omitempty"`
@@ -789,11 +791,11 @@ func main() {
 
 	failOnError(err, "Failed to register ElasticSearch")
 
-	err = amqpmodule.RegisterURL(conf.General.RabbitMQRelay)
+	broker, err = amqpmodule.RegisterURL(conf.General.RabbitMQRelay)
 
 	failOnError(err, "Failed to register RabbitMQ")
 
-	msgs, err := amqpmodule.Consume(rxQueue)
+	msgs, err := broker.Consume(rxQueue)
 
 	// Load truststores from configuration. We expect that the truststore names and path
 	// are ordered correctly in the configuration, thus if truststore "mozilla" is at
