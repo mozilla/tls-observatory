@@ -89,7 +89,7 @@ func worker(msg []byte) {
 	info := ScanInfo{}
 	err = json.Unmarshal([]byte(out.String()), &info)
 	if err != nil {
-		log.Println(err.Error())
+		log.Println(err)
 		//should we requeue the domain???
 		return
 	}

@@ -3,13 +3,13 @@ package main
 import (
 	// stdlib packages
 
-	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"runtime"
+	"strconv"
 	"sync"
 
 	// custom packages
@@ -24,10 +24,12 @@ const esType = "connectionInfo"
 
 var broker *amqpmodule.Broker
 
+//the 2 following structs represent the cipherscan output.
+
 type ScanInfo struct {
 	Target       string        `json:"target"`
 	Timestamp    string        `json:"utctimestamp"`
-	ServerSide   bool          `json:"serverside"`
+	ServerSide   string        `json:"serverside"`
 	CipherSuites []Ciphersuite `json:"ciphersuite"`
 }
 
@@ -42,20 +44,22 @@ type Ciphersuite struct {
 	PFS          string   `json:"pfs"`
 }
 
+//the following structs represent the output we want to provide to DB.
+
 type ConnectionInfo struct {
-	ConnectionTimestamp string        `json:"connectionTimestamp"`
-	ServerSide          bool          `json:"serverside"`
-	CipherSuites        []Ciphersuite `json:"ciphersuite"`
+	ConnectionTimestamp string                  `json:"connectionTimestamp"`
+	ServerSide          bool                    `json:"serverside"`
+	CipherSuites        []ConnectionCiphersuite `json:"ciphersuite"`
 }
 
 type ConnectionCiphersuite struct {
-	Cipher       string    `json:"cipher"`
-	Protocols    []string  `json:"protocols"`
-	PubKey       []float64 `json:"pubkey"`
-	SigAlg       []string  `json:"sigalg"`
-	TicketHint   float64   `json:"ticket_hint"`
-	OCSPStapling bool      `json:"ocsp_stapling"`
-	PFS          string    `json:"pfs"`
+	Cipher       string   `json:"cipher"`
+	Protocols    []string `json:"protocols"`
+	PubKey       float64  `json:"pubkey"`
+	SigAlg       string   `json:"sigalg"`
+	TicketHint   string   `json:"ticket_hint"`
+	OCSPStapling bool     `json:"ocsp_stapling"`
+	PFS          string   `json:"pfs"`
 }
 
 func failOnError(err error, msg string) {
@@ -63,12 +67,6 @@ func failOnError(err error, msg string) {
 		log.Fatalf("%s: %s", msg, err)
 		panic(fmt.Sprintf("%s: %s", msg, err))
 	}
-}
-
-func SHA256Hash(data []byte) string {
-	h := sha256.New()
-	h.Write(data)
-	return fmt.Sprintf("%X", h.Sum(nil))
 }
 
 func panicIf(err error) bool {
@@ -80,10 +78,62 @@ func panicIf(err error) bool {
 	return false
 }
 
-func (s ScanInfo) toConnInfo() ConnectionInfo {
+func (s ScanInfo) toConnInfo() (ConnectionInfo, error) {
 
 	c := ConnectionInfo{}
-	return c
+
+	var err error
+
+	c.ConnectionTimestamp = s.Timestamp
+	c.ServerSide = false
+	if s.ServerSide == "True" {
+		c.ServerSide = true
+	}
+
+	for i, cipher := range s.CipherSuites {
+
+		newcipher := ConnectionCiphersuite{}
+
+		newcipher.Cipher = cipher.Cipher
+		newcipher.OCSPStapling = false
+		if cipher.OCSPStapling == "True" {
+			newcipher.OCSPStapling = true
+		}
+
+		newcipher.PFS = cipher.PFS
+
+		newcipher.Protocols = cipher.Protocols
+
+		if len(cipher.PubKey) > 1 {
+			log.Println("Multiple PubKeys for ", s.Target, " at cipher :", cipher.Cipher)
+		}
+
+		if len(cipher.PubKey) > 0 {
+			newcipher.PubKey, err = strconv.ParseFloat(cipher.PubKey[0], 64)
+		} else {
+			return c, fmt.Errorf("No Public Keys found")
+		}
+
+		if len(cipher.SigAlg) > 1 {
+			log.Println("Multiple SigAlgs for ", s.Target, " at cipher :", cipher.Cipher)
+		}
+
+		if len(cipher.SigAlg) > 0 {
+			newcipher.SigAlg = cipher.SigAlg[0]
+		} else {
+			return c, fmt.Errorf("No Signature Algorithms found")
+		}
+
+		newcipher.TicketHint = cipher.TicketHint
+
+		if err != nil {
+			return c, err
+		}
+
+		c.CipherSuites = append(c.CipherSuites, newcipher)
+	}
+
+	return c, nil
 
 }
 
@@ -101,12 +151,26 @@ func worker(msgs <-chan []byte) {
 
 		panicIf(err)
 
-		c := info.toConnInfo()
+		if err != nil {
+			continue
+		}
+
+		c, err := info.toConnInfo()
+
+		panicIf(err)
+
+		if err != nil {
+			continue
+		}
 
 		id := info.Target
 
 		jsonConn, err := json.Marshal(c)
 		panicIf(err)
+
+		if err != nil {
+			continue
+		}
 
 		err = es.Push(esIndex, esType, id, jsonConn)
 		panicIf(err)
