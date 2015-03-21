@@ -19,8 +19,8 @@ import (
 )
 
 const rxQueue = "conn_scan_results_queue"
-const esIndex = "connections"
-const esType = "connectionInfo"
+const esIndex = "observer"
+const esType = "connection"
 
 var broker *amqpmodule.Broker
 

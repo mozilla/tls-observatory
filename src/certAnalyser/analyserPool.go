@@ -67,8 +67,8 @@ var publicKeyAlgorithm = [...]string{
 }
 
 const rxQueue = "scan_results_queue"
-const esIndex = "certificates"
-const esinfoType = "certificateInfo"
+const esIndex = "observer"
+const esinfoType = "certificate"
 const esrawType = "certificateRaw"
 
 var broker *amqpmodule.Broker
