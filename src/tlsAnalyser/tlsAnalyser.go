@@ -90,7 +90,7 @@ func (s ScanInfo) toConnInfo() (ConnectionInfo, error) {
 		c.ServerSide = true
 	}
 
-	for i, cipher := range s.CipherSuites {
+	for _, cipher := range s.CipherSuites {
 
 		newcipher := ConnectionCiphersuite{}
 
