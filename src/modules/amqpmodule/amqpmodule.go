@@ -6,7 +6,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
-const defExchange = ""
+const defExchange = "amq.direct"
 
 type Broker struct {
 	connectionURL string
