@@ -6,18 +6,19 @@ import (
 	"github.com/streadway/amqp"
 )
 
+const defExchange = ""
+
 type Broker struct {
-	ConnectionURL string
+	connectionURL string
 	channel       *amqp.Channel
-	Queues        []string
+	queues        map[string]string
 }
 
-func (b *Broker) Publish(qname string, data []byte) error {
-	log.Println(b.isQueueDeclared(qname))
+func (b *Broker) Publish(routKey string, data []byte) error {
 
-	if !b.isQueueDeclared(qname) {
+	if _, ok := b.queues[routKey]; !ok {
 
-		err := b.declareQueue(qname)
+		_, err := b.declareQueue(routKey)
 
 		if err != nil {
 			return err
@@ -25,9 +26,9 @@ func (b *Broker) Publish(qname string, data []byte) error {
 	}
 
 	err := b.channel.Publish(
-		"",    // exchange
-		qname, // routing key
-		false, // mandatory
+		defExchange, // exchange
+		routKey,     // routing key
+		false,       // mandatory
 		false,
 		amqp.Publishing{
 			DeliveryMode: amqp.Persistent,
@@ -39,11 +40,15 @@ func (b *Broker) Publish(qname string, data []byte) error {
 
 }
 
-func (b *Broker) Consume(qname string) (<-chan []byte, error) {
+func (b *Broker) Consume(routKey string) (<-chan []byte, error) {
 
-	if !b.isQueueDeclared(qname) {
+	qname := ""
+	ok := false
+	err := error(nil)
 
-		err := b.declareQueue(qname)
+	if qname, ok = b.queues[routKey]; !ok {
+
+		qname, err = b.declareQueue(routKey)
 
 		if err != nil {
 			return nil, err
@@ -85,7 +90,9 @@ func RegisterURL(URL string) (*Broker, error) {
 
 	b := &Broker{}
 
-	b.ConnectionURL = URL
+	b.queues = make(map[string]string)
+
+	b.connectionURL = URL
 
 	conn, err := amqp.Dial(URL)
 	if err != nil {
@@ -115,31 +122,26 @@ func RegisterURL(URL string) (*Broker, error) {
 	return b, nil
 }
 
-func (b *Broker) declareQueue(qname string) error {
+func (b *Broker) declareQueue(routKey string) (string, error) {
 
-	_, err := b.channel.QueueDeclare(
-		qname, // name
+	q, err := b.channel.QueueDeclare(
+		"",    // name
 		true,  // durable
 		false, // delete when unused
-		false, // exclusive
+		true,  // exclusive
 		false, // no-wait
 		nil,   // arguments
 	)
 
 	if err != nil {
-		return err
+		return "", err
 	} else {
-		b.Queues = append(b.Queues, qname)
-		return nil
-	}
-}
 
-func (b *Broker) isQueueDeclared(qname string) bool {
-	for i := 0; i < len(b.Queues); i++ {
-		if qname == b.Queues[i] {
-			return true
+		err = b.channel.QueueBind(q.Name, routKey, defExchange, false, nil)
+		if err != nil {
+			return "", err
 		}
+		b.queues[routKey] = q.Name
+		return q.Name, nil
 	}
-
-	return false
 }
