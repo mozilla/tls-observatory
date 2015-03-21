@@ -4,10 +4,11 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/streadway/amqp"
 	"io"
 	"os"
 	"time"
+
+	"github.com/streadway/amqp"
 )
 
 var programName = "tlsRetriever"
@@ -88,7 +89,7 @@ func main() {
 			domain = record[len(record)-1]
 
 			err = ch.Publish(
-				"",                 // exchange
+				"amq.direct",       // exchange
 				"scan_ready_queue", // routing key
 				false,              // mandatory
 				false,

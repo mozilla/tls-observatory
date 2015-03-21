@@ -18,7 +18,7 @@ import (
 	"config"
 )
 
-const rxQueue = "conn_scan_ready_queue"
+const rxQueue = "scan_ready_queue"
 const txQueue = "conn_scan_results_queue"
 
 var workerCount int

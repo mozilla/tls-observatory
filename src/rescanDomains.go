@@ -9,9 +9,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"time"
+
 	elastigo "github.com/mattbaird/elastigo/lib"
 	"github.com/streadway/amqp"
-	"time"
 )
 
 // limit the structs to just the amount of data we need: domain names and CA status
@@ -110,7 +111,7 @@ func main() {
 				}
 				if _, ok := domains[d]; !ok {
 					err = mqch.Publish(
-						"",                 // exchange
+						"amq.direct",       // exchange
 						"scan_ready_queue", // routing key
 						false,              // mandatory
 						false,
