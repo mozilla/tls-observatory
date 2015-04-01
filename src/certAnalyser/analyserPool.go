@@ -6,10 +6,13 @@ import (
 	// stdlib packages
 	"crypto/dsa"
 	"crypto/ecdsa"
+	"crypto/md5"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"flag"
@@ -90,6 +93,8 @@ type StoredCertificate struct {
 	ValidationInfo         map[string]certValidationInfo `json:"validationInfo"`
 	CollectionTimestamp    string                        `json:"collectionTimestamp"`
 	LastSeenTimestamp      string                        `json:"lastSeenTimestamp"`
+	Hashes                 hashes                        `json:"hashes"`
+	Anomalies              string                        `json:"anomalies,omitempty"`
 }
 
 type certIssuer struct {
@@ -97,6 +102,12 @@ type certIssuer struct {
 	Organisation []string `json:"o"`
 	OrgUnit      []string `json:"ou"`
 	CommonName   string   `json:"cn"`
+}
+
+type hashes struct {
+	MD5    string `json:"md5"`
+	SHA1   string `json:"sha1"`
+	SHA256 string `json:"sha256"`
 }
 
 type certValidity struct {
@@ -162,7 +173,6 @@ type TrustStore struct {
 type certValidationInfo struct {
 	IsValid         bool   `json:"isValid"`
 	ValidationError string `json:"validationError"`
-	Anomalies       string `json:"anomalies,omitempty"`
 }
 
 type certStruct struct {
@@ -179,9 +189,21 @@ func failOnError(err error, msg string) {
 
 func SHA256Hash(data []byte) string {
 	h := sha256.New()
+	nd := hex.EncodeToString(data)
+	h.Write([]byte(nd))
+	return fmt.Sprintf("%X", h.Sum(nil))
+}
+
+func MD5Hash(data []byte) string {
+	h := md5.New()
 	h.Write(data)
 	return fmt.Sprintf("%X", h.Sum(nil))
-	//return hex.EncodeToString(h.Sum(nil))
+}
+
+func SHA1Hash(data []byte) string {
+	h := sha1.New()
+	h.Write(data)
+	return fmt.Sprintf("%X", h.Sum(nil))
 }
 
 func panicIf(err error) bool {
@@ -727,6 +749,10 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 
 	stored.ValidationInfo = make(map[string]certValidationInfo)
 	stored.ValidationInfo[TSName] = *valInfo
+
+	stored.Hashes.MD5 = MD5Hash(cert.Raw)
+	stored.Hashes.SHA1 = SHA1Hash(cert.Raw)
+	stored.Hashes.SHA256 = SHA256Hash(cert.Raw)
 
 	return stored
 
