@@ -37,7 +37,7 @@ GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: go_get_deps certRetriever certAnalyser tlsRetriever webapi retrieveTLSInfo rescanDomains
+all: go_get_deps certRetriever certAnalyser tlsRetriever tlsAnalyser webapi retrieveTLSInfo rescanDomains
 
 rescanDomains:
 	echo building rescanDomains for $(OS)/$(ARCH)
@@ -69,6 +69,12 @@ tlsRetriever:
 	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsRetriever-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsRetriever
 	[ -x "$(BINDIR)/tlsRetriever-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
+tlsAnalyser:
+	echo building tlsAnalyser for $(OS)/$(ARCH)
+	$(MKDIR) -p $(BINDIR)
+	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsAnalyser-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsAnalyser
+	[ -x "$(BINDIR)/tlsAnalyser-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+
 webapi:
 	echo building web-api for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
@@ -89,6 +95,8 @@ deb-pkg: all
 	$(MKDIR) -p tmppkg/opt/observer/bin tmppkg/etc/observer/truststores tmppkg/etc/init/
 	$(INSTALL) -D -m 0755 $(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/certRetriever
 	$(INSTALL) -D -m 0755 $(BINDIR)/certAnalyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/certAnalyzer
+	$(INSTALL) -D -m 0755 $(BINDIR)/tlsRetriever-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/tlsRetriever
+	$(INSTALL) -D -m 0755 $(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/tlsAnalyzer
 	$(INSTALL) -D -m 0755 $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/web-api
 	$(INSTALL) -D -m 0755 $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/retrieveTLSInfo
 	$(INSTALL) -D -m 0755 $(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/rescanDomains
