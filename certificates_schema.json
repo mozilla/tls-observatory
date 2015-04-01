@@ -1,6 +1,6 @@
 {
     "mappings": {
-        "certificateInfo": {
+        "certificate": {
             "_timestamp": {
                 "enabled": true,
                 "path": "lastSeenTimestamp",
@@ -307,6 +307,31 @@
                             "type": "string"
                         }
                     }
+                },
+                "hashes": {
+                    "properties": {
+                        "md5": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        },
+                        "sha1": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        },
+                        "sha256": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    }
+                },
+                "anomalies": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
                 }
             }
         },
@@ -315,6 +340,42 @@
                 "rawCert": {
                     "index": "not_analyzed",
                     "type": "string"
+                }
+            }
+        },
+        "connection": {
+            "properties": {
+                "serverside": {
+                    "type": "boolean"
+                },
+                "connectionTimestamp": {
+                    "format": "date_hour_minute_second",
+                    "type": "date"
+                },
+                "ciphersuite": {
+                    "properties": {
+                        "cipher": {
+                            "type": "string"
+                        },
+                        "ocsp_stapling": {
+                            "type": "boolean"
+                        },
+                        "pfs": {
+                            "type": "string"
+                        },
+                        "protocols": {
+                            "type": "string"
+                        },
+                        "pubkey": {
+                            "type": "long"
+                        },
+                        "sigalg": {
+                            "type": "string"
+                        },
+                        "ticket_hint": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         }
