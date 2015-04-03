@@ -1,0 +1,337 @@
+{
+        "certificate": {
+            "_timestamp": {
+                "enabled": true,
+                "path": "lastSeenTimestamp",
+                "store": true
+            },
+            "properties": {
+                "ca": {
+                    "type": "boolean"
+                },
+                "collectionTimestamp": {
+                    "format": "date_hour_minute_second",
+                    "type": "date"
+                },
+                "domain": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
+                },
+                "ips": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
+                },
+                "isChainValid": {
+                    "type": "boolean"
+                },
+                "issuer": {
+                    "properties": {
+                        "c": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "cn": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "o": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "ou": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        }
+                    }
+                },
+                "lastSeenTimestamp": {
+                    "format": "date_hour_minute_second",
+                    "type": "date"
+                },
+                "parentSignature": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
+                },
+                "signatureAlgorithm": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
+                },
+                "subject": {
+                    "properties": {
+                        "c": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "cn": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "o": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "ou": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        }
+                    }
+                },
+                "subjectPublicKeyInfo": {
+                    "properties": {
+                        "publicKeyAlgorithm": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        }
+                    }
+                },
+                "validationInfo": {
+                    "properties": {
+                        "Apple_10_10_0": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Apple_10_8_5": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Apple_10_9_5": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Java": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Microsoft": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Mozilla": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "Ubuntu_12_04": {
+                            "properties": {
+                                "validationError": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "validity": {
+                    "properties": {
+                        "notAfter": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "notBefore": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        }
+                    }
+                },
+                "version": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "long"
+                },
+                "x509v3BasicConstraints": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
+                },
+                "x509v3Extensions": {
+                    "properties": {
+                        "authorityKeyId": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "crlDistributionPoints": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "extendedKeyUsage": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "keyUsage": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "subjectAlternativeName": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        },
+                        "subjectKeyId": {
+                            "fields": {
+                                "raw": {
+                                    "index": "not_analyzed",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "string"
+                        }
+                    }
+                },
+                "hashes": {
+                    "properties": {
+                        "md5": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        },
+                        "sha1": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        },
+                        "sha256": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    }
+                },
+                "anomalies": {
+                    "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                    },
+                    "type": "string"
+                }
+            }
+        }
+}

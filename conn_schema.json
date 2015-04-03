@@ -1,0 +1,38 @@
+{
+       "connection": {
+            "properties": {
+                "serverside": {
+                    "type": "boolean"
+                },
+                "connectionTimestamp": {
+                    "format": "date_hour_minute_second",
+                    "type": "date"
+                },
+                "ciphersuite": {
+                    "properties": {
+                        "cipher": {
+                            "type": "string"
+                        },
+                        "ocsp_stapling": {
+                            "type": "boolean"
+                        },
+                        "pfs": {
+                            "type": "string"
+                        },
+                        "protocols": {
+                            "type": "string"
+                        },
+                        "pubkey": {
+                            "type": "long"
+                        },
+                        "sigalg": {
+                            "type": "string"
+                        },
+                        "ticket_hint": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+}
