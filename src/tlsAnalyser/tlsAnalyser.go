@@ -49,10 +49,10 @@ type Ciphersuite struct {
 //the following structs represent the output we want to provide to DB.
 
 type ConnectionInfo struct {
-	ConnectionTimestamp string                  `json:"connectionTimestamp"`
-	ServerSide          bool                    `json:"serverside"`
-	CipherSuites        []ConnectionCiphersuite `json:"ciphersuite"`
-	CurvesFallback      bool                    `json:"curvesFallback"`
+	ConnectionTimestamp string                           `json:"connectionTimestamp"`
+	ServerSide          bool                             `json:"serverside"`
+	CipherSuites        map[string]ConnectionCiphersuite `json:"ciphersuite"`
+	CurvesFallback      bool                             `json:"curvesFallback"`
 }
 
 type ConnectionCiphersuite struct {
@@ -101,6 +101,10 @@ func (s ScanInfo) toConnInfo() (ConnectionInfo, error) {
 	c.ServerSide = stringtoBool(s.ServerSide)
 	c.CurvesFallback = stringtoBool(s.CurvesFallback)
 
+	c.CipherSuites = make(map[string]ConnectionCiphersuite)
+
+	pos := 1
+
 	for _, cipher := range s.CipherSuites {
 
 		newcipher := ConnectionCiphersuite{}
@@ -139,7 +143,8 @@ func (s ScanInfo) toConnInfo() (ConnectionInfo, error) {
 
 		newcipher.Curves = append(newcipher.Curves, cipher.Curves...)
 
-		c.CipherSuites = append(c.CipherSuites, newcipher)
+		c.CipherSuites[strconv.Itoa(pos)] = newcipher
+		pos++
 	}
 
 	return c, nil
@@ -175,6 +180,7 @@ func worker(msgs <-chan []byte) {
 		id := info.Target
 
 		jsonConn, err := json.Marshal(c)
+
 		panicIf(err)
 
 		if err != nil {
