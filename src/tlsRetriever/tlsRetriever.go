@@ -63,7 +63,7 @@ type Ciphersuite struct {
 	TicketHint   string   `json:"ticket_hint"`
 	OCSPStapling string   `json:"ocsp_stapling"`
 	PFS          string   `json:"pfs"`
-	Curves       string   `json:"curves,omitempty"`
+	Curves       []string `json:"curves,omitempty"`
 }
 
 func worker(msg []byte) {
