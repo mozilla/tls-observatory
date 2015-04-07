@@ -27,10 +27,11 @@ var broker *amqpmodule.Broker
 //the 2 following structs represent the cipherscan output.
 
 type ScanInfo struct {
-	Target       string        `json:"target"`
-	Timestamp    string        `json:"utctimestamp"`
-	ServerSide   string        `json:"serverside"`
-	CipherSuites []Ciphersuite `json:"ciphersuite"`
+	Target         string        `json:"target"`
+	Timestamp      string        `json:"utctimestamp"`
+	ServerSide     string        `json:"serverside"`
+	CurvesFallback string        `json:"curves_fallback"`
+	CipherSuites   []Ciphersuite `json:"ciphersuite"`
 }
 
 type Ciphersuite struct {
@@ -42,6 +43,7 @@ type Ciphersuite struct {
 	TicketHint   string   `json:"ticket_hint"`
 	OCSPStapling string   `json:"ocsp_stapling"`
 	PFS          string   `json:"pfs"`
+	Curves       []string `json:"curves,omitempty"`
 }
 
 //the following structs represent the output we want to provide to DB.
@@ -50,6 +52,7 @@ type ConnectionInfo struct {
 	ConnectionTimestamp string                  `json:"connectionTimestamp"`
 	ServerSide          bool                    `json:"serverside"`
 	CipherSuites        []ConnectionCiphersuite `json:"ciphersuite"`
+	CurvesFallback      bool                    `json:"curvesFallback"`
 }
 
 type ConnectionCiphersuite struct {
@@ -60,6 +63,7 @@ type ConnectionCiphersuite struct {
 	TicketHint   string   `json:"ticket_hint"`
 	OCSPStapling bool     `json:"ocsp_stapling"`
 	PFS          string   `json:"pfs"`
+	Curves       []string `json:"curves"`
 }
 
 func failOnError(err error, msg string) {
@@ -78,6 +82,15 @@ func panicIf(err error) bool {
 	return false
 }
 
+func stringtoBool(s string) bool {
+	if s == "True" {
+		return true
+	} else {
+		return false
+	}
+
+}
+
 func (s ScanInfo) toConnInfo() (ConnectionInfo, error) {
 
 	c := ConnectionInfo{}
@@ -85,21 +98,15 @@ func (s ScanInfo) toConnInfo() (ConnectionInfo, error) {
 	var err error
 
 	c.ConnectionTimestamp = s.Timestamp
-	c.ServerSide = false
-	if s.ServerSide == "True" {
-		c.ServerSide = true
-	}
+	c.ServerSide = stringtoBool(s.ServerSide)
+	c.CurvesFallback = stringtoBool(s.CurvesFallback)
 
 	for _, cipher := range s.CipherSuites {
 
 		newcipher := ConnectionCiphersuite{}
 
 		newcipher.Cipher = cipher.Cipher
-		newcipher.OCSPStapling = false
-		if cipher.OCSPStapling == "True" {
-			newcipher.OCSPStapling = true
-		}
-
+		newcipher.OCSPStapling = stringtoBool(cipher.OCSPStapling)
 		newcipher.PFS = cipher.PFS
 
 		newcipher.Protocols = cipher.Protocols
@@ -129,6 +136,8 @@ func (s ScanInfo) toConnInfo() (ConnectionInfo, error) {
 		if err != nil {
 			return c, err
 		}
+
+		newcipher.Curves = append(newcipher.Curves, cipher.Curves...)
 
 		c.CipherSuites = append(c.CipherSuites, newcipher)
 	}
