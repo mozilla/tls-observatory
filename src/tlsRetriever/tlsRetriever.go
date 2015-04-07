@@ -47,10 +47,11 @@ func printIntro() {
 }
 
 type ScanInfo struct {
-	Target       string        `json:"target"`
-	Timestamp    string        `json:"utctimestamp"`
-	ServerSide   string        `json:"serverside"`
-	CipherSuites []Ciphersuite `json:"ciphersuite"`
+	Target         string        `json:"target"`
+	Timestamp      string        `json:"utctimestamp"`
+	ServerSide     string        `json:"serverside"`
+	CipherSuites   []Ciphersuite `json:"ciphersuite"`
+	CurvesFallback string        `json:"curves_fallback"`
 }
 
 type Ciphersuite struct {
@@ -62,6 +63,7 @@ type Ciphersuite struct {
 	TicketHint   string   `json:"ticket_hint"`
 	OCSPStapling string   `json:"ocsp_stapling"`
 	PFS          string   `json:"pfs"`
+	Curves       string   `json:"curves,omitempty"`
 }
 
 func worker(msg []byte) {
@@ -74,7 +76,7 @@ func worker(msg []byte) {
 		return
 	}
 
-	cmd := cipherscan + " -j -servername " + domain + " " + ip + ":443 "
+	cmd := cipherscan + " -j --curves -servername " + domain + " " + ip + ":443 "
 	fmt.Println(cmd)
 	comm := exec.Command("bash", "-c", cmd)
 	var out bytes.Buffer
