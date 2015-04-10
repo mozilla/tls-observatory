@@ -12,7 +12,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"flag"
@@ -188,22 +187,18 @@ func failOnError(err error, msg string) {
 }
 
 func SHA256Hash(data []byte) string {
-	h := sha256.New()
-	nd := hex.EncodeToString(data)
-	h.Write([]byte(nd))
-	return fmt.Sprintf("%X", h.Sum(nil))
+	h := sha256.Sum256(data)
+	return fmt.Sprintf("%X", h[:])
 }
 
 func MD5Hash(data []byte) string {
-	h := md5.New()
-	h.Write(data)
-	return fmt.Sprintf("%X", h.Sum(nil))
+	h := md5.Sum(data)
+	return fmt.Sprintf("%X", h[:])
 }
 
 func SHA1Hash(data []byte) string {
-	h := sha1.New()
-	h.Write(data)
-	return fmt.Sprintf("%X", h.Sum(nil))
+	h := sha1.Sum(data)
+	return fmt.Sprintf("%X", h[:])
 }
 
 func panicIf(err error) bool {
