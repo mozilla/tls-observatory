@@ -37,7 +37,7 @@ GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: go_get_deps certRetriever certAnalyser tlsRetriever tlsAnalyser webapi retrieveTLSInfo rescanDomains
+all: go_get_deps certRetriever certAnalyzer tlsRetriever tlsAnalyzer webapi retrieveTLSInfo rescanDomains
 
 rescanDomains:
 	echo building rescanDomains for $(OS)/$(ARCH)
@@ -57,10 +57,10 @@ certRetriever:
 	$(GO) build $(GOOPTS) -o $(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) certRetriever
 	[ -x "$(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-certAnalyser:
-	echo building certAnalyser for $(OS)/$(ARCH)
+certAnalyzer:
+	echo building certAnalyzer for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/certAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) certAnalyser
+	$(GO) build $(GOOPTS) -o $(BINDIR)/certAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) certAnalyzer
 	[ -x "$(BINDIR)/certAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 tlsRetriever:
@@ -69,11 +69,11 @@ tlsRetriever:
 	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsRetriever-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsRetriever
 	[ -x "$(BINDIR)/tlsRetriever-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-tlsAnalyser:
-	echo building tlsAnalyser for $(OS)/$(ARCH)
+tlsAnalyzer:
+	echo building tlsAnalyzer for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsAnalyser-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsAnalyser
-	[ -x "$(BINDIR)/tlsAnalyser-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsAnalyzer
+	[ -x "$(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 webapi:
 	echo building web-api for $(OS)/$(ARCH)
@@ -93,6 +93,7 @@ go_get_deps:
 deb-pkg: all
 	rm -fr tmppkg
 	$(MKDIR) -p tmppkg/opt/observer/bin tmppkg/etc/observer/truststores tmppkg/etc/init/
+# binaries
 	$(INSTALL) -D -m 0755 $(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/certRetriever
 	$(INSTALL) -D -m 0755 $(BINDIR)/certAnalyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/certAnalyzer
 	$(INSTALL) -D -m 0755 $(BINDIR)/tlsRetriever-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/tlsRetriever
@@ -100,10 +101,18 @@ deb-pkg: all
 	$(INSTALL) -D -m 0755 $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/web-api
 	$(INSTALL) -D -m 0755 $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/retrieveTLSInfo
 	$(INSTALL) -D -m 0755 $(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/rescanDomains
-	$(INSTALL) -D -m 0755 conf/retriever.cfg tmppkg/etc/observer/retriever.cfg.inc
-	$(INSTALL) -D -m 0755 conf/tlsobserver-retriever.conf tmppkg/etc/init/tlsobserver-retriever.conf
-	$(INSTALL) -D -m 0755 conf/analyzer.cfg tmppkg/etc/observer/analyzer.cfg.inc
-	$(INSTALL) -D -m 0755 conf/tlsobserver-analyzer.conf tmppkg/etc/init/tlsobserver-analyzer.conf
+# configuration files
+	$(INSTALL) -D -m 0755 conf/certanalyzer.cfg tmppkg/etc/observer
+	$(INSTALL) -D -m 0755 conf/certretriever.cfg tmppkg/etc/observer
+	$(INSTALL) -D -m 0755 conf/tlsanalyzer.cfg tmppkg/etc/observer
+	$(INSTALL) -D -m 0755 conf/tlsretriever.cfg tmppkg/etc/observer
+# init scripts
+	$(INSTALL) -D -m 0755 conf/tlsobserver-certanalyzer.conf tmppkg/etc/init
+	$(INSTALL) -D -m 0755 conf/tlsobserver-certretriever.conf tmppkg/etc/init
+	$(INSTALL) -D -m 0755 conf/tlsobserver-tlsanalyzer.conf tmppkg/etc/init
+	$(INSTALL) -D -m 0755 conf/tlsobserver-tlsretriever.conf tmppkg/etc/init
+# truststores
+	$(INSTALL) -D -m 0755 CA_AOSP.crt tmppkg/etc/observer/truststores
 	$(INSTALL) -D -m 0755 CA_apple_10.10.0.crt tmppkg/etc/observer/truststores
 	$(INSTALL) -D -m 0755 CA_apple_10.8.5.crt tmppkg/etc/observer/truststores
 	$(INSTALL) -D -m 0755 CA_apple_10.9.5.crt tmppkg/etc/observer/truststores
@@ -111,8 +120,12 @@ deb-pkg: all
 	$(INSTALL) -D -m 0755 CA_microsoft.crt tmppkg/etc/observer/truststores
 	$(INSTALL) -D -m 0755 CA_mozilla_nss.crt tmppkg/etc/observer/truststores
 	$(INSTALL) -D -m 0755 CA_ubuntu_12.04.crt tmppkg/etc/observer/truststores
+# list of top 1m sites from alexas
 	$(INSTALL) -D -m 0755 top-1m.csv tmppkg/etc/observer/top-1m.csv
-	$(INSTALL) -D -m 0755 certificates_schema.json tmppkg/etc/observer/certificates_schema.json
+# elasticsearch schemas
+	$(INSTALL) -D -m 0755 cert_schema.json tmppkg/etc/observer/cert_schema.json
+	$(INSTALL) -D -m 0755 conn_schema.json tmppkg/etc/observer/conn_schema.json
+# make a debian package
 	fpm -C tmppkg -n mozilla-tls-observer --license GPL --vendor mozilla --description "Mozilla TLS Observer" \
 		-m "Mozilla OpSec" --url https://github.com/mozilla/TLS-Observer --architecture $(FPMARCH) -v $(BUILDREV) \
 		-s dir -t deb .
