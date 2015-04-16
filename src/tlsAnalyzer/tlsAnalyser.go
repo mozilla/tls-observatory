@@ -238,6 +238,10 @@ func main() {
 
 	msgs, err := broker.Consume(rxQueue)
 
+	if err != nil {
+		failOnError(err, "Failed to Consume from receiving queue")
+	}
+
 	for i := 0; i < cores; i++ {
 		wg.Add(1)
 		go worker(msgs)
