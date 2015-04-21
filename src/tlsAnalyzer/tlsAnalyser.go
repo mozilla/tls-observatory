@@ -19,6 +19,7 @@ import (
 )
 
 const rxQueue = "conn_scan_results_queue"
+const rxRoutKey = "conn_scan_results"
 const esIndex = "observer"
 const esType = "connection"
 
@@ -236,7 +237,7 @@ func main() {
 
 	failOnError(err, "Failed to register RabbitMQ")
 
-	msgs, err := broker.Consume(rxQueue)
+	msgs, err := broker.Consume(rxQueue, rxRoutKey)
 
 	if err != nil {
 		failOnError(err, "Failed to Consume from receiving queue")

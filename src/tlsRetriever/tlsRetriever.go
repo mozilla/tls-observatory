@@ -18,8 +18,10 @@ import (
 	"config"
 )
 
-const rxQueue = "scan_ready_queue"
+const rxQueue = "tls_rx_queue"
 const txQueue = "conn_scan_results_queue"
+const txRoutKey = "conn_scan_results"
+const rxRoutKey = "scan_ready"
 
 var workerCount int
 var broker *amqpmodule.Broker
@@ -66,7 +68,13 @@ type Ciphersuite struct {
 	Curves       []string `json:"curves,omitempty"`
 }
 
+func reduceWC() {
+	workerCount--
+}
+
 func worker(msg []byte) {
+
+	defer reduceWC()
 
 	domain := string(msg)
 	ip := getRandomIP(domain)
@@ -98,10 +106,12 @@ func worker(msg []byte) {
 
 	info.Target = domain + "--" + ip
 
-	jsonInfo, er := json.MarshalIndent(info, "", "    ")
-	panicIf(er)
+	jsonInfo, err := json.MarshalIndent(info, "", "    ")
+	panicIf(err)
 
-	broker.Publish(txQueue, []byte(jsonInfo))
+	err = broker.Publish(txQueue, txRoutKey, []byte(jsonInfo))
+
+	panicIf(err)
 }
 
 func getRandomIP(domain string) string {
@@ -158,7 +168,7 @@ func main() {
 
 	failOnError(err, "Failed to register RabbitMQ")
 
-	msgs, err := broker.Consume(rxQueue)
+	msgs, err := broker.Consume(rxQueue, rxRoutKey)
 
 	for d := range msgs {
 		// block until a worker is available

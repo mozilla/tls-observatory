@@ -23,8 +23,10 @@ import (
 	"modules/amqpmodule"
 )
 
-const rxQueue = "scan_ready_queue"
-const txQueue = "scan_results_queue"
+const rxQueue = "cert_rx_queue"
+const txQueue = "cert_scan_results_queue"
+const txRoutKey = "cert_scan_results"
+const rxRoutKey = "scan_ready"
 
 var workerCount int
 var broker *amqpmodule.Broker
@@ -76,7 +78,9 @@ func worker(msg []byte) {
 	jsonChain, er := json.MarshalIndent(chain, "", "    ")
 	panicIf(er)
 
-	broker.Publish(txQueue, []byte(jsonChain))
+	err = broker.Publish(txQueue, txRoutKey, []byte(jsonChain))
+
+	panicIf(err)
 }
 
 //retrieveCertFromHost checks the host connectivity and returns the certificate chain ( if any ) provided
@@ -146,7 +150,7 @@ func main() {
 
 	failOnError(err, "Failed to register RabbitMQ")
 
-	msgs, err := broker.Consume(rxQueue)
+	msgs, err := broker.Consume(rxQueue, rxRoutKey)
 
 	for d := range msgs {
 		// block until a worker is available

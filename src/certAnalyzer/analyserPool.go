@@ -68,7 +68,8 @@ var publicKeyAlgorithm = [...]string{
 	"ECDSA",
 }
 
-const rxQueue = "scan_results_queue"
+const rxQueue = "cert_scan_results_queue"
+const rxRoutKey = "cert_scan_results"
 const esIndex = "observer"
 const esinfoType = "certificate"
 const esrawType = "certificateRaw"
@@ -816,7 +817,7 @@ func main() {
 
 	failOnError(err, "Failed to register RabbitMQ")
 
-	msgs, err := broker.Consume(rxQueue)
+	msgs, err := broker.Consume(rxQueue, rxRoutKey)
 
 	var TSmap = make(map[string]certStruct)
 

@@ -14,11 +14,11 @@ type Broker struct {
 	queues        map[string]string
 }
 
-func (b *Broker) Publish(routKey string, data []byte) error {
+func (b *Broker) Publish(qname, routKey string, data []byte) error {
 
 	if _, ok := b.queues[routKey]; !ok {
 
-		_, err := b.declareQueue(routKey)
+		_, err := b.declareQueue(qname, routKey)
 
 		if err != nil {
 			return err
@@ -40,15 +40,14 @@ func (b *Broker) Publish(routKey string, data []byte) error {
 
 }
 
-func (b *Broker) Consume(routKey string) (<-chan []byte, error) {
+func (b *Broker) Consume(qname, routKey string) (<-chan []byte, error) {
 
-	qname := ""
 	ok := false
 	err := error(nil)
 
-	if qname, ok = b.queues[routKey]; !ok {
+	if _, ok = b.queues[routKey]; !ok {
 
-		qname, err = b.declareQueue(routKey)
+		_, err = b.declareQueue(qname, routKey)
 
 		if err != nil {
 			return nil, err
@@ -122,13 +121,13 @@ func RegisterURL(URL string) (*Broker, error) {
 	return b, nil
 }
 
-func (b *Broker) declareQueue(routKey string) (string, error) {
+func (b *Broker) declareQueue(qname, routKey string) (string, error) {
 
 	q, err := b.channel.QueueDeclare(
-		"",    // name
+		qname, // name
 		true,  // durable
 		false, // delete when unused
-		true,  // exclusive
+		false, // exclusive
 		false, // no-wait
 		nil,   // arguments
 	)
@@ -141,7 +140,7 @@ func (b *Broker) declareQueue(routKey string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		b.queues[routKey] = q.Name
+		b.queues[routKey] = qname
 		return q.Name, nil
 	}
 }
