@@ -1,5 +1,5 @@
 //certAnalyser provides a client that receives certificates from a queue, processes them and
-//indexes them in an ElasticSearch database. The StoredCertificate struct is used as the storage document template
+//indexes them in an ElasticSearch database. The certificate.Certificate struct is used as the storage document template
 package main
 
 import (
@@ -25,48 +25,11 @@ import (
 	"time"
 
 	// custom packages
+	"certificate"
 	"config"
 	"modules/amqpmodule"
 	es "modules/elasticsearchmodule"
 )
-
-var signatureAlgorithm = [...]string{
-	"UnknownSignatureAlgorithm",
-	"MD2WithRSA",
-	"MD5WithRSA",
-	"SHA1WithRSA",
-	"SHA256WithRSA",
-	"SHA384WithRSA",
-	"SHA512WithRSA",
-	"DSAWithSHA1",
-	"DSAWithSHA256",
-	"ECDSAWithSHA1",
-	"ECDSAWithSHA256",
-	"ECDSAWithSHA384",
-	"ECDSAWithSHA512",
-}
-
-var extKeyUsage = [...]string{
-	"ExtKeyUsageAny",
-	"ExtKeyUsageServerAuth",
-	"ExtKeyUsageClientAuth",
-	"ExtKeyUsageCodeSigning",
-	"ExtKeyUsageEmailProtection",
-	"ExtKeyUsageIPSECEndSystem",
-	"ExtKeyUsageIPSECTunnel",
-	"ExtKeyUsageIPSECUser",
-	"ExtKeyUsageTimeStamping",
-	"ExtKeyUsageOCSPSigning",
-	"ExtKeyUsageMicrosoftServerGatedCrypto",
-	"ExtKeyUsageNetscapeServerGatedCrypto",
-}
-
-var publicKeyAlgorithm = [...]string{
-	"UnknownPublicKeyAlgorithm",
-	"RSA",
-	"DSA",
-	"ECDSA",
-}
 
 const rxQueue = "cert_scan_results_queue"
 const rxRoutKey = "cert_scan_results"
@@ -75,110 +38,6 @@ const esinfoType = "certificate"
 const esrawType = "certificateRaw"
 
 var broker *amqpmodule.Broker
-
-type StoredCertificate struct {
-	Domain                 string                        `json:"domain,omitempty"`
-	IPs                    []string                      `json:"ips,omitempty"`
-	Version                float64                       `json:"version"`
-	SignatureAlgorithm     string                        `json:"signatureAlgorithm"`
-	Issuer                 certIssuer                    `json:"issuer"`
-	Validity               certValidity                  `json:"validity"`
-	Subject                certSubject                   `json:"subject"`
-	SubjectPublicKeyInfo   certSubjectPublicKeyInfo      `json:"subjectPublicKeyInfo"`
-	X509v3Extensions       certExtensions                `json:"x509v3Extensions"`
-	X509v3BasicConstraints string                        `json:"x509v3BasicConstraints"`
-	CA                     bool                          `json:"ca"`
-	Analysis               interface{}                   `json:"analysis"` //for future use...
-	ParentSignature        []string                      `json:"parentSignature"`
-	ValidationInfo         map[string]certValidationInfo `json:"validationInfo"`
-	CollectionTimestamp    string                        `json:"collectionTimestamp"`
-	LastSeenTimestamp      string                        `json:"lastSeenTimestamp"`
-	Hashes                 hashes                        `json:"hashes"`
-	Anomalies              string                        `json:"anomalies,omitempty"`
-}
-
-type certIssuer struct {
-	Country      []string `json:"c"`
-	Organisation []string `json:"o"`
-	OrgUnit      []string `json:"ou"`
-	CommonName   string   `json:"cn"`
-}
-
-type hashes struct {
-	MD5    string `json:"md5"`
-	SHA1   string `json:"sha1"`
-	SHA256 string `json:"sha256"`
-}
-
-type certValidity struct {
-	NotBefore string `json:"notBefore"`
-	NotAfter  string `json:"notAfter"`
-}
-
-type certSubject struct {
-	Country      []string `json:"c"`
-	Organisation []string `json:"o"`
-	OrgUnit      []string `json:"ou"`
-	CommonName   string   `json:"cn"`
-}
-
-type certSubjectPublicKeyInfo struct {
-	PublicKeyAlgorithm string  `json:"publicKeyAlgorithm,omitempty"`
-	RSAModulusSize     float64 `json:"rsaModulusSize,omitempty"`
-	RSAExponent        float64 `json:"rsaExponent,omitempty"`
-	DSA_P              string  `json:"DSA_P,omitempty"`
-	DSA_Q              string  `json:"DSA_Q,omitempty"`
-	DSA_G              string  `json:"DSA_G,omitempty"`
-	DSA_Y              string  `json:"DSA_Y,omitempty"`
-	ECDSACurveType     string  `json:"ecdsaCurveType,omitempty"`
-	ECDSA_X            float64 `json:"ECDSA_X,omitempty"`
-	ECDSA_Y            float64 `json:"ECDSA_Y,omitempty"`
-}
-
-//Currently exporting extensions that are already decoded into the x509 Certificate structure
-type certExtensions struct {
-	AuthorityKeyId         []byte   `json:"authorityKeyId"`
-	SubjectKeyId           []byte   `json:"subjectKeyId"`
-	KeyUsage               []string `json:"keyUsage"`
-	ExtendedKeyUsage       []string `json:"extendedKeyUsage"`
-	SubjectAlternativeName []string `json:"subjectAlternativeName"`
-	CRLDistributionPoints  []string `json:"crlDistributionPoints"`
-}
-
-type CertX509v3BasicConstraints struct {
-	CA       bool        `json:"ca"`
-	Analysis interface{} `json:"analysis"`
-}
-
-type CertChain struct {
-	Domain string   `json:"domain"`
-	IP     string   `json:"ip"`
-	Certs  []string `json:"certs"`
-}
-
-type ids struct {
-	_type  string   `json:"type"`
-	values []string `json:"values"`
-}
-
-type JsonRawCert struct {
-	RawCert string `json:"rawCert"`
-}
-
-type TrustStore struct {
-	Name  string
-	Certs *x509.CertPool
-}
-
-type certValidationInfo struct {
-	IsValid         bool   `json:"isValid"`
-	ValidationError string `json:"validationError"`
-}
-
-type certStruct struct {
-	certInfo StoredCertificate
-	certRaw  []byte
-}
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -219,7 +78,7 @@ func worker(msgs <-chan []byte) {
 
 	for d := range msgs {
 
-		chain := CertChain{}
+		chain := certificate.Chain{}
 
 		err := json.Unmarshal(d, &chain)
 		panicIf(err)
@@ -232,7 +91,7 @@ func worker(msgs <-chan []byte) {
 
 //handleCertChain takes the chain retrieved from the queue and tries to validate it
 //against each of the truststores provided.
-func handleCertChain(chain *CertChain) {
+func handleCertChain(chain *certificate.Chain) {
 
 	var intermediates []*x509.Certificate
 	var leafCert *x509.Certificate
@@ -258,7 +117,7 @@ func handleCertChain(chain *CertChain) {
 		log.Println("No Server certificate found in chain received by:" + chain.Domain)
 	}
 
-	var certmap = make(map[string]certStruct)
+	var certmap = make(map[string]certificate.Stored)
 
 	//validate against each truststore
 	for _, curTS := range trustStores {
@@ -284,7 +143,7 @@ func handleCertChain(chain *CertChain) {
 
 	for id, certS := range certmap {
 
-		pushCertificate(id, certS.certInfo, certS.certRaw)
+		pushCertificate(id, certS.Certificate, certS.Raw)
 
 	}
 }
@@ -292,9 +151,9 @@ func handleCertChain(chain *CertChain) {
 //isChainValid creates the valid certificate chains by combining the chain retrieved with the provided truststore.
 //It return true if it finds at least on validation chain or false if no valid chain of trust can be created.
 //It also updates the certificate map which gets pushed at the end of each iteration.
-func isChainValid(certificate *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string, certmap map[string]certStruct) bool {
+func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificate, curTS *certificate.TrustStore, domain, IP string, certmap map[string]certificate.Stored) bool {
 
-	valInfo := &certValidationInfo{}
+	valInfo := &certificate.ValidationInfo{}
 
 	valInfo.IsValid = true
 
@@ -305,8 +164,8 @@ func isChainValid(certificate *x509.Certificate, intermediates []*x509.Certifica
 
 	dnsName := domain
 
-	if certificate.IsCA {
-		dnsName = certificate.Subject.CommonName
+	if serverCert.IsCA {
+		dnsName = serverCert.Subject.CommonName
 	}
 
 	opts := x509.VerifyOptions{
@@ -315,7 +174,7 @@ func isChainValid(certificate *x509.Certificate, intermediates []*x509.Certifica
 		Roots:         curTS.Certs,
 	}
 
-	chains, err := certificate.Verify(opts)
+	chains, err := serverCert.Verify(opts)
 
 	if err == nil {
 
@@ -345,7 +204,7 @@ func isChainValid(certificate *x509.Certificate, intermediates []*x509.Certifica
 		valInfo.IsValid = false
 
 		parentSignature := ""
-		c := getFirstParent(certificate, intermediates)
+		c := getFirstParent(serverCert, intermediates)
 
 		if c != nil {
 			parentSignature = SHA256Hash(c.Raw)
@@ -353,7 +212,7 @@ func isChainValid(certificate *x509.Certificate, intermediates []*x509.Certifica
 			log.Println("could not retrieve parent for " + dnsName)
 		}
 
-		updateCert(certificate, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
+		updateCert(serverCert, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
 
 		return false
 	}
@@ -402,7 +261,7 @@ func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Cer
 
 //updateCert takes the input certificate and updates the map holding all the certificates to be pushed.
 //If the certificates has already been inserted it updates the existing record else it creates it.
-func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certValidationInfo, certmap map[string]certStruct) {
+func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certificate.ValidationInfo, certmap map[string]certificate.Stored) {
 
 	id := SHA256Hash(cert.Raw)
 	if !cert.IsCA {
@@ -411,11 +270,11 @@ func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSNa
 
 	if storedStruct, ok := certmap[id]; !ok {
 
-		certmap[id] = certStruct{certInfo: certtoStored(cert, parentSignature, domain, ip, TSName, valInfo), certRaw: cert.Raw}
+		certmap[id] = certificate.Stored{Certificate: certtoStored(cert, parentSignature, domain, ip, TSName, valInfo), Raw: cert.Raw}
 
 	} else {
 
-		storedCert := storedStruct.certInfo
+		storedCert := storedStruct.Certificate
 
 		parentFound := false
 
@@ -454,14 +313,14 @@ func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSNa
 
 		storedCert.ValidationInfo[TSName] = *valInfo
 
-		certmap[id] = certStruct{certInfo: storedCert, certRaw: cert.Raw}
+		certmap[id] = certificate.Stored{Certificate: storedCert, Raw: cert.Raw}
 	}
 
 }
 
 //pushCertificate pushes each certificate as a document to the database.
 //It checks if the certificate already exists and if this is true it updates the existing record.
-func pushCertificate(id string, c StoredCertificate, certRaw []byte) {
+func pushCertificate(id string, c certificate.Certificate, certRaw []byte) {
 
 	retCert, err := getCert(id)
 
@@ -472,7 +331,7 @@ func pushCertificate(id string, c StoredCertificate, certRaw []byte) {
 		jsonCert, err = json.Marshal(c)
 		panicIf(err)
 
-		raw := JsonRawCert{base64.StdEncoding.EncodeToString(certRaw)}
+		raw := certificate.JsonRawCert{base64.StdEncoding.EncodeToString(certRaw)}
 		jsonRaw, err := json.Marshal(raw)
 		panicIf(err)
 		err = es.Push(esIndex, esrawType, id, jsonRaw)
@@ -536,9 +395,9 @@ func pushCertificate(id string, c StoredCertificate, certRaw []byte) {
 
 //getCert tries to retrieve a stored certificate from the database.
 //If the document is not found it returns an error.
-func getCert(id string) (StoredCertificate, error) {
+func getCert(id string) (certificate.Certificate, error) {
 
-	stored := StoredCertificate{}
+	stored := certificate.Certificate{}
 	res, err := es.SearchbyID(esIndex, esinfoType, id)
 
 	if res.Total > 0 { //Is certificate alreadycollected?
@@ -558,7 +417,7 @@ func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
 
 	for i, eku := range cert.ExtKeyUsage {
 
-		usage[i] = extKeyUsage[eku]
+		usage[i] = certificate.ExtKeyUsage[eku]
 	}
 
 	return usage
@@ -612,9 +471,9 @@ func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
 
 //getCertExtensions currently stores only the extensions that are already exported by GoLang
 //(in the x509 Certificate Struct)
-func getCertExtensions(cert *x509.Certificate) certExtensions {
+func getCertExtensions(cert *x509.Certificate) certificate.Extensions {
 
-	extensions := certExtensions{}
+	extensions := certificate.Extensions{}
 
 	extensions.AuthorityKeyId = []byte(base64.StdEncoding.EncodeToString(cert.AuthorityKeyId))
 	extensions.SubjectKeyId = []byte(base64.StdEncoding.EncodeToString(cert.SubjectKeyId))
@@ -631,11 +490,11 @@ func getCertExtensions(cert *x509.Certificate) certExtensions {
 
 }
 
-func getPublicKeyInfo(cert *x509.Certificate) certSubjectPublicKeyInfo {
+func getPublicKeyInfo(cert *x509.Certificate) certificate.SubjectPublicKeyInfo {
 
-	var pubInfo = certSubjectPublicKeyInfo{}
+	var pubInfo = certificate.SubjectPublicKeyInfo{}
 
-	pubInfo.PublicKeyAlgorithm = publicKeyAlgorithm[cert.PublicKeyAlgorithm]
+	pubInfo.PublicKeyAlgorithm = certificate.PublicKeyAlgorithm[cert.PublicKeyAlgorithm]
 
 	switch pub := cert.PublicKey.(type) {
 	case *rsa.PublicKey:
@@ -686,14 +545,14 @@ func getPublicKeyInfo(cert *x509.Certificate) certSubjectPublicKeyInfo {
 
 }
 
-//certtoStored returns a StoredCertificate struct created from a X509.Certificate
-func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *certValidationInfo) StoredCertificate {
+//certtoStored returns a certificate.Certificate struct created from a X509.Certificate
+func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *certificate.ValidationInfo) certificate.Certificate {
 
-	var stored = StoredCertificate{}
+	var stored = certificate.Certificate{}
 
 	stored.Version = float64(cert.Version)
 
-	stored.SignatureAlgorithm = signatureAlgorithm[cert.SignatureAlgorithm]
+	stored.SignatureAlgorithm = certificate.SignatureAlgorithm[cert.SignatureAlgorithm]
 
 	stored.SubjectPublicKeyInfo = getPublicKeyInfo(cert)
 
@@ -743,7 +602,7 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 		stored.IPs = append(stored.IPs, ip)
 	}
 
-	stored.ValidationInfo = make(map[string]certValidationInfo)
+	stored.ValidationInfo = make(map[string]certificate.ValidationInfo)
 	stored.ValidationInfo[TSName] = *valInfo
 
 	stored.Hashes.MD5 = MD5Hash(cert.Raw)
@@ -783,7 +642,7 @@ var wg sync.WaitGroup
 
 //trustStores holds all the truststored we want to validate against.
 //It is populated by the provided cfg file.
-var trustStores []TrustStore
+var trustStores []certificate.TrustStore
 
 func main() {
 	var (
@@ -819,7 +678,7 @@ func main() {
 
 	msgs, err := broker.Consume(rxQueue, rxRoutKey)
 
-	var TSmap = make(map[string]certStruct)
+	var TSmap = make(map[string]certificate.Stored)
 
 	// Load truststores from configuration. We expect that the truststore names and path
 	// are ordered correctly in the configuration, thus if truststore "mozilla" is at
@@ -858,7 +717,7 @@ func main() {
 			certPool.AddCert(cert)
 
 			//Push current certificate to DB as trusted
-			v := &certValidationInfo{}
+			v := &certificate.ValidationInfo{}
 			v.IsValid = true
 
 			parentSignature := ""
@@ -869,7 +728,7 @@ func main() {
 
 			poollen++
 		}
-		trustStores = append(trustStores, TrustStore{name, certPool})
+		trustStores = append(trustStores, certificate.TrustStore{name, certPool})
 		log.Println("successfully loaded", poollen, "CA certs from", name, "truststore")
 	}
 
@@ -877,12 +736,12 @@ func main() {
 		log.Println("Warning: no loadable trustore found in configuration, using system default")
 		defaultName := "default-" + runtime.GOOS
 		// nil Root certPool will result in the system defaults being loaded
-		trustStores = append(trustStores, TrustStore{defaultName, nil})
+		trustStores = append(trustStores, certificate.TrustStore{defaultName, nil})
 	}
 
 	for id, certS := range TSmap {
 
-		pushCertificate(id, certS.certInfo, certS.certRaw)
+		pushCertificate(id, certS.Certificate, certS.Raw)
 
 	}
 
