@@ -15,6 +15,7 @@ func main() {
 	es := elastigo.NewConn()
 	es.Domain = "localhost:9200"
 	step := 0
+	seen := make(map[string]bool)
 	for {
 		filter := fmt.Sprintf(`{"query":{"bool":{"must":[
 								{"match": {"validationInfo.Mozilla.isValid": "true"}},
@@ -28,7 +29,6 @@ func main() {
 		if len(res.Hits.Hits) == 0 {
 			break
 		}
-		seen := make(map[string]bool)
 		thirtyNineMonths := time.Duration(28512 * time.Hour)
 		for _, storedCert := range res.Hits.Hits {
 			cert := new(certificate.Certificate)
