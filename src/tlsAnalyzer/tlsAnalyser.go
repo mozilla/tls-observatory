@@ -9,12 +9,13 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"strconv"
 	"sync"
 
 	// custom packages
 	"config"
+	"connection"
 	"modules/amqpmodule"
+
 	es "modules/elasticsearchmodule"
 )
 
@@ -26,46 +27,6 @@ const esType = "connection"
 var broker *amqpmodule.Broker
 
 //the 2 following structs represent the cipherscan output.
-
-type ScanInfo struct {
-	Target         string        `json:"target"`
-	Timestamp      string        `json:"utctimestamp"`
-	ServerSide     string        `json:"serverside"`
-	CurvesFallback string        `json:"curves_fallback"`
-	CipherSuites   []Ciphersuite `json:"ciphersuite"`
-}
-
-type Ciphersuite struct {
-	Cipher       string   `json:"cipher"`
-	Protocols    []string `json:"protocols"`
-	PubKey       []string `json:"pubkey"`
-	SigAlg       []string `json:"sigalg"`
-	Trusted      string   `json:"trusted"`
-	TicketHint   string   `json:"ticket_hint"`
-	OCSPStapling string   `json:"ocsp_stapling"`
-	PFS          string   `json:"pfs"`
-	Curves       []string `json:"curves,omitempty"`
-}
-
-//the following structs represent the output we want to provide to DB.
-
-type ConnectionInfo struct {
-	ConnectionTimestamp string                           `json:"connectionTimestamp"`
-	ServerSide          bool                             `json:"serverside"`
-	CipherSuites        map[string]ConnectionCiphersuite `json:"ciphersuite"`
-	CurvesFallback      bool                             `json:"curvesFallback"`
-}
-
-type ConnectionCiphersuite struct {
-	Cipher       string   `json:"cipher"`
-	Protocols    []string `json:"protocols"`
-	PubKey       float64  `json:"pubkey"`
-	SigAlg       string   `json:"sigalg"`
-	TicketHint   string   `json:"ticket_hint"`
-	OCSPStapling bool     `json:"ocsp_stapling"`
-	PFS          string   `json:"pfs"`
-	Curves       []string `json:"curves"`
-}
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -83,73 +44,38 @@ func panicIf(err error) bool {
 	return false
 }
 
-func stringtoBool(s string) bool {
-	if s == "True" {
-		return true
-	} else {
-		return false
+// retrieves stored connections ( if any ) for the given scan target
+func getConnsforTarget(t string) (map[string]connection.Stored, error) {
+
+	res, err := es.SearchbyTerm(esIndex, esType, "scanTarget.raw", t)
+
+	if err != nil {
+		return nil, err
 	}
 
-}
+	storedConns := make(map[string]connection.Stored)
 
-func (s ScanInfo) toConnInfo() (ConnectionInfo, error) {
+	if res.Total > 0 && err != nil {
 
-	c := ConnectionInfo{}
+		for i := 0; i < res.Total; i++ {
 
-	var err error
+			s := connection.Stored{}
+			err = json.Unmarshal(*res.Hits[i].Source, &s)
 
-	c.ConnectionTimestamp = s.Timestamp
-	c.ServerSide = stringtoBool(s.ServerSide)
-	c.CurvesFallback = stringtoBool(s.CurvesFallback)
+			if err != nil {
+				panicIf(err)
+				continue
+			}
 
-	c.CipherSuites = make(map[string]ConnectionCiphersuite)
-
-	pos := 1
-
-	for _, cipher := range s.CipherSuites {
-
-		newcipher := ConnectionCiphersuite{}
-
-		newcipher.Cipher = cipher.Cipher
-		newcipher.OCSPStapling = stringtoBool(cipher.OCSPStapling)
-		newcipher.PFS = cipher.PFS
-
-		newcipher.Protocols = cipher.Protocols
-
-		if len(cipher.PubKey) > 1 {
-			log.Println("Multiple PubKeys for ", s.Target, " at cipher :", cipher.Cipher)
+			storedConns[res.Hits[i].Id] = s
 		}
 
-		if len(cipher.PubKey) > 0 {
-			newcipher.PubKey, err = strconv.ParseFloat(cipher.PubKey[0], 64)
-		} else {
-			return c, fmt.Errorf("No Public Keys found")
+		if len(storedConns) > 0 {
+			return storedConns, nil
 		}
-
-		if len(cipher.SigAlg) > 1 {
-			log.Println("Multiple SigAlgs for ", s.Target, " at cipher :", cipher.Cipher)
-		}
-
-		if len(cipher.SigAlg) > 0 {
-			newcipher.SigAlg = cipher.SigAlg[0]
-		} else {
-			return c, fmt.Errorf("No Signature Algorithms found")
-		}
-
-		newcipher.TicketHint = cipher.TicketHint
-
-		if err != nil {
-			return c, err
-		}
-
-		newcipher.Curves = append(newcipher.Curves, cipher.Curves...)
-
-		c.CipherSuites[strconv.Itoa(pos)] = newcipher
-		pos++
 	}
 
-	return c, nil
-
+	return storedConns, nil
 }
 
 //worker is the main body of the goroutine that handles each received message.
@@ -160,7 +86,7 @@ func worker(msgs <-chan []byte) {
 
 	for d := range msgs {
 
-		info := ScanInfo{}
+		info := connection.CipherscanOutput{}
 
 		err := json.Unmarshal(d, &info)
 
@@ -170,29 +96,87 @@ func worker(msgs <-chan []byte) {
 			continue
 		}
 
-		c, err := info.toConnInfo()
+		c, err := info.Stored()
 
 		panicIf(err)
-
 		if err != nil {
 			continue
 		}
 
-		id := info.Target
-
-		jsonConn, err := json.Marshal(c)
-
-		panicIf(err)
+		stored, err := getConnsforTarget(c.ScanTarget)
 
 		if err != nil {
+			panicIf(err)
 			continue
 		}
 
-		err = es.Push(esIndex, esType, id, jsonConn)
-		panicIf(err)
+		err = updateAndPushConnections(c, stored)
+
+		panicIf(err) //Should we requeue the connection in case of error?
 	}
 
 	<-forever
+}
+
+func updateAndPushConnections(newconn connection.Stored, conns map[string]connection.Stored) error {
+
+	err := error(nil)
+
+	if len(conns) > 0 {
+		for id, conn := range conns {
+			if conn.ObsoletedBy == "" {
+				if newconn.Equal(conn) {
+
+					log.Println("Updating doc for ", conn.ScanTarget)
+					conn.LastSeenTimestamp = newconn.LastSeenTimestamp
+
+					jsonConn, err := json.Marshal(conn)
+
+					if err == nil {
+						_, err = es.Push(esIndex, esType, "", jsonConn)
+					}
+
+					break
+
+				} else {
+
+					log.Println("Pushing new doc for ", conn.ScanTarget)
+
+					jsonConn, err := json.Marshal(newconn)
+
+					obsID := ""
+
+					if err != nil {
+						break
+					}
+
+					obsID, err = es.Push(esIndex, esType, "", jsonConn)
+
+					if err != nil {
+						break
+					}
+
+					conn.ObsoletedBy = obsID
+
+					jsonConn, err = json.Marshal(conn)
+
+					obsID, err = es.Push(esIndex, esType, id, jsonConn)
+				}
+			}
+		}
+	} else {
+
+		log.Println("No older doc found for ", newconn.ScanTarget)
+
+		jsonConn, err := json.Marshal(newconn)
+
+		if err == nil {
+			_, err = es.Push(esIndex, esType, "", jsonConn)
+		}
+
+	}
+
+	return err
 }
 
 func printIntro() {
