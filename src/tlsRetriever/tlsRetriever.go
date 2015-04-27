@@ -6,13 +6,14 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"os/exec"
 	"runtime"
 	"time"
 
-	"math/rand"
+	"connection"
 	"modules/amqpmodule"
 
 	"config"
@@ -48,26 +49,6 @@ func printIntro() {
 	`)
 }
 
-type ScanInfo struct {
-	Target         string        `json:"target"`
-	Timestamp      string        `json:"utctimestamp"`
-	ServerSide     string        `json:"serverside"`
-	CipherSuites   []Ciphersuite `json:"ciphersuite"`
-	CurvesFallback string        `json:"curves_fallback"`
-}
-
-type Ciphersuite struct {
-	Cipher       string   `json:"cipher"`
-	Protocols    []string `json:"protocols"`
-	PubKey       []string `json:"pubkey"`
-	SigAlg       []string `json:"sigalg"`
-	Trusted      string   `json:"trusted"`
-	TicketHint   string   `json:"ticket_hint"`
-	OCSPStapling string   `json:"ocsp_stapling"`
-	PFS          string   `json:"pfs"`
-	Curves       []string `json:"curves,omitempty"`
-}
-
 func reduceWC() {
 	workerCount--
 }
@@ -96,7 +77,7 @@ func worker(msg []byte) {
 		log.Println(err)
 	}
 
-	info := ScanInfo{}
+	info := connection.CipherscanOutput{}
 	err = json.Unmarshal([]byte(out.String()), &info)
 	if err != nil {
 		log.Println(err)
