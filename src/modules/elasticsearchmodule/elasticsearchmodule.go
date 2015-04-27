@@ -46,10 +46,10 @@ func SearchbyTerm(index, doctype, termname, termvalue string) (elastigo.Hits, er
 }
 
 //Push indexes data with the specified properties.
-func Push(index, doctype, id string, data interface{}) error {
-	_, err := es.Index(index, doctype, id, nil, data)
+func Push(index, doctype, id string, data interface{}) (string, error) {
+	res, err := es.Index(index, doctype, id, nil, data)
 
-	return err
+	return res.Id, err
 }
 
 //checkHealth checks the connection with the ElasticSearch database at the provided URL
