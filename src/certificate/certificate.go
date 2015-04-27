@@ -5,7 +5,7 @@ import (
 )
 
 type Certificate struct {
-	Domain                 string                    `json:"domain,omitempty"`
+	ScanTarget             string                    `json:"scanTarget,omitempty"`
 	IPs                    []string                  `json:"ips,omitempty"`
 	Version                float64                   `json:"version"`
 	SignatureAlgorithm     string                    `json:"signatureAlgorithm"`

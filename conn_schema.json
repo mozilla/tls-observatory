@@ -1,10 +1,28 @@
 {
    "connection": {
+        "_timestamp": {
+                "enabled": true,
+                "path": "lastSeenTimestamp",
+                "store": true
+        },
         "properties": {
             "serverside": {
                 "type": "boolean"
             },
-            "connectionTimestamp": {
+            "scanTarget": {
+                "fields": {
+                        "raw": {
+                            "index": "not_analyzed",
+                            "type": "string"
+                        }
+                },
+                "type": "string"
+            },
+            "firstSeenTimestamp": {
+                "format": "date_hour_minute_second",
+                "type": "date"
+            },
+            "lastSeenTimestamp": {
                 "format": "date_hour_minute_second",
                 "type": "date"
             },

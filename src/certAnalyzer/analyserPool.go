@@ -292,8 +292,8 @@ func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSNa
 
 		if !storedCert.CA {
 
-			if storedCert.Domain != domain {
-				log.Println("Stored Cert - ", id, " - Domain found:", domain, "Domain Stored: ", storedCert.Domain)
+			if storedCert.ScanTarget != domain {
+				log.Println("Stored Cert - ", id, " - Domain found:", domain, "Domain Stored: ", storedCert.ScanTarget)
 			}
 
 			//add IP ( single domain may be served by multiple IPs )
@@ -334,7 +334,7 @@ func pushCertificate(id string, c certificate.Certificate, certRaw []byte) {
 		raw := certificate.JsonRawCert{base64.StdEncoding.EncodeToString(certRaw)}
 		jsonRaw, err := json.Marshal(raw)
 		panicIf(err)
-		err = es.Push(esIndex, esrawType, id, jsonRaw)
+		_, err = es.Push(esIndex, esrawType, id, jsonRaw)
 		panicIf(err)
 
 	} else {
@@ -361,8 +361,8 @@ func pushCertificate(id string, c certificate.Certificate, certRaw []byte) {
 
 		if !retCert.CA {
 
-			if retCert.Domain != c.Domain {
-				log.Println("Stored Cert - ", id, " - Domain found:", c.Domain, "Domain Stored: ", retCert.Domain)
+			if retCert.ScanTarget != c.ScanTarget {
+				log.Println("Stored Cert - ", id, " - Domain found:", c.ScanTarget, "Domain Stored: ", retCert.ScanTarget)
 			}
 
 			ip := make(map[string]bool)
@@ -389,7 +389,7 @@ func pushCertificate(id string, c certificate.Certificate, certRaw []byte) {
 		panicIf(err)
 	}
 
-	err = es.Push(esIndex, esinfoType, id, jsonCert)
+	_, err = es.Push(esIndex, esinfoType, id, jsonCert)
 	panicIf(err)
 }
 
@@ -598,7 +598,7 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
 
 	if !cert.IsCA {
-		stored.Domain = domain
+		stored.ScanTarget = domain
 		stored.IPs = append(stored.IPs, ip)
 	}
 

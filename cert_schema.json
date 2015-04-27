@@ -9,7 +9,7 @@
                 "ca": {
                     "type": "boolean"
                 },
-                "collectionTimestamp": {
+                "firstSeenTimestamp": {
                     "format": "date_hour_minute_second",
                     "type": "date"
                 },
