@@ -33,6 +33,8 @@ import (
 
 const rxQueue = "cert_scan_results_queue"
 const rxRoutKey = "cert_scan_results"
+const analyzerQueue = "cert_analysis_queue"
+const analyzerRoutKey = "cert_analysis"
 const esIndex = "observer"
 const esinfoType = "certificate"
 const esrawType = "certificateRaw"
@@ -391,6 +393,12 @@ func pushCertificate(id string, c certificate.Certificate, certRaw []byte) {
 
 	_, err = es.Push(esIndex, esinfoType, id, jsonCert)
 	panicIf(err)
+
+	if err == nil {
+		err = broker.Publish(analyzerQueue, analyzerRoutKey, []byte(jsonCert))
+		panicIf(err)
+	}
+
 }
 
 //getCert tries to retrieve a stored certificate from the database.

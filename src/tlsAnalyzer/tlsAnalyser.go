@@ -21,12 +21,12 @@ import (
 
 const rxQueue = "conn_scan_results_queue"
 const rxRoutKey = "conn_scan_results"
+const analyzerQueue = "conn_analysis_queue"
+const analyzerRoutKey = "conn_analysis"
 const esIndex = "observer"
 const esType = "connection"
 
 var broker *amqpmodule.Broker
-
-//the 2 following structs represent the cipherscan output.
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -133,7 +133,7 @@ func updateAndPushConnections(newconn connection.Stored, conns map[string]connec
 					jsonConn, err := json.Marshal(conn)
 
 					if err == nil {
-						_, err = es.Push(esIndex, esType, "", jsonConn)
+						_, err = pushConnection("", jsonConn)
 					}
 
 					break
@@ -150,7 +150,7 @@ func updateAndPushConnections(newconn connection.Stored, conns map[string]connec
 						break
 					}
 
-					obsID, err = es.Push(esIndex, esType, "", jsonConn)
+					obsID, err = pushConnection("", jsonConn)
 
 					if err != nil {
 						break
@@ -160,7 +160,7 @@ func updateAndPushConnections(newconn connection.Stored, conns map[string]connec
 
 					jsonConn, err = json.Marshal(conn)
 
-					obsID, err = es.Push(esIndex, esType, id, jsonConn)
+					obsID, err = pushConnection(id, jsonConn)
 				}
 			}
 		}
@@ -171,12 +171,26 @@ func updateAndPushConnections(newconn connection.Stored, conns map[string]connec
 		jsonConn, err := json.Marshal(newconn)
 
 		if err == nil {
-			_, err = es.Push(esIndex, esType, "", jsonConn)
+			_, err = pushConnection("", jsonConn)
 		}
 
 	}
 
 	return err
+}
+
+func pushConnection(ID string, doc []byte) (string, error) {
+
+	newID, err := es.Push(esIndex, esType, ID, doc)
+
+	if err == nil {
+		err = broker.Publish(analyzerQueue, analyzerRoutKey, []byte(doc))
+	} else {
+		newID = ""
+	}
+
+	return newID, err
+
 }
 
 func printIntro() {
