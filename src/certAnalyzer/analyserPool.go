@@ -574,8 +574,10 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Subject.OrgUnit = cert.Subject.OrganizationalUnit
 	stored.Subject.CommonName = cert.Subject.CommonName
 
-	stored.Validity.NotBefore = cert.NotBefore.UTC().String()
-	stored.Validity.NotAfter = cert.NotAfter.UTC().String()
+	nbtime := cert.NotBefore.UTC()
+	natime := cert.NotAfter.UTC()
+	stored.Validity.NotBefore = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", nbtime.Year(), nbtime.Month(), nbtime.Day(), nbtime.Hour(), nbtime.Minute(), nbtime.Second())
+	stored.Validity.NotAfter = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", natime.Year(), natime.Month(), natime.Day(), natime.Hour(), natime.Minute(), natime.Second())
 
 	stored.X509v3Extensions = getCertExtensions(cert)
 

@@ -213,22 +213,12 @@
                 "validity": {
                     "properties": {
                         "notAfter": {
-                            "fields": {
-                                "raw": {
-                                    "index": "not_analyzed",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "string"
+                            "format": "date_hour_minute_second",
+                            "type": "date"
                         },
                         "notBefore": {
-                            "fields": {
-                                "raw": {
-                                    "index": "not_analyzed",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "string"
+                            "format": "date_hour_minute_second",
+                            "type": "date"
                         }
                     }
                 },
