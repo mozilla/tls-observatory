@@ -19,7 +19,7 @@ type Certificate struct {
 	Analysis               interface{}               `json:"analysis"` //for future use...
 	ParentSignature        []string                  `json:"parentSignature"`
 	ValidationInfo         map[string]ValidationInfo `json:"validationInfo"`
-	CollectionTimestamp    string                    `json:"collectionTimestamp"`
+	FirstSeenTimestamp     string                    `json:"firstSeenTimestamp"`
 	LastSeenTimestamp      string                    `json:"lastSeenTimestamp"`
 	Hashes                 Hashes                    `json:"hashes"`
 	Anomalies              string                    `json:"anomalies,omitempty"`
