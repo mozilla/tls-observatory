@@ -107,7 +107,6 @@ func worker(msgs <-chan []byte) {
 
 		if err != nil {
 			panicIf(err)
-			continue
 		}
 
 		err = updateAndPushConnections(c, stored)
@@ -182,6 +181,8 @@ func updateAndPushConnections(newconn connection.Stored, conns map[string]connec
 func pushConnection(ID string, doc []byte) (string, error) {
 
 	newID, err := es.Push(esIndex, esType, ID, doc)
+
+	log.Println(err)
 
 	if err == nil {
 		err = broker.Publish(analyzerQueue, analyzerRoutKey, []byte(doc))
