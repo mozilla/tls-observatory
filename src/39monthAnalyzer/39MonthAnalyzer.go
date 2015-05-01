@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mozilla/TLS-Observer/src/certificate"
-	"github.com/mozilla/TLS-Observer/src/config"
-	"github.com/mozilla/TLS-Observer/src/modules/amqpmodule"
+	"certificate"
+	"config"
+	"modules/amqpmodule"
 )
 
 const rxQueue = "cert_analysis_queue"

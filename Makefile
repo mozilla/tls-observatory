@@ -37,7 +37,7 @@ GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: go_get_deps certRetriever certAnalyzer tlsRetriever tlsAnalyzer webapi retrieveTLSInfo rescanDomains
+all: go_get_deps certRetriever certAnalyzer tlsRetriever tlsAnalyzer webapi retrieveTLSInfo rescanDomains SSLv3Analyzer 39monthAnalyzer
 
 rescanDomains:
 	echo building rescanDomains for $(OS)/$(ARCH)
@@ -75,6 +75,18 @@ tlsAnalyzer:
 	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsAnalyzer
 	[ -x "$(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
+SSLv3Analyzer:
+	echo building SSLv3Analyzer for $(OS)/$(ARCH)
+	$(MKDIR) -p $(BINDIR)
+	$(GO) build $(GOOPTS) -o $(BINDIR)/SSLv3Analyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) SSLv3Analyzer
+	[ -x "$(BINDIR)/SSLv3Analyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+
+39monthAnalyzer:
+	echo building 39monthAnalyzer for $(OS)/$(ARCH)
+	$(MKDIR) -p $(BINDIR)
+	$(GO) build $(GOOPTS) -o $(BINDIR)/39monthAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) 39monthAnalyzer
+	[ -x "$(BINDIR)/39monthAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+
 webapi:
 	echo building web-api for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
@@ -101,6 +113,8 @@ deb-pkg: all
 	$(INSTALL) -D -m 0755 $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/web-api
 	$(INSTALL) -D -m 0755 $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/retrieveTLSInfo
 	$(INSTALL) -D -m 0755 $(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/rescanDomains
+	$(INSTALL) -D -m 0755 $(BINDIR)/SSLv3Analyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/SSLv3Analyzer
+	$(INSTALL) -D -m 0755 $(BINDIR)/39monthAnalyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/39monthAnalyzer
 # configuration files
 	$(INSTALL) -D -m 0755 conf/certanalyzer.cfg tmppkg/etc/observer
 	$(INSTALL) -D -m 0755 conf/certretriever.cfg tmppkg/etc/observer

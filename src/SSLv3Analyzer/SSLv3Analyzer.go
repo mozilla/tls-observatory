@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mozilla/TLS-Observer/src/config"
-	"github.com/mozilla/TLS-Observer/src/connection"
-	"github.com/mozilla/TLS-Observer/src/modules/amqpmodule"
+	"config"
+	"connection"
+	"modules/amqpmodule"
 )
 
 const rxQueue = "conn_analysis_queue"
@@ -70,7 +70,8 @@ func worker(msgs <-chan []byte) {
 		err := json.Unmarshal(d, &stored)
 		panicIf(err)
 
-		if err != nil {
+		if err == nil {
+
 			if hasSSLv3(stored) {
 				log.Printf("Scan Target %s has SSLv3 protocol available.", stored.ScanTarget)
 				//TODO:Mozdef publishing code goes here.
