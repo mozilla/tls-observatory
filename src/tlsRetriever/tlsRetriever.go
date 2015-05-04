@@ -85,7 +85,8 @@ func worker(msg []byte) {
 		return
 	}
 
-	info.Target = domain + "--" + ip
+	info.Target = domain
+	info.IP = ip
 
 	jsonInfo, err := json.MarshalIndent(info, "", "    ")
 	panicIf(err)

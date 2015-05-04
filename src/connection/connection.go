@@ -5,12 +5,14 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 //following two structs represent cipherscan output
 
 type CipherscanOutput struct {
 	Target         string                  `json:"target"`
+	IP             string                  `json:"ip"`
 	Timestamp      string                  `json:"utctimestamp"`
 	ServerSide     string                  `json:"serverside"`
 	CurvesFallback string                  `json:"curves_fallback"`
@@ -33,6 +35,7 @@ type CipherscanCiphersuite struct {
 
 type Stored struct {
 	ScanTarget         string                       `json:"scanTarget"`
+	ScanIP             string                       `json:"scanIP"`
 	FirstSeenTimestamp string                       `json:"firstSeenTimestamp"`
 	LastSeenTimestamp  string                       `json:"lastSeenTimestamp"`
 	ServerSide         bool                         `json:"serverside"`
@@ -49,7 +52,7 @@ type StoredCiphersuite struct {
 	TicketHint   string   `json:"ticket_hint"`
 	OCSPStapling bool     `json:"ocsp_stapling"`
 	PFS          string   `json:"pfs"`
-	Curves       []string `json:"curves"`
+	Curves       []string `json:"curves,omitempty"`
 }
 
 func stringtoBool(s string) bool {
@@ -115,17 +118,32 @@ func (s StoredCiphersuite) equal(cs StoredCiphersuite) bool {
 
 }
 
+func (s CipherscanOutput) convertTimestamp(t string) (time.Time, error) {
+
+	layout := "2006-01-02T15:04:05.0Z"
+	return time.Parse(layout, t)
+}
+
 func (s CipherscanOutput) Stored() (Stored, error) {
 
 	c := Stored{}
 
 	var err error
 
-	c.FirstSeenTimestamp = s.Timestamp
-	c.LastSeenTimestamp = s.Timestamp
+	t, err := s.convertTimestamp(s.Timestamp)
+
+	if err != nil {
+		return c, err
+	}
+
+	timestamp := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.UTC().Year(), t.UTC().Month(), t.UTC().Day(), t.UTC().Hour(), t.UTC().Minute(), t.UTC().Second())
+
+	c.FirstSeenTimestamp = timestamp
+	c.LastSeenTimestamp = timestamp
 	c.ServerSide = stringtoBool(s.ServerSide)
 	c.CurvesFallback = stringtoBool(s.CurvesFallback)
 	c.ScanTarget = s.Target
+	c.ScanIP = s.IP
 
 	c.CipherSuites = make(map[string]StoredCiphersuite)
 

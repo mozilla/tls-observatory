@@ -45,9 +45,11 @@ func panicIf(err error) bool {
 }
 
 // retrieves stored connections ( if any ) for the given scan target
-func getConnsforTarget(t string) (map[string]connection.Stored, error) {
+func getConnsforTarget(t, ip string) (map[string]connection.Stored, error) {
 
-	res, err := es.SearchbyTerm(esIndex, esType, "scanTarget.raw", t)
+	res, err := es.SearchbyTerms(esIndex, esType, "scanTarget", t, "scanIP", ip)
+
+	log.Println("Found:", res.Total)
 
 	if err != nil {
 		return nil, err
@@ -55,7 +57,7 @@ func getConnsforTarget(t string) (map[string]connection.Stored, error) {
 
 	storedConns := make(map[string]connection.Stored)
 
-	if res.Total > 0 && err != nil {
+	if res.Total > 0 {
 
 		for i := 0; i < res.Total; i++ {
 
@@ -103,7 +105,9 @@ func worker(msgs <-chan []byte) {
 			continue
 		}
 
-		stored, err := getConnsforTarget(c.ScanTarget)
+		stored, err := getConnsforTarget(c.ScanTarget, c.ScanIP)
+
+		log.Println("Map:", len(stored))
 
 		if err != nil {
 			panicIf(err)
@@ -126,13 +130,13 @@ func updateAndPushConnections(newconn connection.Stored, conns map[string]connec
 			if conn.ObsoletedBy == "" {
 				if newconn.Equal(conn) {
 
-					log.Println("Updating doc for ", conn.ScanTarget)
+					log.Println("Updating doc for ", conn.ScanTarget, "--", conn.ScanIP)
 					conn.LastSeenTimestamp = newconn.LastSeenTimestamp
 
 					jsonConn, err := json.Marshal(conn)
 
 					if err == nil {
-						_, err = pushConnection("", jsonConn)
+						_, err = pushConnection(id, jsonConn)
 					}
 
 					break
@@ -165,7 +169,7 @@ func updateAndPushConnections(newconn connection.Stored, conns map[string]connec
 		}
 	} else {
 
-		log.Println("No older doc found for ", newconn.ScanTarget)
+		log.Println("No older doc found for ", newconn.ScanTarget, "--", newconn.ScanIP)
 
 		jsonConn, err := json.Marshal(newconn)
 
@@ -181,8 +185,6 @@ func updateAndPushConnections(newconn connection.Stored, conns map[string]connec
 func pushConnection(ID string, doc []byte) (string, error) {
 
 	newID, err := es.Push(esIndex, esType, ID, doc)
-
-	log.Println(err)
 
 	if err == nil {
 		err = broker.Publish(analyzerQueue, analyzerRoutKey, []byte(doc))

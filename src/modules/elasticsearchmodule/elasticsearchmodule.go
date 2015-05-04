@@ -52,6 +52,28 @@ func Push(index, doctype, id string, data interface{}) (string, error) {
 	return res.Id, err
 }
 
+//SearchbyTerm searches for documents with the specified termname and value termvalue.
+func SearchbyTerms(index, doctype, term1name, term1value, term2name, term2value string) (elastigo.Hits, error) {
+
+	searchJson := `{
+    "query": {
+        "filtered" : {
+            "filter" : {
+                 "bool" : {
+                    "must" : [
+                        { "term" : { "` + term1name + `" : "` + term1value + `" } }, 
+                        { "term" : { "` + term2name + `" : "` + term2value + `" } } 
+                    ]
+                }
+            }
+        }
+    }
+}`
+	res, err := es.Search(index, doctype, nil, searchJson)
+
+	return res.Hits, err
+}
+
 //checkHealth checks the connection with the ElasticSearch database at the provided URL
 //and returns an error if the connection cannot be established.
 func checkHealth() error {
