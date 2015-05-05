@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mozilla/TLS-Observer/src/certificate"
-	"github.com/mozilla/TLS-Observer/src/config"
-	"github.com/mozilla/TLS-Observer/src/modules/amqpmodule"
+	"certificate"
+	"config"
+	"modules/amqpmodule"
 )
 
 const rxQueue = "cert_analysis_queue"
@@ -49,7 +49,7 @@ func printIntro() {
 
 func isMozilla(cert certificate.Certificate) bool {
 
-	for i, s := range mozSites {
+	for _, s := range mozSites {
 
 		domain := strings.TrimRight(cert.ScanTarget, "--")
 
@@ -57,7 +57,7 @@ func isMozilla(cert certificate.Certificate) bool {
 			return true
 		}
 
-		for san := range cert.X509v3Extensions.SubjectAlternativeName {
+		for _, san := range cert.X509v3Extensions.SubjectAlternativeName {
 			if strings.Contains(san, s) {
 				return true
 			}
@@ -96,7 +96,7 @@ func worker(msgs <-chan []byte) {
 
 		if err != nil {
 			if isMozilla(stored) && isExpiring(stored) {
-				log.Printf("%s, with subjectCN: %s , is valid for more than 39 mo. Is CA: %t \n", stored.Hashes.SHA1, stored.Subject.CommonName, stored.CA)
+				log.Printf("%s, with subjectCN: %s , is expiring in less than 7 days. Is CA: %t \n", stored.Hashes.SHA1, stored.Subject.CommonName, stored.CA)
 				//TODO:Mozdef publishing code goes here.
 			}
 		}
@@ -147,7 +147,7 @@ func main() {
 	wg.Wait()
 }
 
-const mozSites = [...]string{
+var mozSites = [...]string{
 	"123done.org",
 	"1billionplusu.com",
 	"1billionplusyou.com",
