@@ -103,6 +103,19 @@ func worker(msgs <-chan []byte) {
 
 		if isMozilla(stored) {
 
+			valInfo, ok := stored.ValidationInfo["Mozilla"]
+
+			if !ok {
+				log.Println("Mozilla TrustStore info not found...")
+				continue
+			}
+
+			if !valInfo.IsValid {
+				//certificate is not trusted by the mozilla truststore
+				log.Printf("%s, with subjectCN: %s , is an untrusted mozilla cert", stored.Hashes.SHA1, stored.Subject.CommonName)
+				continue
+			}
+
 			//should add check for invalid (for any given reason ) certs
 			if isExpiring(stored) {
 				log.Printf("%s, with subjectCN: %s , is expiring in less than 7 days. Is CA: %t \n", stored.Hashes.SHA1, stored.Subject.CommonName, stored.CA)
