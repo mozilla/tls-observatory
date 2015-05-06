@@ -334,13 +334,31 @@
             }
         },
         "connection": {
+            "_timestamp": {
+                    "enabled": true,
+                    "path": "lastSeenTimestamp",
+                    "store": true
+            },
             "properties": {
                 "serverside": {
                     "type": "boolean"
                 },
-                "connectionTimestamp": {
+                "scanTarget": {
+                    "type": "string"
+                },
+                "scanIP": {
+                    "type": "string"
+                },
+                "firstSeenTimestamp": {
                     "format": "date_hour_minute_second",
                     "type": "date"
+                },
+                "lastSeenTimestamp": {
+                    "format": "date_hour_minute_second",
+                    "type": "date"
+                },
+                "curves_fallback": {
+                    "type": "boolean"
                 },
                 "ciphersuite": {
                     "properties": {
@@ -363,6 +381,9 @@
                             "type": "string"
                         },
                         "ticket_hint": {
+                            "type": "string"
+                        },
+                        "curves": {
                             "type": "string"
                         }
                     }

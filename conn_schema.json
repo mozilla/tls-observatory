@@ -10,12 +10,9 @@
                 "type": "boolean"
             },
             "scanTarget": {
-                "fields": {
-                        "raw": {
-                            "index": "not_analyzed",
-                            "type": "string"
-                        }
-                },
+                "type": "string"
+            },
+            "scanIP": {
                 "type": "string"
             },
             "firstSeenTimestamp": {
