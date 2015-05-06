@@ -51,7 +51,7 @@ func printIntro() {
 	`)
 }
 
-func hasWildcard(cert certificate.Certificate) bool {
+func isMozillaWildcard(cert certificate.Certificate) bool {
 
 	for _, s := range mozWildcards {
 		for _, san := range cert.X509v3Extensions.SubjectAlternativeName {
@@ -78,15 +78,16 @@ func worker(msgs <-chan []byte) {
 		panicIf(err)
 
 		if err != nil {
+			continue
+		}
 
-			if stored.CA {
-				continue //we do not want to check CAs for wildcards
-			}
+		if stored.CA {
+			continue //we do not want to check CAs for wildcards
+		}
 
-			if hasWildcard(stored) {
-				log.Printf("%s, with subjectCN: %s , is a wildcard mozilla cert.\n", stored.Hashes.SHA1, stored.Subject.CommonName)
-				//TODO:Mozdef publishing code goes here.
-			}
+		if isMozillaWildcard(stored) {
+			log.Printf("%s, with subjectCN: %s , is a wildcard mozilla cert.\n", stored.Hashes.SHA1, stored.Subject.CommonName)
+			//TODO:Mozdef publishing code goes here.
 		}
 	}
 

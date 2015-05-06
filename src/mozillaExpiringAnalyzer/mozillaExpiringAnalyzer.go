@@ -51,9 +51,7 @@ func isMozilla(cert certificate.Certificate) bool {
 
 	for _, s := range mozSites {
 
-		domain := strings.TrimRight(cert.ScanTarget, "--")
-
-		if strings.Contains(domain, s) {
+		if strings.Contains(cert.ScanTarget, s) {
 			return true
 		}
 
@@ -62,7 +60,6 @@ func isMozilla(cert certificate.Certificate) bool {
 				return true
 			}
 		}
-
 	}
 
 	return false
@@ -70,12 +67,14 @@ func isMozilla(cert certificate.Certificate) bool {
 
 func isExpiring(cert certificate.Certificate) bool {
 
-	na, err := time.Parse("2006-01-02 15:04:05 +0000 UTC", cert.Validity.NotAfter)
+	na, err := time.Parse("2006-01-02T15:04:05", cert.Validity.NotAfter)
 	if err != nil {
 		panicIf(err)
-	}
-	if na.Sub(time.Now()) < sevendays {
-		return true
+	} else {
+
+		if na.Sub(time.Now()) < sevendays {
+			return true
+		}
 	}
 
 	return false
@@ -95,7 +94,17 @@ func worker(msgs <-chan []byte) {
 		panicIf(err)
 
 		if err != nil {
-			if isMozilla(stored) && isExpiring(stored) {
+			continue
+		}
+
+		if stored.CA {
+			continue //we do not want to check CAs for wildcards
+		}
+
+		if isMozilla(stored) {
+
+			//should add check for invalid (for any given reason ) certs
+			if isExpiring(stored) {
 				log.Printf("%s, with subjectCN: %s , is expiring in less than 7 days. Is CA: %t \n", stored.Hashes.SHA1, stored.Subject.CommonName, stored.CA)
 				//TODO:Mozdef publishing code goes here.
 			}
