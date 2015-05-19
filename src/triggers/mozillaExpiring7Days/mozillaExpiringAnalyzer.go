@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/jvehent/gozdef"
 	"log"
 	"os"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"certificate"
@@ -21,7 +21,6 @@ const rxRoutKey = "cert_analysis"
 const sevendays = time.Duration(168 * time.Hour)
 
 var broker *amqpmodule.Broker
-var wg sync.WaitGroup
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -81,10 +80,7 @@ func isExpiring(cert certificate.Certificate) bool {
 }
 
 //worker is the main body of the goroutine that handles each received message.
-func worker(msgs <-chan []byte) {
-
-	forever := make(chan bool)
-	defer wg.Done()
+func worker(msgs <-chan []byte, gp gozdef.Publisher) {
 
 	for d := range msgs {
 
@@ -119,12 +115,30 @@ func worker(msgs <-chan []byte) {
 			//should add check for invalid (for any given reason ) certs
 			if isExpiring(stored) {
 				log.Printf("%s, with subjectCN: %s , is expiring in less than 7 days. Is CA: %t \n", stored.Hashes.SHA1, stored.Subject.CommonName, stored.CA)
-				//TODO:Mozdef publishing code goes here.
+				// publish event to mozdef
+				// create a new event and set values in the fields
+				ev, err := gozdef.NewEvent()
+				if err != nil {
+					log.Printf("failed to make new gozdef event: %v", err)
+					continue
+				}
+				ev.Category = "certificate-alert"
+				ev.Source = "tls-observatory"
+				ev.Summary = fmt.Sprintf("tls-observatory found certificate expiring in 7 days for domain %s", stored.ScanTarget)
+				ev.Tags = append(ev.Tags, "tls-observatory")
+				ev.Tags = append(ev.Tags, "certificate")
+				ev.Tags = append(ev.Tags, "expiration")
+				ev.Warning()
+				ev.Details = stored
+				err = gp.Send(ev)
+				if err != nil {
+					log.Printf("failed to publish event to mozdef: %v", err)
+					continue
+				}
 			}
 		}
 	}
-
-	<-forever
+	return
 }
 
 func main() {
@@ -137,11 +151,11 @@ func main() {
 	conf := config.AnalyzerConfig{}
 
 	var cfgFile string
-	flag.StringVar(&cfgFile, "c", "/etc/observer/analyzer.cfg", "Input file csv format")
+	flag.StringVar(&cfgFile, "c", "/etc/observer/trigger.cfg", "Configuration file")
 	flag.Parse()
 
 	_, err = os.Stat(cfgFile)
-	failOnError(err, "Missing configuration file from '-c' or /etc/observer/retriever.cfg")
+	failOnError(err, "Missing configuration file from '-c' or /etc/observer/trigger.cfg")
 
 	conf, err = config.AnalyzerConfigLoad(cfgFile)
 	if err != nil {
@@ -152,21 +166,20 @@ func main() {
 	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
 
 	broker, err = amqpmodule.RegisterURL(conf.General.RabbitMQRelay)
-
 	failOnError(err, "Failed to register RabbitMQ")
 
 	msgs, err := broker.Consume(rxQueue, rxRoutKey)
-
 	if err != nil {
 		failOnError(err, "Failed to Consume from receiving queue")
 	}
 
-	for i := 0; i < cores; i++ {
-		wg.Add(1)
-		go worker(msgs)
+	// bind to the mozdef relay exchange
+	gp, err := gozdef.InitAmqp(conf.MozDef)
+	if err != nil {
+		failOnError(err, "Failed to establish connection to mozdef relay")
 	}
 
-	wg.Wait()
+	worker(msgs, gp)
 }
 
 var mozSites = [...]string{

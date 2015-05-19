@@ -8,21 +8,16 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 
-	"certificate"
 	"config"
+	"connection"
 	"modules/amqpmodule"
 )
 
-const rxQueue = "cert_analysis_queue"
-const rxRoutKey = "cert_analysis"
-
-var mozWildcards = [...]string{
-	"*.mozilla.org",
-	"*.mozilla.org",
-	"*.firefox.com",
-	"*.firefox.org",
-}
+const rxQueue = "conn_analysis_queue"
+const rxRoutKey = "conn_analysis"
+const thirtyNineMonths = time.Duration(28512 * time.Hour)
 
 var broker *amqpmodule.Broker
 var wg sync.WaitGroup
@@ -46,21 +41,19 @@ func panicIf(err error) bool {
 func printIntro() {
 	fmt.Println(`
 	##################################
-	#    WildCard Certs Analyzer     #
+	#         SSLv3 Analyzer          #
 	##################################
 	`)
 }
 
-func isMozillaWildcard(cert certificate.Certificate) bool {
-
-	for _, s := range mozWildcards {
-		for _, san := range cert.X509v3Extensions.SubjectAlternativeName {
-			if san == s {
+func hasSSLv3(c connection.Stored) bool {
+	for _, s := range c.CipherSuites {
+		for _, p := range s.Protocols {
+			if p == "SSLv3" {
 				return true
 			}
 		}
 	}
-
 	return false
 }
 
@@ -72,22 +65,17 @@ func worker(msgs <-chan []byte) {
 
 	for d := range msgs {
 
-		stored := certificate.Certificate{}
+		stored := connection.Stored{}
 
 		err := json.Unmarshal(d, &stored)
 		panicIf(err)
 
-		if err != nil {
-			continue
-		}
+		if err == nil {
 
-		if stored.CA {
-			continue //we do not want to check CAs for wildcards
-		}
-
-		if isMozillaWildcard(stored) {
-			log.Printf("%s, with subjectCN: %s , is a wildcard mozilla cert.\n", stored.Hashes.SHA1, stored.Subject.CommonName)
-			//TODO:Mozdef publishing code goes here.
+			if hasSSLv3(stored) {
+				log.Printf("Scan Target %s has SSLv3 protocol available.", stored.ScanTarget)
+				//TODO:Mozdef publishing code goes here.
+			}
 		}
 	}
 
@@ -104,11 +92,11 @@ func main() {
 	conf := config.AnalyzerConfig{}
 
 	var cfgFile string
-	flag.StringVar(&cfgFile, "c", "/etc/observer/analyzer.cfg", "Input file csv format")
+	flag.StringVar(&cfgFile, "c", "/etc/observer/trigger.cfg", "configuration file")
 	flag.Parse()
 
 	_, err = os.Stat(cfgFile)
-	failOnError(err, "Missing configuration file from '-c' or /etc/observer/retriever.cfg")
+	failOnError(err, "Missing configuration file from '-c' or /etc/observer/trigger.cfg")
 
 	conf, err = config.AnalyzerConfigLoad(cfgFile)
 	if err != nil {
