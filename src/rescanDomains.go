@@ -111,9 +111,9 @@ func main() {
 				}
 				if _, ok := domains[d]; !ok {
 					err = mqch.Publish(
-						"amq.direct",       // exchange
-						"scan_ready_queue", // routing key
-						false,              // mandatory
+						"amq.direct", // exchange
+						"scan_ready", // routing key
+						false,        // mandatory
 						false,
 						amqp.Publishing{
 							DeliveryMode: amqp.Persistent,
@@ -125,7 +125,7 @@ func main() {
 					}
 					dctr++
 					domains[d] = dctr
-					fmt.Println("send domain", d, "to scan_ready_queue")
+					fmt.Println("send domain", d, "to scan_ready")
 				}
 			}
 		}

@@ -45,23 +45,6 @@ func main() {
 	panicIf(err)
 	defer ch.Close()
 
-	_, err = ch.QueueDeclare(
-		"scan_ready_queue", // name
-		true,               // durable
-		false,              // delete when unused
-		false,              // exclusive
-		false,              // no-wait
-		nil,                // arguments
-	)
-	panicIf(err)
-
-	err = ch.Qos(
-		3,     // prefetch count
-		0,     // prefetch size
-		false, // global
-	)
-	panicIf(err)
-
 	if infile != "" {
 
 		file, _ := os.Open(infile)
@@ -89,9 +72,9 @@ func main() {
 			domain = record[len(record)-1]
 
 			err = ch.Publish(
-				"amq.direct",       // exchange
-				"scan_ready_queue", // routing key
-				false,              // mandatory
+				"amq.direct", // exchange
+				"scan_ready", // routing key
+				false,        // is mandatory
 				false,
 				amqp.Publishing{
 					DeliveryMode: amqp.Persistent,
@@ -106,9 +89,9 @@ func main() {
 	} else {
 
 		err = ch.Publish(
-			"",                 // exchange
-			"scan_ready_queue", // routing key
-			false,              // mandatory
+			"amq.direct", // exchange
+			"scan_ready", // routing key
+			false,        // is mandatory
 			false,
 			amqp.Publishing{
 				DeliveryMode: amqp.Persistent,
