@@ -83,7 +83,7 @@ func main() {
 				}
 			}
 		}`, from.Format("2006-01-02T15:04:05"), to.Format("2006-01-02T15:04:05"))
-		res, err := es.Search("certificates", "certificateInfo", nil, filter)
+		res, err := es.Search("observer", "certificate", nil, filter)
 		if err != nil {
 			panic(err)
 		}
