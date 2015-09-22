@@ -4,10 +4,10 @@ import (
 	"connection"
 )
 
-func (db *DB) InsertConnection(conn *connection.Connection) error {
+func (db *DB) InsertConnection(conn *connection.Stored) error {
 
 	q := ""
-	res, err := db.Exec(q)
+	_, err := db.Exec(q)
 
 	return err
 }

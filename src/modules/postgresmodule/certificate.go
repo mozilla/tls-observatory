@@ -6,8 +6,25 @@ import (
 
 func (db *DB) InsertCertificate(cert *certificate.Certificate) error {
 
-	q := buildInsertQueryFromCert(cert)
-	res, err := db.Exec(q)
+	var ubuntu_valid, mozilla_valid, msft_valid, apple_valid bool
+
+	//TODO: iter through truststores and check above booleans.
+
+	_, err := db.Exec(`INSERT INTO certificates(  sha1_fingerprint, sha256_fingerprint,
+	issuer, subject, version, is_ca, valid_not_before, valid_not_after,
+	first_seen, last_seen, is_ubuntu_valid, is_mozilla_valid, is_microsoft_valid, 
+	is_apple_valid, x509_basicConstraints, x509_crlDistPoints, x509_extendedKeyUsage
+	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
+	signature_algo, parent_id . raw_cert ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+	$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24 )`,
+		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
+		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, cert.FirstSeenTimestamp,
+		cert.LastSeenTimestamp, ubuntu_valid, mozilla_valid, msft_valid, apple_valid,
+		cert.X509v3BasicConstraints, cert.x509v3Extensions.CRLDistributionPoints,
+		cert.x509v3Extensions.ExtendedKEyUsage, cert.x509v3Extensions.AuthorityKeyId,
+		cert.x509v3Extensions.SubjectKeyId, cert.x509v3Extensions.KeyUsage,
+		cert.x509v3Extensions.SubjectAlternativeName, cert.SignatureAlgorithm,
+		cert.ParentSignature /*TODO put whole raw cert into certificate struct*/)
 
 	return err
 }
@@ -61,18 +78,13 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) error {
 //	is_revoked                 	bool NULL,
 //	revoked_at                 	timestamp NULL,
 //	reason_revoked             	crl_reason NULL,
+//	raw_cert					varchar NOT NULL
 //	PRIMARY KEY(id)
 //);
 
-func buildInsertQueryFromCert(cert *certificate.Certificate) string {
-	q := `INSERT INTO certificates( id, sha1_fingerprint, sha256_fingerprint,
-	 serial_no, issuer, subject, version, is_ca, valid_not_before, valid_not_after,
-	 first_seen, last_seen, is_ubuntu_valid, is_mozilla_valid, is_microsoft_valid, 
-	 is_apple_valid, x509_basicConstraints, x509_crlDistPoints, x509_extendedKeyUsage
-	 x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
-	 signature_algo, parent_id    )  `
-}
-
 func (db *DB) UpdateCertLastSeen(cert *certificate.Certificate) error {
 
+	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE sha1_fingerprint=$2", cert.LastSeenTimestamp, cert.Hashes.SHA1)
+
+	return err
 }
