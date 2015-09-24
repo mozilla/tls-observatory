@@ -22,10 +22,10 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) error {
 		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
 		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, cert.FirstSeenTimestamp,
 		cert.LastSeenTimestamp, ubuntu_valid, mozilla_valid, msft_valid, apple_valid,
-		cert.X509v3BasicConstraints, cert.x509v3Extensions.CRLDistributionPoints,
-		cert.x509v3Extensions.ExtendedKEyUsage, cert.x509v3Extensions.AuthorityKeyId,
-		cert.x509v3Extensions.SubjectKeyId, cert.x509v3Extensions.KeyUsage,
-		cert.x509v3Extensions.SubjectAlternativeName, cert.SignatureAlgorithm,
+		cert.X509v3BasicConstraints, cert.X509v3Extensions.CRLDistributionPoints,
+		cert.X509v3Extensions.ExtendedKeyUsage, cert.X509v3Extensions.AuthorityKeyId,
+		cert.X509v3Extensions.SubjectKeyId, cert.X509v3Extensions.KeyUsage,
+		cert.X509v3Extensions.SubjectAlternativeName, cert.SignatureAlgorithm,
 		cert.ParentSignature /*TODO put whole raw cert into certificate struct*/)
 
 	return err
@@ -88,7 +88,9 @@ func (db *DB) UpdateCertLastSeen(cert *certificate.Certificate) error {
 
 func (db *DB) GetCertwithFingerprint(sha1 string) (*certificate.Certificate, error) {
 
-	row, err = db.QueryRow(`SELECT sha256_fingerprint,
+	var ubuntu_valid, mozilla_valid, msft_valid, apple_valid bool
+
+	row := db.QueryRow(`SELECT sha256_fingerprint,
 		issuer, subject, version, is_ca, valid_not_before, valid_not_after,
 		first_seen, last_seen, is_ubuntu_valid, is_mozilla_valid, is_microsoft_valid, 
 		is_apple_valid, x509_basicConstraints, x509_crlDistPoints, x509_extendedKeyUsage
@@ -97,19 +99,24 @@ func (db *DB) GetCertwithFingerprint(sha1 string) (*certificate.Certificate, err
 		FROM certificates
 		WHERE sha1_fingerprint=$1`, sha1)
 
-	if err != nil {
-		return nil, err
-	}
-
 	cert := &certificate.Certificate{}
 
-	err = row.Scan(&cert.Hashes.SHA256, &cert.Issuer.CommonName, &cert.Subject.CommonName,
+	err := row.Scan(&cert.Hashes.SHA256, &cert.Issuer.CommonName, &cert.Subject.CommonName,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
-		&cert.LastSeenTimestamp, ubuntu_valid, mozilla_valid, msft_valid, apple_valid,
-		&cert.X509v3BasicConstraints, &cert.x509v3Extensions.CRLDistributionPoints,
-		&cert.x509v3Extensions.ExtendedKEyUsage, &cert.x509v3Extensions.AuthorityKeyId,
-		&cert.x509v3Extensions.SubjectKeyId, &cert.x509v3Extensions.KeyUsage,
-		&cert.x509v3Extensions.SubjectAlternativeName, &cert.SignatureAlgorithm,
+		&cert.LastSeenTimestamp, &ubuntu_valid, &mozilla_valid, &msft_valid, &apple_valid,
+		&cert.X509v3BasicConstraints, &cert.X509v3Extensions.CRLDistributionPoints,
+		&cert.X509v3Extensions.ExtendedKeyUsage, &cert.X509v3Extensions.AuthorityKeyId,
+		&cert.X509v3Extensions.SubjectKeyId, &cert.X509v3Extensions.KeyUsage,
+		&cert.X509v3Extensions.SubjectAlternativeName, &cert.SignatureAlgorithm,
 		&cert.ParentSignature)
+
+	//TODO: parse boolean and recreate truststore validity
+	//may have to think of another way to store that.
+
+	if err != nil {
+		return nil, err
+	} else {
+		return cert, nil
+	}
 
 }
