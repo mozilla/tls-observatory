@@ -8,7 +8,6 @@ import (
 	"os"
 	"runtime"
 	"sync"
-	"time"
 
 	"certificate"
 	"config"
@@ -17,7 +16,13 @@ import (
 
 const rxQueue = "cert_analysis_queue"
 const rxRoutKey = "cert_analysis"
-const thirtyNineMonths = time.Duration(28512 * time.Hour)
+
+var mozWildcards = [...]string{
+	"*.mozilla.org",
+	"*.mozilla.org",
+	"*.firefox.com",
+	"*.firefox.org",
+}
 
 var broker *amqpmodule.Broker
 var wg sync.WaitGroup
@@ -41,22 +46,19 @@ func panicIf(err error) bool {
 func printIntro() {
 	fmt.Println(`
 	##################################
-	#         39Mo Analyzer          #
+	#    WildCard Certs Analyzer     #
 	##################################
 	`)
 }
 
-func isValidmorethan39(cert certificate.Certificate) bool {
-	na, err := time.Parse("2006-01-02 15:04:05 +0000 UTC", cert.Validity.NotAfter)
-	if err != nil {
-		panic(err)
-	}
-	nb, err := time.Parse("2006-01-02 15:04:05 +0000 UTC", cert.Validity.NotBefore)
-	if err != nil {
-		panic(err)
-	}
-	if na.Sub(nb) > thirtyNineMonths {
-		return true
+func isMozillaWildcard(cert certificate.Certificate) bool {
+
+	for _, s := range mozWildcards {
+		for _, san := range cert.X509v3Extensions.SubjectAlternativeName {
+			if san == s {
+				return true
+			}
+		}
 	}
 
 	return false
@@ -76,10 +78,16 @@ func worker(msgs <-chan []byte) {
 		panicIf(err)
 
 		if err != nil {
-			if isValidmorethan39(stored) {
-				log.Printf("%s, with subjectCN: %s , is valid for more than 39 mo. Is CA: %t \n", stored.Hashes.SHA1, stored.Subject.CommonName, stored.CA)
-				//TODO:Mozdef publishing code goes here.
-			}
+			continue
+		}
+
+		if stored.CA {
+			continue //we do not want to check CAs for wildcards
+		}
+
+		if isMozillaWildcard(stored) {
+			log.Printf("%s, with subjectCN: %s , is a wildcard mozilla cert.\n", stored.Hashes.SHA1, stored.Subject.CommonName)
+			//TODO:Mozdef publishing code goes here.
 		}
 	}
 
@@ -96,11 +104,11 @@ func main() {
 	conf := config.AnalyzerConfig{}
 
 	var cfgFile string
-	flag.StringVar(&cfgFile, "c", "/etc/observer/analyzer.cfg", "Input file csv format")
+	flag.StringVar(&cfgFile, "c", "/etc/observer/trigger.cfg", "configuration file")
 	flag.Parse()
 
 	_, err = os.Stat(cfgFile)
-	failOnError(err, "Missing configuration file from '-c' or /etc/observer/retriever.cfg")
+	failOnError(err, "Missing configuration file from '-c' or /etc/observer/trigger.cfg")
 
 	conf, err = config.AnalyzerConfigLoad(cfgFile)
 	if err != nil {

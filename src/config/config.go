@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
-
 	"code.google.com/p/gcfg"
+	"fmt"
+	"github.com/jvehent/gozdef"
 )
 
 type RetrieverConfig struct {
@@ -23,6 +23,7 @@ type AnalyzerConfig struct {
 		Name []string
 		Path []string
 	}
+	MozDef gozdef.MqConf
 }
 
 func RetrieverConfigLoad(path string) (conf RetrieverConfig, err error) {

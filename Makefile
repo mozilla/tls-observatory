@@ -37,7 +37,7 @@ GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: go_get_deps certRetriever certAnalyzer tlsRetriever tlsAnalyzer webapi retrieveTLSInfo rescanDomains SSLv3Analyzer 39monthAnalyzer mozillaExpiringAnalyzer mozillaWildcardAnalyzer
+all: go_get_deps certRetriever certAnalyzer tlsRetriever tlsAnalyzer webapi retrieveTLSInfo rescanDomains SSLv3Trigger 39monthsTrigger mozillaExpiring7DaysTrigger mozillaWildcardTrigger
 
 rescanDomains:
 	echo building rescanDomains for $(OS)/$(ARCH)
@@ -75,29 +75,29 @@ tlsAnalyzer:
 	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsAnalyzer
 	[ -x "$(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-SSLv3Analyzer:
-	echo building SSLv3Analyzer for $(OS)/$(ARCH)
+SSLv3Trigger:
+	echo building SSLv3Trigger for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/SSLv3Analyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) SSLv3Analyzer
-	[ -x "$(BINDIR)/SSLv3Analyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/SSLv3Trigger-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) triggers/SSLv3
+	[ -x "$(BINDIR)/SSLv3Trigger-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-39monthAnalyzer:
-	echo building 39monthAnalyzer for $(OS)/$(ARCH)
+39monthsTrigger:
+	echo building 39monthsTrigger for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/39monthAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) 39monthAnalyzer
-	[ -x "$(BINDIR)/39monthAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/39monthsTrigger-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) triggers/39months
+	[ -x "$(BINDIR)/39monthsTrigger-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-mozillaExpiringAnalyzer:
-	echo building mozillaExpiringAnalyzer for $(OS)/$(ARCH)
+mozillaExpiring7DaysTrigger:
+	echo building mozillaExpiring7DaysTrigger for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/mozillaExpiringAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) mozillaExpiringAnalyzer
-	[ -x "$(BINDIR)/mozillaExpiringAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/mozillaExpiring7DaysTrigger-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) triggers/mozillaExpiring7Days
+	[ -x "$(BINDIR)/mozillaExpiring7DaysTrigger-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-mozillaWildcardAnalyzer:
-	echo building mozillaWildcardAnalyzer for $(OS)/$(ARCH)
+mozillaWildcardTrigger:
+	echo building mozillaWildcardTrigger for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/mozillaWildcardAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) mozillaWildcardAnalyzer
-	[ -x "$(BINDIR)/mozillaWildcardAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/mozillaWildcardTrigger-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) triggers/mozillaWildcard
+	[ -x "$(BINDIR)/mozillaWildcardTrigger-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 webapi:
 	echo building web-api for $(OS)/$(ARCH)
@@ -113,6 +113,7 @@ go_get_deps:
 	$(GOGETTER) github.com/mattbaird/elastigo/lib
 	$(GOGETTER) github.com/gorilla/mux
 	$(GOGETTER) code.google.com/p/gcfg
+	$(GOGETTER) github.com/jvehent/gozdef
 
 deb-pkg: all
 	rm -fr tmppkg
@@ -125,20 +126,25 @@ deb-pkg: all
 	$(INSTALL) -D -m 0755 $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/web-api
 	$(INSTALL) -D -m 0755 $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/retrieveTLSInfo
 	$(INSTALL) -D -m 0755 $(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/rescanDomains
-	$(INSTALL) -D -m 0755 $(BINDIR)/SSLv3Analyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/SSLv3Analyzer
-	$(INSTALL) -D -m 0755 $(BINDIR)/39monthAnalyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/39monthAnalyzer
-	$(INSTALL) -D -m 0755 $(BINDIR)/mozillaExpiringAnalyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/mozillaExpiringAnalyzer
-	$(INSTALL) -D -m 0755 $(BINDIR)/mozillaWildcardAnalyzer-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/mozillaWildcardAnalyzer
+	$(INSTALL) -D -m 0755 $(BINDIR)/SSLv3Trigger-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/SSLv3Trigger
+	$(INSTALL) -D -m 0755 $(BINDIR)/39monthsTrigger-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/39monthsTrigger
+	$(INSTALL) -D -m 0755 $(BINDIR)/mozillaExpiring7DaysTrigger-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/mozillaExpiring7DaysTrigger
+	$(INSTALL) -D -m 0755 $(BINDIR)/mozillaWildcardTrigger-$(BUILDREV)$(BINSUFFIX) tmppkg/opt/observer/bin/mozillaWildcardTrigger
 # configuration files
 	$(INSTALL) -D -m 0755 conf/certanalyzer.cfg tmppkg/etc/observer
 	$(INSTALL) -D -m 0755 conf/certretriever.cfg tmppkg/etc/observer
 	$(INSTALL) -D -m 0755 conf/tlsanalyzer.cfg tmppkg/etc/observer
 	$(INSTALL) -D -m 0755 conf/tlsretriever.cfg tmppkg/etc/observer
+	$(INSTALL) -D -m 0755 conf/trigger.cfg tmppkg/etc/observer
 # init scripts
 	$(INSTALL) -D -m 0755 conf/tlsobserver-certanalyzer.conf tmppkg/etc/init
 	$(INSTALL) -D -m 0755 conf/tlsobserver-certretriever.conf tmppkg/etc/init
 	$(INSTALL) -D -m 0755 conf/tlsobserver-tlsanalyzer.conf tmppkg/etc/init
 	$(INSTALL) -D -m 0755 conf/tlsobserver-tlsretriever.conf tmppkg/etc/init
+	$(INSTALL) -D -m 0755 conf/tlsobserver-sslv3trigger.conf tmppkg/etc/init
+	$(INSTALL) -D -m 0755 conf/tlsobserver-39monthstrigger.conf tmppkg/etc/init
+	$(INSTALL) -D -m 0755 conf/tlsobserver-mozillaexpiring7daystrigger.conf tmppkg/etc/init
+	$(INSTALL) -D -m 0755 conf/tlsobserver-mozillawildcardtrigger.conf tmppkg/etc/init
 # truststores
 	$(INSTALL) -D -m 0755 CA_AOSP.crt tmppkg/etc/observer/truststores
 	$(INSTALL) -D -m 0755 CA_apple_10.10.0.crt tmppkg/etc/observer/truststores
