@@ -1,38 +1,50 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"runtime"
 	"time"
 
 	"github.com/mozilla/TLS-Observer/certificate"
 	"github.com/mozilla/TLS-Observer/config"
 	"github.com/mozilla/TLS-Observer/connection"
 	"github.com/mozilla/TLS-Observer/modules/amqpmodule"
+	"github.com/mozilla/TLS-Observer/worker"
 )
 
-//CREATE TABLE scans  (
-//	id                         	serial primary key,
-//	time_stamp	           		timestamp NOT NULL,
-//  target						varchar NOT NULL,
-//  replay 				        integer NULL, //hours or days
-//	cert_id		              	varchar references certificates(id),
-//	conn_id                  	varchar references connections(id),
-//	worker_outputs              	integer[] NULL, // ids of the worker table references applying to this scan
-//	score                    	varchar NULL,
-//	old_compliant               bool NULL,
-//	intermediate_compliant      bool NULL,
-//
-//);
+type Scan struct {
+	id               string
+	time_stamp       time.Time
+	target           string
+	replay           int //hours or days
+	has_tls          bool
+	cert_id          string
+	is_valid         bool
+	validation_error string
+	is_ubuntu_valid  bool
+	is_mozilla_valid bool
+	is_windows_valid bool
+	is_apple_valid   bool
+	conn_info        []byte
+}
 
-//CREATE TABLE worker_output  (
-//	id                         	serial primary key,
-//	worker_name	           		varchar NOT NULL,
-//  output						jsonb NULL
-//);
+const rxQueue = "cert_rx_queue"
+const rxRoutKey = "scan_ready"
+
+var broker *amqpmodule.Broker
+
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Fatalf("%s: %s", msg, err)
+		panic(fmt.Sprintf("%s: %s", msg, err))
+	}
+}
 
 func main() {
 	var err error
-
-	printIntro()
 
 	conf := config.ObserverConfig{}
 
@@ -59,23 +71,31 @@ func main() {
 
 	for d := range msgs {
 
-		go func(domain []byte) {
+		go func(id []byte) {
 
-			resChan := make(chan modules.ModuleResult)
+			scan := getScan(string(id))
 
-			//run certificate go routine
+			resChan := make(chan worker.WorkerResult)
+			defer close(resChan)
+
 			go func() {
-				certificate.HandleCert(domain)
+				certID, jsonCert, err := certificate.HandleCert(scan.target)
+				err, ok := err.(certificate.NoTLSCertsErr)
+
+				if ok {
+					//nil cert, does not implement TLS
+				}
+
 			}()
 			//run connection go routine
 			go func() {
-				connection.Connect(domain)
+				js, err := connection.Connect(scan.target)
 			}()
 
 			go func() {
 				for name, wrkInfo := range worker.AvailableWorkers {
 
-					go wrkInfo.Runner.(modules.Moduler).Run(domain, resChan)
+					go wrkInfo.Runner.(worker.Worker).Run([]byte(scan.target), resChan)
 				}
 			}()
 
@@ -87,13 +107,21 @@ func main() {
 
 			select {
 			case <-timeout:
+			//wait no more than 10 secs for all workers to finish.
 
 			case <-resChan:
 
 			}
 
-		}(d.Body)
+		}(d)
 	}
 
 	select {}
+}
+
+func getScan(id string) Scan {
+
+	s := Scan{}
+	return s
+
 }
