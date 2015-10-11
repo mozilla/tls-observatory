@@ -37,7 +37,7 @@ GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: tlsObserver retrieveTLSInfo SSLv3Trigger 39monthsTrigger mozillaExpiring7DaysTrigger mozillaWildcardTrigger
+all: tlsObserver
 
 #rescanDomains:
 #	echo building rescanDomains for $(OS)/$(ARCH)
@@ -54,7 +54,7 @@ retrieveTLSInfo:
 tlsObserver:
 	echo building tlsObserver for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/TLS-Observer/tlsObserver
+	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsObserver/tlsObserver.go
 	[ -x "$(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 SSLv3Trigger:
