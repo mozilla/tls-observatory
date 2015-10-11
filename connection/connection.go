@@ -34,7 +34,6 @@ type CipherscanCiphersuite struct {
 //the following structs represent the output we want to provide to DB.
 
 type Stored struct {
-	ScanTarget         string                       `json:"scanTarget"`
 	ScanIP             string                       `json:"scanIP"`
 	FirstSeenTimestamp string                       `json:"firstSeenTimestamp"`
 	LastSeenTimestamp  string                       `json:"lastSeenTimestamp"`
@@ -142,7 +141,6 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 	c.LastSeenTimestamp = timestamp
 	c.ServerSide = stringtoBool(s.ServerSide)
 	c.CurvesFallback = stringtoBool(s.CurvesFallback)
-	c.ScanTarget = s.Target
 	c.ScanIP = s.IP
 
 	c.CipherSuites = make(map[string]StoredCiphersuite)
