@@ -25,13 +25,20 @@ func panicIf(err error) {
 	}
 }
 
-func Connect(domain string) {
+type NoTLSConnErr string
+
+func (f NoTLSConnErr) Error() string {
+	return fmt.Sprintf("No TLS Certs Received from %s", string(f))
+}
+
+func Connect(domain string) ([]byte, error) {
 
 	ip := getRandomIP(domain)
 
 	if ip == "" {
-		log.Println("Could not resolve ip for: ", domain)
-		return
+		e := fmt.Errorf("Could not resolve ip for: ", domain)
+		log.Println(e)
+		return nil, e
 	}
 
 	cmd := cipherscan + " -j --curves -servername " + domain + " " + ip + ":443 "
@@ -44,22 +51,27 @@ func Connect(domain string) {
 	err := comm.Run()
 	if err != nil {
 		log.Println(err)
+		return nil, err
 	}
 
-	info := connection.CipherscanOutput{}
+	info := CipherscanOutput{}
 	err = json.Unmarshal([]byte(out.String()), &info)
 	if err != nil {
 		log.Println(err)
-		//should we requeue the domain???
-		return
+		return nil, err
 	}
 
 	info.Target = domain
 	info.IP = ip
 
-	processConnection(info.Stored())
+	c, err := info.Stored()
 
-	panicIf(err)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return json.Marshal(c)
 }
 
 func getRandomIP(domain string) string {
