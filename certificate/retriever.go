@@ -7,42 +7,38 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"runtime"
 	"strings"
 	"time"
 )
 
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-		panic(fmt.Sprintf("%s: %s", msg, err))
-	}
+type NoTLSCertsErr string
+
+func (f NoTLSCertsErr) Error() string {
+	return fmt.Sprintf("No TLS Certs Received from %s", string(f))
 }
 
 //worker is the body of each goroutine spawned by the retriever.
-func HandleCert(domain string) {
+func HandleCert(domain string) (string, []byte, error) {
 
 	certs, ip, err := retrieveCertFromHost(domain, "443", true)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("Retrieving certs for %s failed with: %s", domain, err.Error())
+		return "", nil, err
 	}
 
 	if certs == nil {
-		log.Println("no certificate retrieved from", string(msg))
-		return
+		e := new(NoTLSCertsErr)
+		return "", nil, e
 	}
 
 	var chain = Chain{}
 
-	chain.Domain = string(msg)
+	chain.Domain = domain
 
 	chain.IP = ip
 
@@ -52,7 +48,7 @@ func HandleCert(domain string) {
 
 	}
 
-	handleCertChain(chain)
+	return handleCertChain(&chain)
 
 }
 
