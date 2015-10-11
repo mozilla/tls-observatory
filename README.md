@@ -6,6 +6,7 @@ TLS-Observer
  * github.com/gorilla/mux
  * github.com/streadway/amqp
  * code.google.com/p/gcfg
+ * github.com/lib/pq
 
 ##Architecture##
 You need a RabbitMQ and a Postgres server
@@ -17,7 +18,6 @@ You need a RabbitMQ and a Postgres server
 ####tools####
 
  * retrieveTLS.go: reads a list of domains and publish them the scan\_ready\_queue.
- * makeDomainsList.go: queries existing certificates in elasticsearch, extracts the domains from it, and sends it to the scan\_ready\_queue for rescanning.
 
 ##Authors##
 
