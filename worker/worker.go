@@ -23,9 +23,9 @@ func RegisterWorker(name string, info WorkerInfo) {
 		fmt.Fprintf(os.Stderr, "RegisterModule: a module named '%s' has already been registered.\nAre you trying to import the same module twice?\n", name)
 		os.Exit(1)
 	}
-	AvailableModules[name] = info
+	AvailableWorkers[name] = info
 }
 
 type Worker interface {
-	Run([]byte, chan ModuleResult)
+	Run([]byte, chan WorkerResult)
 }
