@@ -10,6 +10,7 @@ type ObserverConfig struct {
 	General struct {
 		RabbitMQRelay  string
 		Postgres       string
+		PostgresPass   string
 		CipherscanPath string
 		GoRoutines     int // * cores = The Max number of spawned Goroutines
 	}
@@ -39,6 +40,7 @@ func GetObserverDefaults() ObserverConfig {
 	conf.TrustStores.Name = append(conf.TrustStores.Name, "")
 	conf.TrustStores.Path = append(conf.TrustStores.Path, "")
 	conf.General.Postgres = "127.0.0.1:5432"
+	conf.General.PostgresPass = "password"
 	conf.General.CipherscanPath = "../../../cipherscan/cipherscan"
 	conf.General.GoRoutines = 10
 
