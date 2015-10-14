@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"github.com/mozilla/TLS-Observer/config"
 )
 
 func main() {

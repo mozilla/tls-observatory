@@ -22,6 +22,7 @@ type Certificate struct {
 	FirstSeenTimestamp     string                    `json:"firstSeenTimestamp"`
 	LastSeenTimestamp      string                    `json:"lastSeenTimestamp"`
 	Hashes                 Hashes                    `json:"hashes"`
+	Raw                    string                    `json:"Raw"`
 	Anomalies              string                    `json:"anomalies,omitempty"`
 }
 

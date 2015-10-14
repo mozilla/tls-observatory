@@ -6,6 +6,7 @@ CREATE TABLE scans  (
 	has_tls						bool NOT NULL,
 	cert_id		              	varchar references certificates(id),
 	is_valid                   	bool NULL,
+	completion_perc				integer NULL,
 	validation_error           	varchar NULL,
 	is_ubuntu_valid           	bool NULL,
 	is_mozilla_valid           	bool NULL,

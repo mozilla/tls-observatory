@@ -10,10 +10,10 @@ type DB struct {
 	*sql.DB
 }
 
-func RegisterConnection(dbname, user, password, host string, port int, sslmode string) (*DB, error) {
+func RegisterConnection(dbname, user, password, hostport string, sslmode string) (*DB, error) {
 
-	url := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		user, password, host, port, dbname, sslmode)
+	url := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
+		user, password, hostport, dbname, sslmode)
 
 	db, err := sql.Open("postgres", url)
 

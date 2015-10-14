@@ -21,6 +21,23 @@ type ObserverConfig struct {
 	MozDef gozdef.MqConf
 }
 
+type APIConfig struct {
+	Postgres     string
+	PostgresPass string
+}
+
+func APIConfigLoad(path string) (conf APIConfig, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("configLoad() -> %v", e)
+		}
+	}()
+	var c APIConfig
+	err = gcfg.ReadFileInto(&c, path)
+
+	return c, err
+}
+
 func ObserverConfigLoad(path string) (conf ObserverConfig, err error) {
 	defer func() {
 		if e := recover(); e != nil {

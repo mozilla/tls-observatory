@@ -36,6 +36,7 @@ const rxQueue = "cert_rx_queue"
 const rxRoutKey = "scan_ready"
 
 var broker *amqpmodule.Broker
+var db *pg.DB
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -64,7 +65,7 @@ func main() {
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
 
-	db, err := pg.RegisterConnection("observer", "observer", conf.General.PostgresPass, conf.General.Postgres, "disable")
+	db, err = pg.RegisterConnection("observer", "observer", conf.General.PostgresPass, conf.General.Postgres, "disable")
 
 	failOnError(err, "Failed to connect to database")
 
@@ -87,7 +88,13 @@ func main() {
 				return
 			}
 
-			scan := getScan(string(id))
+			scan, err := getScan(string(id))
+
+			if err != nil {
+				log.Println(err, "Could not find /decode scan with id: ", string(id))
+				tx.Rollback()
+				return
+			}
 
 			totalWorkers := len(worker.AvailableWorkers)
 
@@ -104,6 +111,9 @@ func main() {
 					//update scans table
 					return
 				}
+
+				//Update scans table
+				//TODO start second stage workers requiring certificate
 
 			}()
 			//run connection go routine
@@ -130,11 +140,11 @@ func main() {
 			case <-timeout:
 				err := tx.Commit()
 				return
-			//wait no more than 10 secs for all workers to finish.
+				//wait no more than 10 secs for all workers to finish.
 
 			case <-resChan:
 				endedWorkers += endedWorkers
-				currCompletionPercentage := (endedWorkers/totalWorkers)*80 + 20
+				currCompletionPercentage := ((endedWorkers/totalWorkers)*80 + 20) / 100
 				//write worker result to db
 				//update completion percentage in db
 			}
@@ -145,9 +155,26 @@ func main() {
 	select {}
 }
 
-func getScan(id string) Scan {
+func getScan(id string) (Scan, error) {
 
 	s := Scan{}
-	return s
+	s.id = id
+
+	row := db.QueryRow(`SELECT time_stamp, target, replay, has_tls, 	cert_id,
+	is_valid, completion_perc, validation_error, is_ubuntu_valid, is_mozilla_valid,
+	is_windows_valid, is_apple_valid, conn_info
+	FROM certificates WHERE id=$1`, id)
+
+	cert := &certificate.Certificate{}
+
+	err := row.Scan(&s.time_stamp, &s.target, &s.replay, &s.has_tls, &s.cert_id,
+		&s.is_valid, &s.validation_error, &s.is_ubuntu_valid, &s.is_mozilla_valid,
+		&s.is_windows_valid, &s.is_apple_valid, &s.conn_info)
+
+	if err != nil {
+		return s, err
+	}
+
+	return s, nil
 
 }
