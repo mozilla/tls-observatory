@@ -54,7 +54,7 @@ retrieveTLSInfo:
 tlsObserver:
 	echo building tlsObserver for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsObserver/tlsObserver.go
+	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsObserver.go
 	[ -x "$(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 SSLv3Trigger:
