@@ -16,22 +16,6 @@ import (
 	"github.com/mozilla/TLS-Observer/worker"
 )
 
-type Scan struct {
-	id               string
-	time_stamp       time.Time
-	target           string
-	replay           int //hours or days
-	has_tls          bool
-	cert_id          string
-	is_valid         bool
-	validation_error string
-	is_ubuntu_valid  bool
-	is_mozilla_valid bool
-	is_windows_valid bool
-	is_apple_valid   bool
-	conn_info        []byte
-}
-
 const rxQueue = "cert_rx_queue"
 const rxRoutKey = "scan_ready"
 
@@ -75,7 +59,7 @@ func main() {
 
 	msgs, err := broker.Consume(rxQueue, rxRoutKey)
 
-	certificate.Setup(conf)
+	certificate.Setup(conf,db)
 
 	for d := range msgs {
 
@@ -88,7 +72,7 @@ func main() {
 				return
 			}
 
-			scan, err := getScan(string(id))
+			scan, err := db.GetScan(string(id))
 
 			if err != nil {
 				log.Println(err, "Could not find /decode scan with id: ", string(id))
@@ -102,7 +86,7 @@ func main() {
 			defer close(resChan)
 
 			go func() {
-				certID, jsonCert, err := certificate.HandleCert(scan.target)
+				certID, jsonCert, err := certificate.HandleCert(scan.Target)
 				err, ok := err.(certificate.NoTLSCertsErr)
 
 				if ok {
@@ -118,14 +102,14 @@ func main() {
 			}()
 			//run connection go routine
 			go func() {
-				js, err := connection.Connect(scan.target)
+				js, err := connection.Connect(scan.Target)
 
 			}()
 
 			go func() {
 				for name, wrkInfo := range worker.AvailableWorkers {
 
-					go wrkInfo.Runner.(worker.Worker).Run([]byte(scan.target), resChan)
+					go wrkInfo.Runner.(worker.Worker).Run([]byte(scan.Target), resChan)
 				}
 			}()
 
@@ -145,6 +129,8 @@ func main() {
 			case <-resChan:
 				endedWorkers += endedWorkers
 				currCompletionPercentage := ((endedWorkers/totalWorkers)*80 + 20) / 100
+				
+				db.
 				//write worker result to db
 				//update completion percentage in db
 			}
@@ -153,28 +139,4 @@ func main() {
 	}
 
 	select {}
-}
-
-func getScan(id string) (Scan, error) {
-
-	s := Scan{}
-	s.id = id
-
-	row := db.QueryRow(`SELECT time_stamp, target, replay, has_tls, 	cert_id,
-	is_valid, completion_perc, validation_error, is_ubuntu_valid, is_mozilla_valid,
-	is_windows_valid, is_apple_valid, conn_info
-	FROM certificates WHERE id=$1`, id)
-
-	cert := &certificate.Certificate{}
-
-	err := row.Scan(&s.time_stamp, &s.target, &s.replay, &s.has_tls, &s.cert_id,
-		&s.is_valid, &s.validation_error, &s.is_ubuntu_valid, &s.is_mozilla_valid,
-		&s.is_windows_valid, &s.is_apple_valid, &s.conn_info)
-
-	if err != nil {
-		return s, err
-	}
-
-	return s, nil
-
 }
