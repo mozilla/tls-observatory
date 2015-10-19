@@ -2,9 +2,9 @@ CREATE TABLE scans  (
 	id                         	serial primary key,
 	time_stamp	           		timestamp NOT NULL,
 	target						varchar NOT NULL,
-	replay 				        integer NULL, //hours or days
+	replay 				        integer NULL,
 	has_tls						bool NOT NULL,
-	cert_id		              	varchar references certificates(id),
+	cert_id		              	integer references certificates(id),
 	is_valid                   	bool NULL,
 	completion_perc				integer NULL,
 	validation_error           	varchar NULL,
@@ -24,8 +24,8 @@ CREATE TABLE worker_output  (
 
 CREATE TABLE certificates  (
 	id                         	serial primary key,
-	sha1_fingerprint           	bytea NOT NULL,
-	sha256_fingerprint          bytea NOT NULL,
+	sha1_fingerprint           	varchar NOT NULL,
+	sha256_fingerprint          varchar NOT NULL,
 	serial_number              	varchar NULL,
 	version                    	integer NULL,
 	subject                    	varchar NULL,
