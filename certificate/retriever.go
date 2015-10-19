@@ -21,7 +21,9 @@ func (f NoTLSCertsErr) Error() string {
 	return fmt.Sprintf("No TLS Certs Received from %s", string(f))
 }
 
-//worker is the body of each goroutine spawned by the retriever.
+//HandleCert is the main function called to verify certificates.
+//It retrieves certificates and feeds them to handleCertChain. It then returns
+//its result.
 func HandleCert(domain string) (string, []byte, error) {
 
 	certs, ip, err := retrieveCertFromHost(domain, "443", true)
