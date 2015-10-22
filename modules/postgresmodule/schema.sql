@@ -51,6 +51,7 @@ CREATE TABLE scans  (
 	replay 				        integer NULL,
 	has_tls						bool NOT NULL,
 	cert_id		              	integer references certificates(id) NOT NULL,
+    trust_id                    integer references trust(id) NOT NULL,
 	is_valid                   	bool NULL,
 	completion_perc				integer NULL,
 	validation_error           	varchar NULL,
