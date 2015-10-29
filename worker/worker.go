@@ -6,9 +6,10 @@ import (
 )
 
 type WorkerResult struct {
-	Success bool     `json:"success"`
-	Result  []byte   `json:"elements"` //JSON encoded
-	Errors  []string `json:"errors"`
+	Success    bool     `json:"success"`
+	WorkerName string   `json:"name"`
+	Result     []byte   `json:"result"`
+	Errors     []string `json:"errors"`
 }
 
 type WorkerInfo struct {
