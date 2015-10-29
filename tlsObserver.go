@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/mozilla/TLS-Observer/certificate"
@@ -59,7 +60,7 @@ func main() {
 
 	msgs, err := broker.Consume(rxQueue, rxRoutKey)
 
-	certificate.Setup(conf,db)
+	certificate.Setup(conf, db)
 
 	for d := range msgs {
 
@@ -72,7 +73,9 @@ func main() {
 				return
 			}
 
-			scan, err := db.GetScan(string(id))
+			intID, err := strconv.ParseInt(string(id), 10, 64)
+
+			scan, err := db.GetScan(intID)
 
 			if err != nil {
 				log.Println(err, "Could not find /decode scan with id: ", string(id))
@@ -83,18 +86,28 @@ func main() {
 			totalWorkers := len(worker.AvailableWorkers)
 
 			resChan := make(chan worker.WorkerResult)
-			defer close(resChan)
 
 			go func() {
-				certID, jsonCert, err := certificate.HandleCert(scan.Target)
-				err, ok := err.(certificate.NoTLSCertsErr)
+				certID, trustID, err := certificate.HandleCert(scan.Target)
 
-				if ok {
-					//nil cert, does not implement TLS
-					tx.Rollback()
-					//update scans table
-					return
+				if err != nil {
+
+					err, ok := err.(certificate.NoTLSCertsErr)
+
+					if ok {
+						//nil cert, does not implement TLS
+						tx.Rollback()
+
+						db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", intID)
+						return
+					} else {
+						log.Panicln(err)
+						tx.Rollback()
+					}
+
 				}
+
+				tx.Exec("UPDATE scans SET conn_info=$1 WHERE id=$2", certID, trustID, intID)
 
 				//Update scans table
 				//TODO start second stage workers requiring certificate
@@ -104,10 +117,29 @@ func main() {
 			go func() {
 				js, err := connection.Connect(scan.Target)
 
+				if err != nil {
+
+					err, ok := err.(connection.NoTLSConnErr)
+
+					if ok {
+						//nil cert, does not implement TLS
+						tx.Rollback()
+
+						db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", intID)
+						return
+					} else {
+						log.Panicln(err)
+						tx.Rollback()
+					}
+
+				} else {
+					tx.Exec("UPDATE scans SET conn_info=$1 WHERE id=$2", js, intID)
+				}
+
 			}()
 
 			go func() {
-				for name, wrkInfo := range worker.AvailableWorkers {
+				for _, wrkInfo := range worker.AvailableWorkers {
 
 					go wrkInfo.Runner.(worker.Worker).Run([]byte(scan.Target), resChan)
 				}
@@ -121,18 +153,30 @@ func main() {
 
 			endedWorkers := 0
 			select {
+
 			case <-timeout:
 				err := tx.Commit()
+
+				if err != nil {
+					log.Println(err)
+				}
 				return
 				//wait no more than 10 secs for all workers to finish.
 
-			case <-resChan:
+			case res := <-resChan:
 				endedWorkers += endedWorkers
-				currCompletionPercentage := ((endedWorkers/totalWorkers)*80 + 20) / 100
-				
-				db.
-				//write worker result to db
-				//update completion percentage in db
+				currCompletionPercentage := ((endedWorkers/totalWorkers)*80 + 20)
+
+				err = db.UpdateCompletionPercentage(string(id), currCompletionPercentage)
+				if err != nil {
+					log.Println("Could not update completion percentage for scan :", string(id))
+				}
+
+				if res.Success {
+					tx.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", intID, res.WorkerName, res.Result)
+				} else {
+					log.Println("Worker ", res.WorkerName, " return with error(s) : ", res.Errors)
+				}
 			}
 
 		}(d)
