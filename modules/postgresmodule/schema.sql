@@ -22,10 +22,11 @@ CREATE TABLE certificates  (
 	x509_subjectAltName        	varchar NULL,
 	x509_issuerAltName         	varchar NULL,
 	signature_algo             	varchar NULL,
-	in_openssl_root_store      	bool NULL,
+	in_ubuntu_root_store      	bool NULL,
 	in_mozilla_root_store      	bool NULL,
-	in_windows_root_store      	bool NULL,
+	in_microsoft_root_store     bool NULL,
 	in_apple_root_store        	bool NULL,
+	in_android_root_store       bool NULL,
 	is_revoked                 	bool NULL,
 	revoked_at                 	timestamp NULL,
 	raw_cert					varchar NOT NULL

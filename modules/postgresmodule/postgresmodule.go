@@ -8,23 +8,23 @@ import (
 	_ "github.com/lib/pq"
 )
 
+//using latest https://hub.docker.com/_/postgres/ image for testing
+
 type DB struct {
 	*sql.DB
 }
 
 type Scan struct {
-	id               string
+	id               int64
 	time_stamp       time.Time
 	Target           string
 	replay           int //hours or days
 	has_tls          bool
-	cert_id          string
+	cert_id          int
+	trust_id         int
 	is_valid         bool
 	validation_error string
-	is_ubuntu_valid  bool
-	is_mozilla_valid bool
-	is_windows_valid bool
-	is_apple_valid   bool
+	complperc        int
 	conn_info        []byte
 }
 
@@ -46,22 +46,18 @@ func (db *DB) NewScan(domain string, rplay int) (Scan, error) {
 
 	timestamp := time.Now()
 
-	res, err := db.Exec("INSERT INTO scans (timestamp,target,replay) VALUES($1,$2,$3)", timestamp, domain, rplay)
+	var ID int64
+
+	err := db.QueryRow("INSERT INTO scans (timestamp,target,replay) VALUES($1,$2,$3) RETURNING id", timestamp, domain, rplay).Scan(&ID)
 
 	if err != nil {
 		return Scan{}, err
 	}
 
-	ID, err := res.LastInsertId()
-
-	if err != nil {
-		return Scan{}, err
-	}
-
-	return Scan{id: fmt.Sprintf("%d", ID), time_stamp: timestamp, replay: rplay}, nil
+	return Scan{id: ID, time_stamp: timestamp, replay: rplay}, nil
 }
 
-func (db *DB) GetScan(id string) (Scan, error) {
+func (db *DB) GetScan(id int64) (Scan, error) {
 
 	s := Scan{}
 	s.id = id
@@ -72,8 +68,7 @@ func (db *DB) GetScan(id string) (Scan, error) {
 	FROM certificates WHERE id=$1`, id)
 
 	err := row.Scan(&s.time_stamp, &s.Target, &s.replay, &s.has_tls, &s.cert_id,
-		&s.is_valid, &s.validation_error, &s.is_ubuntu_valid, &s.is_mozilla_valid,
-		&s.is_windows_valid, &s.is_apple_valid, &s.conn_info)
+		&s.is_valid, &s.validation_error, &s.conn_info)
 
 	if err != nil {
 		return s, err
@@ -84,5 +79,13 @@ func (db *DB) GetScan(id string) (Scan, error) {
 }
 
 func (db *DB) UpdateCompletionPercentage(id string, p int) error {
-	db.Exec("UPDATE")
+	_, err := db.Exec("UPDATE scans SET completion_perc=$1 WHERE id=$2", p, id)
+
+	return err
+}
+
+func (db *DB) InsertWorkerAnalysis(scanid int64, jsonRes []byte, workerName string) error {
+	_, err := db.Exec("INSERT INTO analysis(scan_id,worker_name,	output) VALUES($1,$2,$3)", scanid, workerName, jsonRes)
+
+	return err
 }
