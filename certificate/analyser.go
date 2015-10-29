@@ -22,11 +22,14 @@ import (
 	"time"
 
 	"github.com/mozilla/TLS-Observer/config"
+	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
 )
 
 var trustStores []TrustStore
 
-func Setup(c config.ObserverConfig) {
+func Setup(c config.ObserverConfig, database *pg.DB) {
+
+	db = database
 
 	ts := c.TrustStores
 	// Load truststores from configuration. We expect that the truststore names and path
@@ -58,7 +61,8 @@ func Setup(c config.ObserverConfig) {
 				continue
 			}
 			// if the cert version is 1 or 2, the cert will not contain a CA: True extension
-			// so we set it manually instead. This assumes that all certs found in truststores
+			// so we set it manually instead. This assumes that all certs found in truststoresfile:///media/Projects/GoProjects/src/github.com/mozilla/TLS-Observer/certificate/analyserPool.go
+
 			// should be considered valid certificate authorities
 			if cert.Version < 3 {
 				cert.IsCA = true
@@ -115,8 +119,9 @@ func panicIf(err error) bool {
 
 //handleCertChain takes the chain retrieved from the queue and tries to validate it
 //against each of the truststores provided.
-func handleCertChain(chain *Chain) (string, []byte, error) {
+func handleCertChain(chain *Chain) (int64, int64, error) {
 
+	var leafID int64
 	var intermediates []*x509.Certificate
 	var leafCert *x509.Certificate
 	leafCert = nil
@@ -165,13 +170,9 @@ func handleCertChain(chain *Chain) (string, []byte, error) {
 
 	}
 
-	//	for id, certS := range certmap {
+	trustID, err := storeCertificates(certmap)
 
-	//		pushCertificate(id, certS.Certificate, certS.Raw)
-
-	//	}
-
-	return "", nil, nil
+	return leafID, trustID, err
 }
 
 //isChainValid creates the valid certificate chains by combining the chain retrieved with the provided truststore.
@@ -245,6 +246,68 @@ func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificat
 
 }
 
+func storeCertificates(m map[string]Stored) (int64, error) {
+
+	var leafTrust int64
+	leafTrust = -1
+	for _, c := range m {
+
+		certID, err := GetCertID(c.Certificate.Hashes.SHA1)
+
+		if err != nil {
+			log.Println("Could not get cert id for : ", c.Certificate.Hashes.SHA1)
+			continue
+		}
+
+		if certID != -1 {
+			certID, err = InsertCertificatetoDB(&c.Certificate)
+			if err != nil {
+				log.Println("Could not store cert : ", c.Certificate.Hashes.SHA1)
+				continue
+			}
+		}
+
+		for _, p := range c.Certificate.ParentSignature {
+
+			parID, err := GetCertID(p)
+
+			if parID != -1 {
+
+				parent, ok := m[p]
+				if !ok {
+					log.Println("Parent for cert : ", c.Certificate.Hashes.SHA1, " not found in chain. Domain: ", c.Certificate.ScanTarget)
+					continue
+				}
+				parID, err = InsertCertificatetoDB(&parent.Certificate)
+				if err != nil {
+					log.Println("Could not store cert : ", parent.Certificate.Hashes.SHA1)
+				}
+			}
+
+			trustID, err := getTrust(certID, parID)
+
+			if err != nil {
+				log.Println("Could not store trust for certs :", c.Certificate.Hashes.SHA1, p)
+				continue
+			}
+
+			if trustID == -1 {
+
+				trustID, err = insertTrustToDB(c.Certificate, certID, parID)
+			} else {
+				trustID, err = updateTrust(trustID, c.Certificate)
+			}
+
+			if c.Certificate.CA && leafTrust == -1 {
+				leafTrust = trustID
+			}
+		}
+	}
+
+	return leafTrust, nil
+
+}
+
 //getFirstParent returns the first parent found for a certificate in a given certificate list ( does not verify signature)
 func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Certificate {
 	for _, c := range certs {
@@ -261,9 +324,6 @@ func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Cer
 func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *ValidationInfo, certmap map[string]Stored) {
 
 	id := SHA256Hash(cert.Raw)
-	if !cert.IsCA {
-		id = id + "--" + domain
-	}
 
 	if storedStruct, ok := certmap[id]; !ok {
 
