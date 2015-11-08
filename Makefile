@@ -37,7 +37,7 @@ GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: tlsObserver
+all: webapi tlsObserver 
 
 #rescanDomains:
 #	echo building rescanDomains for $(OS)/$(ARCH)
