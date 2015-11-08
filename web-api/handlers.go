@@ -1,12 +1,19 @@
 package main
 
 import (
-	"github.com/streadway/amqp"
 	"log"
 	"net/http"
+	"strconv"
+
+	"github.com/gorilla/context"
+	"github.com/streadway/amqp"
+
+	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
 )
 
 func ScanHandler(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("Received request")
 
 	var (
 		status int
@@ -18,6 +25,18 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), status)
 		}
 	}()
+
+	val, ok := context.GetOk(r, dbKey)
+
+	if !ok {
+		log.Println("Scan Handler Database not found.")
+		status = http.StatusInternalServerError
+		return
+	}
+
+	db := val.(*pg.DB)
+
+	db.Ping()
 
 	domain := r.FormValue("target")
 
@@ -35,9 +54,22 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer ch.Close()
 
+		scan, err := db.NewScan(domain, -1) //no replay
+
+		sID := strconv.FormatInt(scan.ID, 10)
+
+		if err != nil {
+			log.Println("Could not create scan for ", domain)
+			log.Println(err)
+			status = http.StatusInternalServerError
+			return
+		}
+
+		//		scan.id
+
 		status = http.StatusOK
 
-		log.Println("Publishing", domain)
+		log.Println("Publishing ", domain)
 		err = ch.Publish(
 			"amq.direct", // exchange
 			"scan_ready", // routing key
@@ -46,7 +78,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			amqp.Publishing{
 				DeliveryMode: amqp.Persistent,
 				ContentType:  "text/plain",
-				Body:         []byte(domain),
+				Body:         []byte(sID),
 			})
 
 	} else {
@@ -69,7 +101,7 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	domain := r.FormValue("target")
+	domain := r.FormValue("id")
 
 	if validateDomain(domain) {
 
