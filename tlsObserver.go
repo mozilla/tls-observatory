@@ -153,7 +153,6 @@ func main() {
 					}
 
 				} else {
-					log.Println("Received connection info ", string(js))
 					db.Exec("UPDATE scans SET conn_info=$1 WHERE id=$2", js, intID)
 				}
 
