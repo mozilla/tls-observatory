@@ -31,16 +31,22 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
-	var err error
 
 	conf := config.ObserverConfig{}
 
-	var cfgFile string
+	var cfgFile, cipherscan string
 	flag.StringVar(&cfgFile, "c", "/etc/observer/observer.cfg", "Input file csv format")
+	flag.StringVar(&cipherscan, "b", "/etc/observer/cipherscan/cipherscan", "Cipherscan binary location")
 	flag.Parse()
 
-	_, err = os.Stat(cfgFile)
+	_, err := os.Stat(cfgFile)
 	failOnError(err, "Missing configuration file from '-c' or /etc/observer/observer.cfg")
+
+	_, err = os.Stat(cipherscan)
+	if err != nil {
+		log.Println("Could not locate cipherscan binary in ", cipherscan, ".")
+		log.Println("TLS Connection capabilities are not available.")
+	}
 
 	conf, err = config.ObserverConfigLoad(cfgFile)
 	if err != nil {
@@ -50,7 +56,7 @@ func main() {
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
 
-	db, err = pg.RegisterConnection("observer", "observer", conf.General.PostgresPass, conf.General.Postgres, "disable")
+	db, err = pg.RegisterConnection(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
 
 	failOnError(err, "Failed to connect to database")
 
@@ -63,6 +69,8 @@ func main() {
 	certificate.Setup(conf, db)
 
 	for d := range msgs {
+
+		log.Println("Received id : ", string(d))
 
 		go func(id []byte) {
 
@@ -78,7 +86,7 @@ func main() {
 			scan, err := db.GetScan(intID)
 
 			if err != nil {
-				log.Println(err, "Could not find /decode scan with id: ", string(id))
+				log.Println(err, "Could not find/decode scan with id: ", string(id))
 				tx.Rollback()
 				return
 			}
@@ -88,6 +96,7 @@ func main() {
 			resChan := make(chan worker.WorkerResult)
 
 			go func() {
+
 				certID, trustID, err := certificate.HandleCert(scan.Target)
 
 				if err != nil {
@@ -101,39 +110,51 @@ func main() {
 						db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", intID)
 						return
 					} else {
-						log.Panicln(err)
+						log.Println(err)
 						tx.Rollback()
 					}
 
 				}
 
-				tx.Exec("UPDATE scans SET conn_info=$1 WHERE id=$2", certID, trustID, intID)
+				log.Println("Retrieved certs ", certID, trustID)
 
-				//Update scans table
+				log.Println("Updating scans")
+				_, err = db.Exec("UPDATE scans SET cert_id=$1,trust_id=$2,has_tls=TRUE WHERE id=$3", certID, trustID, intID)
+
+				if err != nil {
+					log.Println("Could not update scans for cert, ", err.Error())
+				}
+
+				err = db.UpdateScanCompletionPercentage(intID, 20)
+				if err != nil {
+					log.Println("Could not update completion percentage for scan :", string(id))
+				}
 				//TODO start second stage workers requiring certificate
 
 			}()
 			//run connection go routine
 			go func() {
-				js, err := connection.Connect(scan.Target)
+
+				js, err := connection.Connect(scan.Target, cipherscan)
 
 				if err != nil {
 
 					err, ok := err.(connection.NoTLSConnErr)
 
 					if ok {
-						//nil cert, does not implement TLS
+						//does not implement TLS
 						tx.Rollback()
 
 						db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", intID)
 						return
 					} else {
-						log.Panicln(err)
+						log.Println(err)
 						tx.Rollback()
 					}
 
 				} else {
-					tx.Exec("UPDATE scans SET conn_info=$1 WHERE id=$2", js, intID)
+					log.Println("Received connection info ", string(js))
+					db.Exec("UPDATE scans SET conn_info=$1 WHERE id=$2", js, intID)
 				}
 
 			}()
@@ -151,31 +172,35 @@ func main() {
 				timeout <- true
 			}()
 
-			endedWorkers := 0
-			select {
+			if totalWorkers > 0 {
+				endedWorkers := 0
+				select {
 
-			case <-timeout:
-				err := tx.Commit()
+				case <-timeout:
 
-				if err != nil {
-					log.Println(err)
-				}
-				return
-				//wait no more than 10 secs for all workers to finish.
+					log.Println("Timed out...")
+					err := tx.Commit()
 
-			case res := <-resChan:
-				endedWorkers += endedWorkers
-				currCompletionPercentage := ((endedWorkers/totalWorkers)*80 + 20)
+					if err != nil {
+						log.Println(err)
+					}
+					return
+					//wait no more than 10 secs for all workers to finish.
 
-				err = db.UpdateCompletionPercentage(string(id), currCompletionPercentage)
-				if err != nil {
-					log.Println("Could not update completion percentage for scan :", string(id))
-				}
+				case res := <-resChan:
+					endedWorkers += endedWorkers
+					currCompletionPercentage := ((endedWorkers/totalWorkers)*80 + 20)
 
-				if res.Success {
-					tx.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", intID, res.WorkerName, res.Result)
-				} else {
-					log.Println("Worker ", res.WorkerName, " return with error(s) : ", res.Errors)
+					err = db.UpdateScanCompletionPercentage(intID, currCompletionPercentage)
+					if err != nil {
+						log.Println("Could not update completion percentage for scan :", string(id))
+					}
+
+					if res.Success {
+						tx.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", intID, res.WorkerName, res.Result)
+					} else {
+						log.Println("Worker ", res.WorkerName, " return with error(s) : ", res.Errors)
+					}
 				}
 			}
 
