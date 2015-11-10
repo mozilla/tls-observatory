@@ -30,50 +30,32 @@ GCC			:= gcc
 CFLAGS		:=
 LDFLAGS		:=
 GOOPTS		:= -tags netgo
-GO 			:= GOPATH=$(shell go env GOROOT)/bin:$(shell pwd) GOOS=$(OS) GOARCH=$(ARCH) go
+GO 			:= GOOS=$(OS) GOARCH=$(ARCH) GO15VENDOREXPERIMENT=1 go
 GOGETTER	:= GOPATH=$(shell pwd) GOOS=$(OS) GOARCH=$(ARCH) go get -u
-GOLDFLAGS	:= -ldflags "-X main.version $(BUILDREV)"
+GOLDFLAGS	:= -ldflags "-X main.version=$(BUILDREV)"
 GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: go_get_deps certRetriever certAnalyzer tlsRetriever tlsAnalyzer webapi retrieveTLSInfo rescanDomains SSLv3Trigger 39monthsTrigger mozillaExpiring7DaysTrigger mozillaWildcardTrigger
+all: webapi tlsObserver 
 
-rescanDomains:
-	echo building rescanDomains for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) src/rescanDomains.go
-	[ -x "$(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+#rescanDomains:
+#	echo building rescanDomains for $(OS)/$(ARCH)
+#	$(MKDIR) -p $(BINDIR)
+#	$(GO) build $(GOOPTS) -o $(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tools/rescanDomains.go
+#	[ -x "$(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 retrieveTLSInfo:
 	echo building retrieveTLSInfo for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) src/retrieveTLSInfo.go
+	$(GO) build $(GOOPTS) -o $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tools/retrieveTLSInfo.go
 	[ -x "$(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-certRetriever:
-	echo building certRetriever for $(OS)/$(ARCH)
+tlsObserver:
+	echo building tlsObserver for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) certRetriever
-	[ -x "$(BINDIR)/certRetriever-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-certAnalyzer:
-	echo building certAnalyzer for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/certAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) certAnalyzer
-	[ -x "$(BINDIR)/certAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-tlsRetriever:
-	echo building tlsRetriever for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsRetriever-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsRetriever
-	[ -x "$(BINDIR)/tlsRetriever-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-tlsAnalyzer:
-	echo building tlsAnalyzer for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsAnalyzer
-	[ -x "$(BINDIR)/tlsAnalyzer-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsObserver.go
+	[ -x "$(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 SSLv3Trigger:
 	echo building SSLv3Trigger for $(OS)/$(ARCH)
@@ -102,7 +84,7 @@ mozillaWildcardTrigger:
 webapi:
 	echo building web-api for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) web-api
+	$(GO) build $(GOOPTS) -o $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/TLS-Observer/web-api
 	[ -x "$(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
 go_get_deps_into_system:

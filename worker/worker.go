@@ -1,0 +1,32 @@
+package worker
+
+import (
+	"fmt"
+	"os"
+)
+
+type WorkerResult struct {
+	Success    bool     `json:"success"`
+	WorkerName string   `json:"name"`
+	Result     []byte   `json:"result"`
+	Errors     []string `json:"errors"`
+}
+
+type WorkerInfo struct {
+	Runner      Worker
+	Description string
+}
+
+var AvailableWorkers = make(map[string]WorkerInfo)
+
+func RegisterWorker(name string, info WorkerInfo) {
+	if _, exist := AvailableWorkers[name]; exist {
+		fmt.Fprintf(os.Stderr, "RegisterModule: a module named '%s' has already been registered.\nAre you trying to import the same module twice?\n", name)
+		os.Exit(1)
+	}
+	AvailableWorkers[name] = info
+}
+
+type Worker interface {
+	Run([]byte, chan WorkerResult)
+}
