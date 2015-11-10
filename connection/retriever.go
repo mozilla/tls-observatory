@@ -10,8 +10,6 @@ import (
 	"os/exec"
 )
 
-var cipherscan string
-
 func failOnError(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
@@ -28,10 +26,10 @@ func panicIf(err error) {
 type NoTLSConnErr string
 
 func (f NoTLSConnErr) Error() string {
-	return fmt.Sprintf("No TLS Certs Received from %s", string(f))
+	return fmt.Sprintf("No TLS Conn Received")
 }
 
-func Connect(domain string) ([]byte, error) {
+func Connect(domain, cipherscanbinPath string) ([]byte, error) {
 
 	ip := getRandomIP(domain)
 
@@ -41,7 +39,7 @@ func Connect(domain string) ([]byte, error) {
 		return nil, e
 	}
 
-	cmd := cipherscan + " -j --curves -servername " + domain + " " + ip + ":443 "
+	cmd := cipherscanbinPath + " -j --curves -servername " + domain + " " + ip + ":443 "
 	fmt.Println(cmd)
 	comm := exec.Command("bash", "-c", cmd)
 	var out bytes.Buffer
