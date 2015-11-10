@@ -89,6 +89,26 @@ func GetCertIDWithSHA256Fingerprint(sha256 string) (int64, error) {
 	}
 }
 
+func GetCertIDFromTrust(trustID int64) (int64, error) {
+
+	row := db.QueryRow("SELECT cert_id FROM trust WHERE id=$1", trustID)
+
+	var id int64
+
+	err := row.Scan(&id)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return -1, nil
+		} else {
+			return -1, err
+		}
+	} else {
+		return id, nil
+	}
+
+}
+
 func GetCertwithSHA1Fingerprint(sha1 string) (*Certificate, error) {
 
 	row := db.QueryRow(`SELECT sha256_fingerprint,

@@ -140,7 +140,6 @@ func panicIf(err error) bool {
 //against each of the truststores provided.
 func handleCertChain(chain *Chain) (int64, int64, error) {
 
-	var leafID int64
 	var intermediates []*x509.Certificate
 	var leafCert *x509.Certificate
 	leafCert = nil
@@ -192,6 +191,17 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 	log.Println("cert map length : ", len(certmap))
 
 	trustID, err := storeCertificates(certmap)
+
+	leafID := int64(-1)
+
+	if trustID != -1 {
+
+		leafID, err = GetCertIDFromTrust(trustID)
+
+		if err != nil {
+			log.Println("Could not fetch cert_id for trust with id : ", trustID)
+		}
+	}
 
 	return leafID, trustID, err
 }
