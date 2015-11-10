@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -77,7 +76,30 @@ func Setup(c config.ObserverConfig, database *pg.DB) {
 			if cert.Subject.CommonName == cert.Issuer.CommonName {
 				parentSignature = SHA256Hash(cert.Raw)
 			}
-			updateCert(cert, parentSignature, "", "", name, v, nil)
+
+			var id int64
+			id = -1
+			id, err = GetCertIDWithSHA256Fingerprint(SHA256Hash(cert.Raw))
+
+			if err != nil {
+				log.Println("Could not check if certificate is in db, ", err.Error())
+			}
+
+			if id == -1 {
+
+				vinfo := &ValidationInfo{}
+				vinfo.IsValid = true
+				vinfo.ValidationError = ""
+
+				st := certtoStored(cert, parentSignature, "", "", name, vinfo)
+				id, err = InsertCertificatetoDB(&st)
+
+				if err != nil {
+					log.Println("Could not insert certificate ", SHA256Hash(cert.Raw), " in db ,", err.Error())
+				}
+			} else {
+				UpdateCertLastSeenWithID(id)
+			}
 
 			poollen++
 		}
@@ -86,10 +108,7 @@ func Setup(c config.ObserverConfig, database *pg.DB) {
 	}
 
 	if len(trustStores) == 0 {
-		log.Println("Warning: no loadable trustore found in configuration, using system default")
-		defaultName := "default-" + runtime.GOOS
-		// nil Root certPool will result in the system defaults being loaded
-		trustStores = append(trustStores, TrustStore{defaultName, nil})
+		log.Println("Warning: no loadable trustore found in configuration, certificate validation will not work")
 	}
 }
 
@@ -169,6 +188,8 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 		}
 
 	}
+
+	log.Println("cert map length : ", len(certmap))
 
 	trustID, err := storeCertificates(certmap)
 
@@ -252,53 +273,77 @@ func storeCertificates(m map[string]Stored) (int64, error) {
 	leafTrust = -1
 	for _, c := range m {
 
-		certID, err := GetCertID(c.Certificate.Hashes.SHA1)
+		certID, err := GetCertIDWithSHA256Fingerprint(c.Certificate.Hashes.SHA256)
 
 		if err != nil {
-			log.Println("Could not get cert id for : ", c.Certificate.Hashes.SHA1)
-			continue
+			log.Println("Could not get cert id for : ", c.Certificate.Hashes.SHA256)
 		}
 
-		if certID != -1 {
+		if certID == -1 {
 			certID, err = InsertCertificatetoDB(&c.Certificate)
 			if err != nil {
-				log.Println("Could not store cert : ", c.Certificate.Hashes.SHA1)
+				log.Println("Could not store cert : ", c.Certificate.Hashes.SHA256)
 				continue
+			} else {
+				log.Println("Inserted cert ", c.Certificate.Hashes.SHA256)
 			}
+		} else {
+			UpdateCertLastSeenWithID(certID)
 		}
 
 		for _, p := range c.Certificate.ParentSignature {
 
-			parID, err := GetCertID(p)
+			log.Println("Certificate ", c.Certificate.Hashes.SHA256, " with parent ", p)
 
-			if parID != -1 {
+			parID, err := GetCertIDWithSHA256Fingerprint(p)
+
+			if err != nil {
+				log.Println("Could not get cert id for : ", p)
+			}
+
+			if parID == -1 {
 
 				parent, ok := m[p]
 				if !ok {
-					log.Println("Parent for cert : ", c.Certificate.Hashes.SHA1, " not found in chain. Domain: ", c.Certificate.ScanTarget)
+					log.Println("Parent for cert : ", c.Certificate.Hashes.SHA256, " not found in chain. Domain: ", c.Certificate.ScanTarget)
 					continue
 				}
 				parID, err = InsertCertificatetoDB(&parent.Certificate)
 				if err != nil {
-					log.Println("Could not store cert : ", parent.Certificate.Hashes.SHA1)
+					log.Println("Could not store cert : ", parent.Certificate.Hashes.SHA256, " , ", err.Error())
+					continue
+				} else {
+					log.Println("Inserted parent cert ", parent.Certificate.Hashes.SHA256)
 				}
+			} else {
+				UpdateCertLastSeenWithID(parID)
 			}
 
-			trustID, err := getTrust(certID, parID)
+			trustID, err := getCurrentTrust(certID, parID)
 
 			if err != nil {
-				log.Println("Could not store trust for certs :", c.Certificate.Hashes.SHA1, p)
+				log.Println("Could not get trust for certs :", c.Certificate.Hashes.SHA256, p)
 				continue
 			}
 
 			if trustID == -1 {
 
 				trustID, err = insertTrustToDB(c.Certificate, certID, parID)
+				if err != nil {
+					log.Println("Could not store trust for certs , ", err.Error())
+				} else {
+					log.Println("Stored Trust for certs")
+				}
 			} else {
 				trustID, err = updateTrust(trustID, c.Certificate)
+				if err != nil {
+					log.Println("Could not update trust for certs, ", err.Error())
+				} else {
+					log.Println("Updated Trust for certs")
+				}
 			}
 
-			if c.Certificate.CA && leafTrust == -1 {
+			if !c.Certificate.CA && leafTrust == -1 {
 				leafTrust = trustID
 			}
 		}

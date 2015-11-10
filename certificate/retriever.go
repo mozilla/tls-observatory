@@ -18,7 +18,7 @@ import (
 type NoTLSCertsErr string
 
 func (f NoTLSCertsErr) Error() string {
-	return fmt.Sprintf("No TLS Certs Received from %s", string(f))
+	return fmt.Sprintf("No TLS Certs Received")
 }
 
 //HandleCert is the main function called to verify certificates.

@@ -4,6 +4,12 @@ import (
 	"crypto/x509"
 )
 
+const ubuntu_TS_name = "Ubuntu"
+const mozilla_TS_name = "Mozilla"
+const microsoft_TS_name = "Microsoft"
+const apple_TS_name = "Apple"
+const android_TS_name = "Android"
+
 type Certificate struct {
 	ScanTarget             string                    `json:"scanTarget,omitempty"`
 	IPs                    []string                  `json:"ips,omitempty"`
@@ -146,3 +152,98 @@ var PublicKeyAlgorithm = [...]string{
 	"DSA",
 	"ECDSA",
 }
+
+//GetBooleanValidity converts the validation info map to DB booleans
+func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_apple, trusted_android bool) {
+
+	//check Ubuntu validation info
+	valInfo, ok := c.ValidationInfo[ubuntu_TS_name]
+
+	if !ok {
+		trusted_ubuntu = false
+	} else {
+		trusted_ubuntu = valInfo.IsValid
+	}
+
+	//check Mozilla validation info
+	valInfo, ok = c.ValidationInfo[mozilla_TS_name]
+
+	if !ok {
+		trusted_mozilla = false
+	} else {
+		trusted_mozilla = valInfo.IsValid
+	}
+
+	//check Microsoft validation info
+	valInfo, ok = c.ValidationInfo[microsoft_TS_name]
+
+	if !ok {
+		trusted_microsoft = false
+	} else {
+		trusted_microsoft = valInfo.IsValid
+	}
+
+	//check Apple validation info
+	valInfo, ok = c.ValidationInfo[apple_TS_name]
+
+	if !ok {
+		trusted_apple = false
+	} else {
+		trusted_apple = valInfo.IsValid
+	}
+
+	//check Android validation info
+	valInfo, ok = c.ValidationInfo[android_TS_name]
+
+	if !ok {
+		trusted_android = false
+	} else {
+		trusted_android = valInfo.IsValid
+	}
+	return
+}
+
+//func GetRootStoreInclusion(in_ubuntu_ts, in_mozilla_ts, in_microsoft_ts, in_apple_ts, in_android_ts *bool, ts_name string) bool {
+
+//	haschanged := false
+//	if ts_name == ubuntu_TS_name {
+
+//		if !in_ubuntu_ts {
+//			has_changed = true
+//		}
+
+//		in_ubuntu_ts = true
+
+//	} else if ts_name == mozilla_TS_name {
+
+//		if !in_mozilla_ts {
+//			has_changed = true
+//		}
+
+//		in_mozilla_ts = true
+//	} else if ts_name == apple_TS_name {
+
+//		if !in_apple_ts {
+//			has_changed = true
+//		}
+
+//		in_apple_ts = true
+//	} else if ts_name == microsoft_TS_name {
+
+//		if !in_microsoft_ts {
+//			has_changed = true
+//		}
+
+//		in_microsoft_ts = true
+//	} else if ts_name == android_TS_name {
+
+//		if !in_android_ts {
+//			has_changed = true
+//		}
+
+//		in_android_ts = true
+//	}
+
+//	return haschanged
+
+//}
