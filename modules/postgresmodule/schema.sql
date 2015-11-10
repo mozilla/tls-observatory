@@ -47,16 +47,16 @@ CREATE TABLE trust (
 
 CREATE TABLE scans  (
 	id                         	serial primary key,
-	time_stamp	           		timestamp NOT NULL,
+	timestamp	           		timestamp NOT NULL,
 	target						varchar NOT NULL,
 	replay 				        integer NULL,
 	has_tls						bool NOT NULL,
-	cert_id		              	integer references certificates(id) NOT NULL,
-    trust_id                    integer references trust(id) NOT NULL,
-	is_valid                   	bool NULL,
-	completion_perc				integer NULL,
-	validation_error           	varchar NULL,
-	conn_info                	jsonb NULL
+	cert_id		              	integer references certificates(id) NULL,
+    trust_id                    integer references trust(id) NULL,
+	is_valid                   	bool NOT NULL,
+	completion_perc				integer NOT NULL,
+	validation_error           	varchar NOT NULL,
+	conn_info                	jsonb NOT NULL
 );
 
 CREATE TABLE analysis  (
