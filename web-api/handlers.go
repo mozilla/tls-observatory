@@ -1,19 +1,26 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
 	"github.com/streadway/amqp"
 
+	"github.com/mozilla/TLS-Observer/logger"
 	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
 )
 
 func ScanHandler(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("Received request")
+	log := logger.GetLogger()
+
+	log.WithFields(logrus.Fields{
+		"form values": r.Form,
+		"headers":     r.Header,
+	}).Debug("Received request")
 
 	var (
 		status int
@@ -29,7 +36,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	val, ok := context.GetOk(r, dbKey)
 
 	if !ok {
-		log.Println("Scan Handler Database not found.")
+		log.Error("Could not find db in request context")
 		status = http.StatusInternalServerError
 		return
 	}
@@ -59,13 +66,27 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		sID := strconv.FormatInt(scan.ID, 10)
 
 		if err != nil {
-			log.Println("Could not create scan for ", domain)
-			log.Println(err)
+			log.WithFields(logrus.Fields{
+				"domain": domain,
+				"error":  err.Error(),
+			}).Error("Could not create new scan")
 			status = http.StatusInternalServerError
 			return
 		}
 
-		//		scan.id
+		resp := fmt.Sprintf(`{"scan_id":"%d"}`, scan.ID)
+
+		_, err = w.Write([]byte(resp))
+
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"domain":  domain,
+				"error":   err.Error(),
+				"scan_id": scan.ID,
+			}).Error("Could not write scan id to respons")
+			status = http.StatusInternalServerError
+			return
+		}
 
 		status = http.StatusOK
 
@@ -131,15 +152,13 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if validateDomain(domain) {
 
-		raw := r.FormValue("raw")
+		//		raw := r.FormValue("raw")
 
-		rawCert := false
+		//		rawCert := false
 
-		if raw == "true" {
-			rawCert = true
-		}
-
-		log.Println("rawCert:", rawCert)
+		//		if raw == "true" {
+		//			rawCert = true
+		//		}
 
 		status = http.StatusOK
 
