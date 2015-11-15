@@ -12,6 +12,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type NoTLSCertsErr string

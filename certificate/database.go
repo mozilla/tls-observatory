@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+
 	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
 )
 
