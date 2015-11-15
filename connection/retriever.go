@@ -10,19 +10,6 @@ import (
 	"os/exec"
 )
 
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-		panic(fmt.Sprintf("%s: %s", msg, err))
-	}
-}
-
-func panicIf(err error) {
-	if err != nil {
-		log.Println(fmt.Sprintf("%s", err))
-	}
-}
-
 type NoTLSConnErr string
 
 func (f NoTLSConnErr) Error() string {
