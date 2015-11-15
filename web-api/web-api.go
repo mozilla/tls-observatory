@@ -26,8 +26,6 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "Set debug logging")
 	flag.Parse()
 
-	log.Println(debug)
-
 	if debug {
 		logger.SetLevelToDebug()
 	}

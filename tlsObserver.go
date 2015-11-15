@@ -30,11 +30,15 @@ func main() {
 	conf := config.ObserverConfig{}
 
 	var cfgFile, cipherscan string
+	var debug bool
 	flag.StringVar(&cfgFile, "c", "/etc/observer/observer.cfg", "Input file csv format")
 	flag.StringVar(&cipherscan, "b", "/etc/observer/cipherscan/cipherscan", "Cipherscan binary location")
+	flag.BoolVar(&debug, "debug", false, "Set debug logging")
 	flag.Parse()
 
-	logger.SetLevelToWarning()
+	if debug {
+		logger.SetLevelToDebug()
+	}
 
 	_, err := os.Stat(cfgFile)
 	log.Fatal("Missing configuration file from '-c' or /etc/observer/observer.cfg")
