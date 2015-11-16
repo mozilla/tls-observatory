@@ -45,8 +45,9 @@ func main() {
 
 	_, err = os.Stat(cipherscan)
 	if err != nil {
-		log.Println("Could not locate cipherscan binary in ", cipherscan, ".")
-		log.Println("TLS Connection capabilities are not available.")
+		log.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Could not locate cipherscan executable. TLS connection capabilities will not be available.")
 	}
 
 	conf, err = config.ObserverConfigLoad(cfgFile)
