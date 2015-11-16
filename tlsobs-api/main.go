@@ -7,9 +7,9 @@ import (
 
 	_ "github.com/Sirupsen/logrus"
 
-	"github.com/mozilla/TLS-Observer/config"
-	"github.com/mozilla/TLS-Observer/logger"
-	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
+	"github.com/mozilla/tls-observatory/config"
+	pg "github.com/mozilla/tls-observatory/database"
+	"github.com/mozilla/tls-observatory/logger"
 )
 
 func main() {

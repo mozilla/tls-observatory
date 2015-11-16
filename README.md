@@ -1,23 +1,22 @@
-TLS-Observer
-============
+# Mozilla TLS Observatory
 
-##Dependencies##
+## Clone this repository
 
- * github.com/gorilla/mux
- * github.com/streadway/amqp
- * code.google.com/p/gcfg
- * github.com/lib/pq
+```bash
+$ git clone git@github.com:mozilla/tls-observatory.git
+$ cd tls-observatory
+$ git submodule update --init --recursive
+$ git submodule update
+```
 
-##Architecture##
-You need a RabbitMQ and a Postgres server
+## Build
 
-###Components###
+Requires Go 1.5 with vendoring experiment enabled.
 
- * tlsObserver.go: distribute scans to workers. Listens for messages (domain names) on the scan\_ready\_queue and writes results to DB.
-
-####tools####
-
- * retrieveTLS.go: reads a list of domains and publish them the scan\_ready\_queue.
+```bash
+$ GO15VENDOREXPERIMENT=1 go get github.com/mozilla/tls-observatory/tlsobs-scanner
+$ GO15VENDOREXPERIMENT=1 go get github.com/mozilla/tls-observatory/tlsobs-api
+```
 
 ##Authors##
 

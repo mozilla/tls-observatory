@@ -9,8 +9,8 @@ import (
 	"github.com/gorilla/context"
 	"github.com/streadway/amqp"
 
-	"github.com/mozilla/TLS-Observer/logger"
-	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
+	pg "github.com/mozilla/tls-observatory/database"
+	"github.com/mozilla/tls-observatory/logger"
 )
 
 func ScanHandler(w http.ResponseWriter, r *http.Request) {

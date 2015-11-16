@@ -1,9 +1,10 @@
 package config
 
 import (
-	"code.google.com/p/gcfg"
 	"fmt"
+
 	"github.com/jvehent/gozdef"
+	"gopkg.in/gcfg.v1"
 )
 
 type ObserverConfig struct {
