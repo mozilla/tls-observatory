@@ -4,27 +4,20 @@ package certificate
 
 import (
 	// stdlib packages
-	"crypto/dsa"
-	"crypto/ecdsa"
-	"crypto/md5"
-	"crypto/rsa"
-	"crypto/sha1"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	//"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"io/ioutil"
-	"log"
-	"strconv"
-	"time"
+
+	"github.com/Sirupsen/logrus"
 
 	"github.com/mozilla/TLS-Observer/config"
+	"github.com/mozilla/TLS-Observer/logger"
 	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
 )
 
 var trustStores []TrustStore
+var log = logger.GetLogger()
 
 func Setup(c config.ObserverConfig, database *pg.DB) {
 
@@ -39,7 +32,10 @@ func Setup(c config.ObserverConfig, database *pg.DB) {
 		// until all of pooldata is read
 		poolData, err := ioutil.ReadFile(ts.Path[i])
 		if err != nil {
-			log.Fatal("Failed to load", name, "truststore:", err)
+			log.WithFields(logrus.Fields{
+				"tsname": name,
+				"error":  err.Error(),
+			}).Warning("Failed to load truststore")
 		}
 		certPool := x509.NewCertPool()
 		poollen := 0
@@ -56,7 +52,11 @@ func Setup(c config.ObserverConfig, database *pg.DB) {
 			// parse the current PEM block into a certificate, ignore failures
 			cert, err := x509.ParseCertificate(block.Bytes)
 			if err != nil {
-				log.Println("Warning: could not parse PEM block from", name, "truststore:", err)
+				log.WithFields(logrus.Fields{
+					"tsname":  name,
+					"cert no": poollen + 1,
+					"error":   err.Error(),
+				}).Warning("Could not parse PEM block")
 				continue
 			}
 			// if the cert version is 1 or 2, the cert will not contain a CA: True extension
@@ -82,7 +82,12 @@ func Setup(c config.ObserverConfig, database *pg.DB) {
 			id, err = GetCertIDWithSHA256Fingerprint(SHA256Hash(cert.Raw))
 
 			if err != nil {
-				log.Println("Could not check if certificate is in db, ", err.Error())
+
+				log.WithFields(logrus.Fields{
+					"tsname":      name,
+					"certificate": SHA256Hash(cert.Raw),
+					"error":       err.Error(),
+				}).Error("Could not check if certificate is in db")
 			}
 
 			if id == -1 {
@@ -95,7 +100,11 @@ func Setup(c config.ObserverConfig, database *pg.DB) {
 				id, err = InsertCertificatetoDB(&st)
 
 				if err != nil {
-					log.Println("Could not insert certificate ", SHA256Hash(cert.Raw), " in db ,", err.Error())
+					log.WithFields(logrus.Fields{
+						"tsname":      name,
+						"certificate": SHA256Hash(cert.Raw),
+						"error":       err.Error(),
+					}).Error("Could not insert certificate in db")
 				}
 			} else {
 				UpdateCertLastSeenWithID(id)
@@ -104,36 +113,15 @@ func Setup(c config.ObserverConfig, database *pg.DB) {
 			poollen++
 		}
 		trustStores = append(trustStores, TrustStore{name, certPool})
-		log.Println("successfully loaded", poollen, "CA certs from", name, "truststore")
+		log.WithFields(logrus.Fields{
+			"tsname":              name,
+			"certificates loaded": poollen,
+		}).Info("Successfully loaded TS ")
 	}
 
 	if len(trustStores) == 0 {
-		log.Println("Warning: no loadable trustore found in configuration, certificate validation will not work")
+		log.Error("No truststores loaded, TLS certificate retrieval & analysis won't be available")
 	}
-}
-
-func SHA256Hash(data []byte) string {
-	h := sha256.Sum256(data)
-	return fmt.Sprintf("%X", h[:])
-}
-
-func MD5Hash(data []byte) string {
-	h := md5.Sum(data)
-	return fmt.Sprintf("%X", h[:])
-}
-
-func SHA1Hash(data []byte) string {
-	h := sha1.Sum(data)
-	return fmt.Sprintf("%X", h[:])
-}
-
-func panicIf(err error) bool {
-	if err != nil {
-		log.Println(fmt.Sprintf("%s", err))
-		return true
-	}
-
-	return false
 }
 
 //handleCertChain takes the chain retrieved from the queue and tries to validate it
@@ -144,14 +132,29 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 	var leafCert *x509.Certificate
 	leafCert = nil
 
-	for _, data := range chain.Certs { //create certificate chain from chain struct
+	for chaincertno, data := range chain.Certs { //create certificate chain from chain struct
 
 		certRaw, err := base64.StdEncoding.DecodeString(data)
-		panicIf(err)
+		if err != nil {
+
+			log.WithFields(logrus.Fields{
+				"domain":  chain.Domain,
+				"cert no": chaincertno,
+				"error":   err.Error(),
+			}).Warning("Could not decode raw cert from base64")
+
+		}
 
 		var cert *x509.Certificate
 		cert, err = x509.ParseCertificate(certRaw)
-		panicIf(err)
+
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"domain":  chain.Domain,
+				"cert no": chaincertno,
+				"error":   err.Error(),
+			}).Warning("Could not parse raw cert")
+		}
 
 		if !cert.IsCA {
 			leafCert = cert
@@ -161,7 +164,9 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 	}
 
 	if leafCert == nil {
-		log.Println("No Server certificate found in chain received by:" + chain.Domain)
+		log.WithFields(logrus.Fields{
+			"domain": chain.Domain,
+		}).Warning("Didi not receive server/ leaf certificate")
 	}
 
 	var certmap = make(map[string]Stored)
@@ -188,7 +193,10 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 
 	}
 
-	log.Println("cert map length : ", len(certmap))
+	log.WithFields(logrus.Fields{
+		"domain":     chain.Domain,
+		"map length": len(certmap),
+	}).Debug("Certificate Map length")
 
 	trustID, err := storeCertificates(certmap)
 
@@ -199,7 +207,11 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 		leafID, err = GetCertIDFromTrust(trustID)
 
 		if err != nil {
-			log.Println("Could not fetch cert_id for trust with id : ", trustID)
+			log.WithFields(logrus.Fields{
+				"domain":   chain.Domain,
+				"trust_id": trustID,
+				"error":    err.Error(),
+			}).Error("Could not fetch leaf cert id")
 		}
 	}
 
@@ -237,7 +249,10 @@ func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificat
 	if err == nil {
 
 		for i, ch := range chains {
-			log.Println("Trust chain no:", strconv.Itoa(i), "length: ", len(ch))
+			log.WithFields(logrus.Fields{
+				"trust chain no":  i,
+				"number of certs": len(ch),
+			}).Debug("domain: " + domain)
 			for _, cert := range ch {
 
 				parentSignature := ""
@@ -255,7 +270,9 @@ func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificat
 		return true
 	} else {
 		if len(chains) > 0 {
-			log.Println("validation error but validation chain populated for: " + dnsName)
+			log.WithFields(logrus.Fields{
+				"domain": domain,
+			}).Warning("Got validation error but chains are populated")
 		}
 
 		valInfo.ValidationError = err.Error()
@@ -267,7 +284,10 @@ func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificat
 		if c != nil {
 			parentSignature = SHA256Hash(c.Raw)
 		} else {
-			log.Println("could not retrieve parent for " + dnsName)
+			log.WithFields(logrus.Fields{
+				"domain":     domain,
+				"servercert": SHA256Hash(serverCert.Raw),
+			}).Info("Could not get parent")
 		}
 
 		updateCert(serverCert, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
@@ -286,16 +306,28 @@ func storeCertificates(m map[string]Stored) (int64, error) {
 		certID, err := GetCertIDWithSHA256Fingerprint(c.Certificate.Hashes.SHA256)
 
 		if err != nil {
-			log.Println("Could not get cert id for : ", c.Certificate.Hashes.SHA256)
+			log.WithFields(logrus.Fields{
+				"domain":      c.Certificate.ScanTarget,
+				"certificate": c.Certificate.Hashes.SHA256,
+				"error":       err.Error(),
+			}).Error("Could not get cert id from db")
 		}
 
 		if certID == -1 {
 			certID, err = InsertCertificatetoDB(&c.Certificate)
 			if err != nil {
-				log.Println("Could not store cert : ", c.Certificate.Hashes.SHA256)
+				log.WithFields(logrus.Fields{
+					"domain":      c.Certificate.ScanTarget,
+					"certificate": c.Certificate.Hashes.SHA256,
+					"error":       err.Error(),
+				}).Error("Could not insert cert to db")
 				continue
 			} else {
-				log.Println("Inserted cert ", c.Certificate.Hashes.SHA256)
+
+				log.WithFields(logrus.Fields{
+					"domain":      c.Certificate.ScanTarget,
+					"certificate": c.Certificate.Hashes.SHA256,
+				}).Debug("Inserted cert to db")
 			}
 		} else {
 			UpdateCertLastSeenWithID(certID)
@@ -303,27 +335,42 @@ func storeCertificates(m map[string]Stored) (int64, error) {
 
 		for _, p := range c.Certificate.ParentSignature {
 
-			log.Println("Certificate ", c.Certificate.Hashes.SHA256, " with parent ", p)
-
 			parID, err := GetCertIDWithSHA256Fingerprint(p)
 
 			if err != nil {
-				log.Println("Could not get cert id for : ", p)
+				log.WithFields(logrus.Fields{
+					"domain":      c.Certificate.ScanTarget,
+					"certificate": c.Certificate.Hashes.SHA256,
+					"parent":      p,
+					"error":       err.Error(),
+				}).Error("Could not get cert id for parent from db")
 			}
 
 			if parID == -1 {
 
 				parent, ok := m[p]
 				if !ok {
-					log.Println("Parent for cert : ", c.Certificate.Hashes.SHA256, " not found in chain. Domain: ", c.Certificate.ScanTarget)
+
+					log.WithFields(logrus.Fields{
+						"domain":      c.Certificate.ScanTarget,
+						"certificate": c.Certificate.Hashes.SHA256,
+						"parent":      p,
+					}).Warning("Parent not found in chain")
 					continue
 				}
 				parID, err = InsertCertificatetoDB(&parent.Certificate)
 				if err != nil {
-					log.Println("Could not store cert : ", parent.Certificate.Hashes.SHA256, " , ", err.Error())
+					log.WithFields(logrus.Fields{
+						"domain":      c.Certificate.ScanTarget,
+						"certificate": parent.Certificate.Hashes.SHA256,
+						"error":       err.Error(),
+					}).Error("Could not store cert to db")
 					continue
 				} else {
-					log.Println("Inserted parent cert ", parent.Certificate.Hashes.SHA256)
+					log.WithFields(logrus.Fields{
+						"domain":      c.Certificate.ScanTarget,
+						"certificate": c.Certificate.Hashes.SHA256,
+					}).Debug("Inserted cert")
 				}
 			} else {
 				UpdateCertLastSeenWithID(parID)
@@ -332,7 +379,12 @@ func storeCertificates(m map[string]Stored) (int64, error) {
 			trustID, err := getCurrentTrust(certID, parID)
 
 			if err != nil {
-				log.Println("Could not get trust for certs :", c.Certificate.Hashes.SHA256, p)
+				log.WithFields(logrus.Fields{
+					"domain":      c.Certificate.ScanTarget,
+					"certificate": c.Certificate.Hashes.SHA256,
+					"parent":      p,
+					"error":       err.Error(),
+				}).Error("Could not get trust for certs")
 				continue
 			}
 
@@ -340,16 +392,36 @@ func storeCertificates(m map[string]Stored) (int64, error) {
 
 				trustID, err = insertTrustToDB(c.Certificate, certID, parID)
 				if err != nil {
-					log.Println("Could not store trust for certs , ", err.Error())
+					log.WithFields(logrus.Fields{
+						"domain":      c.Certificate.ScanTarget,
+						"certificate": c.Certificate.Hashes.SHA256,
+						"parent":      p,
+						"error":       err.Error(),
+					}).Error("Could not store trust for certs")
 				} else {
-					log.Println("Stored Trust for certs")
+					log.WithFields(logrus.Fields{
+						"domain":      c.Certificate.ScanTarget,
+						"certificate": c.Certificate.Hashes.SHA256,
+						"parent":      p,
+					}).Debug("Stored trust for certs")
 				}
 			} else {
 				trustID, err = updateTrust(trustID, c.Certificate)
 				if err != nil {
+
+					log.WithFields(logrus.Fields{
+						"domain":      c.Certificate.ScanTarget,
+						"certificate": c.Certificate.Hashes.SHA256,
+						"parent":      p,
+						"error":       err.Error(),
+					}).Error("Could not update trust for certs")
 					log.Println("Could not update trust for certs, ", err.Error())
 				} else {
-					log.Println("Updated Trust for certs")
+					log.WithFields(logrus.Fields{
+						"domain":      c.Certificate.ScanTarget,
+						"certificate": c.Certificate.Hashes.SHA256,
+						"parent":      p,
+					}).Debug("Updated trust for certs")
 				}
 			}
 
@@ -405,7 +477,12 @@ func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSNa
 		if !storedCert.CA {
 
 			if storedCert.ScanTarget != domain {
-				log.Println("Stored Cert - ", id, " - Domain found:", domain, "Domain Stored: ", storedCert.ScanTarget)
+
+				log.WithFields(logrus.Fields{
+					"domain":       storedCert.ScanTarget,
+					"domain_input": domain,
+					"certificate":  storedCert.Hashes.SHA256,
+				}).Warning("Different domain input")
 			}
 
 			//add IP ( single domain may be served by multiple IPs )
@@ -442,225 +519,4 @@ func getCert(sha1 string) (Certificate, error) {
 	var err error
 
 	return stored, err
-}
-
-func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
-
-	usage := make([]string, len(cert.ExtKeyUsage))
-
-	for i, eku := range cert.ExtKeyUsage {
-
-		usage[i] = ExtKeyUsage[eku]
-	}
-
-	return usage
-}
-
-func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
-
-	var usage []string
-	keyUsage := cert.KeyUsage
-
-	//calculate included keyUsage from bitmap
-	//String values taken from OpenSSL
-
-	if keyUsage&x509.KeyUsageDigitalSignature != 0 {
-		usage = append(usage, "Digital Signature")
-	}
-	if keyUsage&x509.KeyUsageContentCommitment != 0 {
-		usage = append(usage, "Non Repudiation")
-	}
-
-	if keyUsage&x509.KeyUsageKeyEncipherment != 0 {
-		usage = append(usage, "Key Encipherment")
-	}
-
-	if keyUsage&x509.KeyUsageDataEncipherment != 0 {
-		usage = append(usage, "Data Encipherment")
-	}
-
-	if keyUsage&x509.KeyUsageKeyAgreement != 0 {
-		usage = append(usage, "Key Agreement")
-	}
-
-	if keyUsage&x509.KeyUsageCertSign != 0 {
-		usage = append(usage, "Certificate Sign")
-	}
-
-	if keyUsage&x509.KeyUsageCRLSign != 0 {
-		usage = append(usage, "CRL Sign")
-	}
-
-	if keyUsage&x509.KeyUsageEncipherOnly != 0 {
-		usage = append(usage, "Encipher Only")
-	}
-
-	if keyUsage&x509.KeyUsageDecipherOnly != 0 {
-		usage = append(usage, "Decipher Only")
-	}
-
-	return usage
-}
-
-//getCertExtensions currently stores only the extensions that are already exported by GoLang
-//(in the x509 Certificate Struct)
-func getCertExtensions(cert *x509.Certificate) Extensions {
-
-	extensions := Extensions{}
-
-	extensions.AuthorityKeyId = []byte(base64.StdEncoding.EncodeToString(cert.AuthorityKeyId))
-	extensions.SubjectKeyId = []byte(base64.StdEncoding.EncodeToString(cert.SubjectKeyId))
-
-	extensions.KeyUsage = getKeyUsageAsStringArray(cert)
-
-	extensions.ExtendedKeyUsage = getExtKeyUsageAsStringArray(cert)
-
-	extensions.SubjectAlternativeName = cert.DNSNames
-
-	extensions.CRLDistributionPoints = cert.CRLDistributionPoints
-
-	return extensions
-
-}
-
-func getPublicKeyInfo(cert *x509.Certificate) SubjectPublicKeyInfo {
-
-	var pubInfo = SubjectPublicKeyInfo{}
-
-	pubInfo.PublicKeyAlgorithm = PublicKeyAlgorithm[cert.PublicKeyAlgorithm]
-
-	switch pub := cert.PublicKey.(type) {
-	case *rsa.PublicKey:
-		pubInfo.RSAModulusSize = float64(pub.N.BitLen())
-		pubInfo.RSAExponent = float64(pub.E)
-
-	case *dsa.PublicKey:
-		textInt, err := pub.G.MarshalText()
-
-		if err == nil {
-			pubInfo.DSA_G = string(textInt)
-		} else {
-			panicIf(err)
-		}
-
-		textInt, err = pub.P.MarshalText()
-
-		if err == nil {
-			pubInfo.DSA_P = string(textInt)
-		} else {
-			panicIf(err)
-		}
-
-		textInt, err = pub.Q.MarshalText()
-
-		if err == nil {
-			pubInfo.DSA_Q = string(textInt)
-		} else {
-			panicIf(err)
-		}
-
-		textInt, err = pub.Y.MarshalText()
-
-		if err == nil {
-			pubInfo.DSA_Y = string(textInt)
-		} else {
-			panicIf(err)
-		}
-
-	case *ecdsa.PublicKey:
-
-		pubInfo.ECDSACurveType = strconv.Itoa(pub.Curve.Params().BitSize)
-		pubInfo.ECDSA_Y = float64(pub.Y.BitLen())
-		pubInfo.ECDSA_X = float64(pub.X.BitLen())
-	}
-
-	return pubInfo
-
-}
-
-//certtoStored returns a Certificate struct created from a X509.Certificate
-func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *ValidationInfo) Certificate {
-
-	var stored = Certificate{}
-
-	stored.Version = float64(cert.Version)
-
-	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
-
-	stored.SubjectPublicKeyInfo = getPublicKeyInfo(cert)
-
-	stored.Issuer.Country = cert.Issuer.Country
-	stored.Issuer.Organisation = cert.Issuer.Organization
-	stored.Issuer.OrgUnit = cert.Issuer.OrganizationalUnit
-	stored.Issuer.CommonName = cert.Issuer.CommonName
-
-	stored.Subject.Country = cert.Subject.Country
-	stored.Subject.Organisation = cert.Subject.Organization
-	stored.Subject.OrgUnit = cert.Subject.OrganizationalUnit
-	stored.Subject.CommonName = cert.Subject.CommonName
-
-	nbtime := cert.NotBefore.UTC()
-	natime := cert.NotAfter.UTC()
-	stored.Validity.NotBefore = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", nbtime.Year(), nbtime.Month(), nbtime.Day(), nbtime.Hour(), nbtime.Minute(), nbtime.Second())
-	stored.Validity.NotAfter = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", natime.Year(), natime.Month(), natime.Day(), natime.Hour(), natime.Minute(), natime.Second())
-
-	stored.X509v3Extensions = getCertExtensions(cert)
-
-	//below check tries to hack around the basic constraints extension
-	//not being available in versions < 3.
-	//Only the IsCa variable is set, as setting X509v3BasicConstraints
-	//messes up the validation procedure.
-	if cert.Version < 3 {
-
-		stored.CA = cert.IsCA
-
-	} else {
-		if cert.BasicConstraintsValid {
-
-			stored.X509v3BasicConstraints = "Critical"
-			stored.CA = cert.IsCA
-		} else {
-			stored.X509v3BasicConstraints = ""
-			stored.CA = false
-		}
-	}
-
-	t := time.Now().UTC()
-
-	stored.FirstSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-	stored.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-
-	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
-
-	if !cert.IsCA {
-		stored.ScanTarget = domain
-		stored.IPs = append(stored.IPs, ip)
-	}
-
-	stored.ValidationInfo = make(map[string]ValidationInfo)
-	stored.ValidationInfo[TSName] = *valInfo
-
-	stored.Hashes.MD5 = MD5Hash(cert.Raw)
-	stored.Hashes.SHA1 = SHA1Hash(cert.Raw)
-	stored.Hashes.SHA256 = SHA256Hash(cert.Raw)
-
-	return stored
-
-}
-
-//printRawCertExtensions Print raw extension info
-//for debugging purposes
-func printRawCertExtensions(cert *x509.Certificate) {
-
-	for i, extension := range cert.Extensions {
-
-		var numbers string
-		for num, num2 := range extension.Id {
-
-			numbers = numbers + " " + "[" + strconv.Itoa(num) + " " + strconv.Itoa(num2) + "]"
-
-		}
-		log.Println("//", strconv.Itoa(i), ": {", numbers, "}", string(extension.Value))
-	}
-
 }

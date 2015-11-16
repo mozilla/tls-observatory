@@ -1,7 +1,17 @@
 package certificate
 
 import (
+	"crypto/dsa"
+	"crypto/ecdsa"
+	"crypto/md5"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
+	"fmt"
+	"strconv"
+	"time"
 )
 
 const ubuntu_TS_name = "Ubuntu"
@@ -153,6 +163,21 @@ var PublicKeyAlgorithm = [...]string{
 	"ECDSA",
 }
 
+func SHA256Hash(data []byte) string {
+	h := sha256.Sum256(data)
+	return fmt.Sprintf("%X", h[:])
+}
+
+func MD5Hash(data []byte) string {
+	h := md5.Sum(data)
+	return fmt.Sprintf("%X", h[:])
+}
+
+func SHA1Hash(data []byte) string {
+	h := sha1.Sum(data)
+	return fmt.Sprintf("%X", h[:])
+}
+
 //GetBooleanValidity converts the validation info map to DB booleans
 func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_apple, trusted_android bool) {
 
@@ -201,6 +226,227 @@ func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trus
 		trusted_android = valInfo.IsValid
 	}
 	return
+}
+
+func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
+
+	usage := make([]string, len(cert.ExtKeyUsage))
+
+	for i, eku := range cert.ExtKeyUsage {
+
+		usage[i] = ExtKeyUsage[eku]
+	}
+
+	return usage
+}
+
+func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
+
+	var usage []string
+	keyUsage := cert.KeyUsage
+
+	//calculate included keyUsage from bitmap
+	//String values taken from OpenSSL
+
+	if keyUsage&x509.KeyUsageDigitalSignature != 0 {
+		usage = append(usage, "Digital Signature")
+	}
+	if keyUsage&x509.KeyUsageContentCommitment != 0 {
+		usage = append(usage, "Non Repudiation")
+	}
+
+	if keyUsage&x509.KeyUsageKeyEncipherment != 0 {
+		usage = append(usage, "Key Encipherment")
+	}
+
+	if keyUsage&x509.KeyUsageDataEncipherment != 0 {
+		usage = append(usage, "Data Encipherment")
+	}
+
+	if keyUsage&x509.KeyUsageKeyAgreement != 0 {
+		usage = append(usage, "Key Agreement")
+	}
+
+	if keyUsage&x509.KeyUsageCertSign != 0 {
+		usage = append(usage, "Certificate Sign")
+	}
+
+	if keyUsage&x509.KeyUsageCRLSign != 0 {
+		usage = append(usage, "CRL Sign")
+	}
+
+	if keyUsage&x509.KeyUsageEncipherOnly != 0 {
+		usage = append(usage, "Encipher Only")
+	}
+
+	if keyUsage&x509.KeyUsageDecipherOnly != 0 {
+		usage = append(usage, "Decipher Only")
+	}
+
+	return usage
+}
+
+//getCertExtensions currently stores only the extensions that are already exported by GoLang
+//(in the x509 Certificate Struct)
+func getCertExtensions(cert *x509.Certificate) Extensions {
+
+	extensions := Extensions{}
+
+	extensions.AuthorityKeyId = []byte(base64.StdEncoding.EncodeToString(cert.AuthorityKeyId))
+	extensions.SubjectKeyId = []byte(base64.StdEncoding.EncodeToString(cert.SubjectKeyId))
+
+	extensions.KeyUsage = getKeyUsageAsStringArray(cert)
+
+	extensions.ExtendedKeyUsage = getExtKeyUsageAsStringArray(cert)
+
+	extensions.SubjectAlternativeName = cert.DNSNames
+
+	extensions.CRLDistributionPoints = cert.CRLDistributionPoints
+
+	return extensions
+
+}
+
+func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
+
+	var pubInfo = SubjectPublicKeyInfo{}
+
+	pubInfo.PublicKeyAlgorithm = PublicKeyAlgorithm[cert.PublicKeyAlgorithm]
+
+	switch pub := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		pubInfo.RSAModulusSize = float64(pub.N.BitLen())
+		pubInfo.RSAExponent = float64(pub.E)
+
+	case *dsa.PublicKey:
+		textInt, err := pub.G.MarshalText()
+
+		if err == nil {
+			pubInfo.DSA_G = string(textInt)
+		} else {
+			return pubInfo, err
+		}
+
+		textInt, err = pub.P.MarshalText()
+
+		if err == nil {
+			pubInfo.DSA_P = string(textInt)
+		} else {
+			return pubInfo, err
+		}
+
+		textInt, err = pub.Q.MarshalText()
+
+		if err == nil {
+			pubInfo.DSA_Q = string(textInt)
+		} else {
+			return pubInfo, err
+		}
+
+		textInt, err = pub.Y.MarshalText()
+
+		if err == nil {
+			pubInfo.DSA_Y = string(textInt)
+		} else {
+			return pubInfo, err
+		}
+
+	case *ecdsa.PublicKey:
+
+		pubInfo.ECDSACurveType = strconv.Itoa(pub.Curve.Params().BitSize)
+		pubInfo.ECDSA_Y = float64(pub.Y.BitLen())
+		pubInfo.ECDSA_X = float64(pub.X.BitLen())
+	}
+
+	return pubInfo, nil
+
+}
+
+//certtoStored returns a Certificate struct created from a X509.Certificate
+func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *ValidationInfo) Certificate {
+
+	var stored = Certificate{}
+
+	stored.Version = float64(cert.Version)
+
+	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
+
+	stored.SubjectPublicKeyInfo, _ = getPublicKeyInfo(cert)
+
+	stored.Issuer.Country = cert.Issuer.Country
+	stored.Issuer.Organisation = cert.Issuer.Organization
+	stored.Issuer.OrgUnit = cert.Issuer.OrganizationalUnit
+	stored.Issuer.CommonName = cert.Issuer.CommonName
+
+	stored.Subject.Country = cert.Subject.Country
+	stored.Subject.Organisation = cert.Subject.Organization
+	stored.Subject.OrgUnit = cert.Subject.OrganizationalUnit
+	stored.Subject.CommonName = cert.Subject.CommonName
+
+	nbtime := cert.NotBefore.UTC()
+	natime := cert.NotAfter.UTC()
+	stored.Validity.NotBefore = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", nbtime.Year(), nbtime.Month(), nbtime.Day(), nbtime.Hour(), nbtime.Minute(), nbtime.Second())
+	stored.Validity.NotAfter = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", natime.Year(), natime.Month(), natime.Day(), natime.Hour(), natime.Minute(), natime.Second())
+
+	stored.X509v3Extensions = getCertExtensions(cert)
+
+	//below check tries to hack around the basic constraints extension
+	//not being available in versions < 3.
+	//Only the IsCa variable is set, as setting X509v3BasicConstraints
+	//messes up the validation procedure.
+	if cert.Version < 3 {
+
+		stored.CA = cert.IsCA
+
+	} else {
+		if cert.BasicConstraintsValid {
+
+			stored.X509v3BasicConstraints = "Critical"
+			stored.CA = cert.IsCA
+		} else {
+			stored.X509v3BasicConstraints = ""
+			stored.CA = false
+		}
+	}
+
+	t := time.Now().UTC()
+
+	stored.FirstSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	stored.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+
+	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
+
+	if !cert.IsCA {
+		stored.ScanTarget = domain
+		stored.IPs = append(stored.IPs, ip)
+	}
+
+	stored.ValidationInfo = make(map[string]ValidationInfo)
+	stored.ValidationInfo[TSName] = *valInfo
+
+	stored.Hashes.MD5 = MD5Hash(cert.Raw)
+	stored.Hashes.SHA1 = SHA1Hash(cert.Raw)
+	stored.Hashes.SHA256 = SHA256Hash(cert.Raw)
+
+	return stored
+
+}
+
+//printRawCertExtensions Print raw extension info
+//for debugging purposes
+func printRawCertExtensions(cert *x509.Certificate) {
+
+	for i, extension := range cert.Extensions {
+
+		var numbers string
+		for num, num2 := range extension.Id {
+
+			numbers = numbers + " " + "[" + strconv.Itoa(num) + " " + strconv.Itoa(num2) + "]"
+
+		}
+		fmt.Println("//", strconv.Itoa(i), ": {", numbers, "}", string(extension.Value))
+	}
+
 }
 
 //func GetRootStoreInclusion(in_ubuntu_ts, in_mozilla_ts, in_microsoft_ts, in_apple_ts, in_android_ts *bool, ts_name string) bool {

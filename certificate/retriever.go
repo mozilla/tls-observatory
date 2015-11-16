@@ -9,10 +9,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type NoTLSCertsErr string
@@ -29,7 +30,10 @@ func HandleCert(domain string) (int64, int64, error) {
 	certs, ip, err := retrieveCertFromHost(domain, "443", true)
 
 	if err != nil {
-		log.Println("Retrieving certs for %s failed with: %s", domain, err.Error())
+		log.WithFields(logrus.Fields{
+			"domain": domain,
+			"error":  err.Error(),
+		}).Warning("Could not retrieve certs")
 		return -1, -1, err
 	}
 

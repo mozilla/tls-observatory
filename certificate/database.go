@@ -3,8 +3,9 @@ package certificate
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/Sirupsen/logrus"
 
 	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
 )
@@ -176,7 +177,6 @@ func insertTrustToDB(cert Certificate, certID, parID int64) (int64, error) {
 
 	var trustID int64
 
-	log.Println("Inserting trust for : ", certID, parID)
 	trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_apple, trusted_android := cert.GetBooleanValidity()
 
 	err := db.QueryRow(`INSERT INTO trust(cert_id,issuer_id,timestamp,trusted_ubuntu,trusted_mozilla,trusted_microsoft,trusted_apple,trusted_android,is_current)
@@ -216,7 +216,11 @@ func updateTrust(trustID int64, cert Certificate) (int64, error) {
 		newID, err := insertTrustToDB(cert, certID, parID)
 
 		if err != nil {
-			log.Println("Could not add new/current trustid to obsolete ", trustID)
+
+			log.WithFields(logrus.Fields{
+				"to_obsolete": trustID,
+				"error":       err.Error(),
+			}).Error("Could not add new/current trust")
 
 			return -1, err
 		}
@@ -224,7 +228,11 @@ func updateTrust(trustID int64, cert Certificate) (int64, error) {
 		_, err = db.Exec("UPDATE trust SET is_current=$1 WHERE id=$2", false, trustID)
 
 		if err != nil {
-			log.Println("Could not update is_current for trustID ", trustID)
+
+			log.WithFields(logrus.Fields{
+				"obsolete_trust_id": trustID,
+				"error":             err.Error(),
+			}).Error("Could not update is_current=false")
 			return -1, err
 		}
 

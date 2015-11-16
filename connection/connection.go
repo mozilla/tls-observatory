@@ -2,7 +2,6 @@ package connection
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strconv"
 	"time"
@@ -158,7 +157,9 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 		newcipher.Protocols = cipher.Protocols
 
 		if len(cipher.PubKey) > 1 {
-			log.Println("Multiple PubKeys for ", s.Target, " at cipher :", cipher.Cipher)
+
+			return c, fmt.Errorf("Multiple PubKeys for ", s.Target, " at cipher :", cipher.Cipher)
+
 		}
 
 		if len(cipher.PubKey) > 0 {
@@ -168,7 +169,8 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 		}
 
 		if len(cipher.SigAlg) > 1 {
-			log.Println("Multiple SigAlgs for ", s.Target, " at cipher :", cipher.Cipher)
+
+			return c, fmt.Errorf("Multiple SigAlgs for ", s.Target, " at cipher :", cipher.Cipher)
 		}
 
 		if len(cipher.SigAlg) > 0 {
