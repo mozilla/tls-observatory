@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/context"
 
-	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
+	pg "github.com/mozilla/tls-observatory/database"
 )
 
 // Adapter wraps an http.Handler with additional

@@ -11,19 +11,18 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
-	"github.com/mozilla/TLS-Observer/config"
-	"github.com/mozilla/TLS-Observer/logger"
-	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
+	"github.com/mozilla/tls-observatory/config"
+	pg "github.com/mozilla/tls-observatory/database"
+	"github.com/mozilla/tls-observatory/logger"
 )
 
 var trustStores []TrustStore
 var log = logger.GetLogger()
 
-func Setup(c config.ObserverConfig, database *pg.DB) {
-
-	db = database
-
+func Setup(c config.ObserverConfig, DB *pg.DB) {
 	ts := c.TrustStores
+
+	db = DB
 	// Load truststores from configuration. We expect that the truststore names and path
 	// are ordered correctly in the configuration, thus if truststore "mozilla" is at
 	// position 0 in conf.TrustStores.Name, its path will be found at conf.TrustStores.Path[0]

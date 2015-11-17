@@ -7,7 +7,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
-	pg "github.com/mozilla/TLS-Observer/modules/postgresmodule"
+	pg "github.com/mozilla/tls-observatory/database"
 )
 
 var db *pg.DB

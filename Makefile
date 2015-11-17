@@ -31,71 +31,37 @@ CFLAGS		:=
 LDFLAGS		:=
 GOOPTS		:= -tags netgo
 GO 			:= GOOS=$(OS) GOARCH=$(ARCH) GO15VENDOREXPERIMENT=1 go
-GOGETTER	:= GOPATH=$(shell pwd) GOOS=$(OS) GOARCH=$(ARCH) go get -u
+GOGETTER	:= GOPATH=$(shell pwd)/.tmpdeps go get -d
 GOLDFLAGS	:= -ldflags "-X main.version=$(BUILDREV)"
 GOCFLAGS	:=
 MKDIR		:= mkdir
 INSTALL		:= install
 
-all: webapi tlsObserver 
+all: tlsobs-scanner tlsobs-api
 
-#rescanDomains:
-#	echo building rescanDomains for $(OS)/$(ARCH)
-#	$(MKDIR) -p $(BINDIR)
-#	$(GO) build $(GOOPTS) -o $(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tools/rescanDomains.go
-#	[ -x "$(BINDIR)/rescanDomains-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-retrieveTLSInfo:
-	echo building retrieveTLSInfo for $(OS)/$(ARCH)
+tlsobs-scanner:
+	echo building TLS Observatory Scanner for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tools/retrieveTLSInfo.go
-	[ -x "$(BINDIR)/retrieveTLSInfo-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsobs-scanner-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-scanner
+	[ -x "$(BINDIR)/tlsobs-scanner-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-tlsObserver:
-	echo building tlsObserver for $(OS)/$(ARCH)
+tlsobs-api:
+	echo building tlsobs-api for $(OS)/$(ARCH)
 	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) tlsObserver.go
-	[ -x "$(BINDIR)/tlsObserver-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsobs-api-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-api
+	[ -x "$(BINDIR)/tlsobs-api-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-SSLv3Trigger:
-	echo building SSLv3Trigger for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/SSLv3Trigger-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) triggers/SSLv3
-	[ -x "$(BINDIR)/SSLv3Trigger-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-39monthsTrigger:
-	echo building 39monthsTrigger for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/39monthsTrigger-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) triggers/39months
-	[ -x "$(BINDIR)/39monthsTrigger-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-mozillaExpiring7DaysTrigger:
-	echo building mozillaExpiring7DaysTrigger for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/mozillaExpiring7DaysTrigger-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) triggers/mozillaExpiring7Days
-	[ -x "$(BINDIR)/mozillaExpiring7DaysTrigger-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-mozillaWildcardTrigger:
-	echo building mozillaWildcardTrigger for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/mozillaWildcardTrigger-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) triggers/mozillaWildcard
-	[ -x "$(BINDIR)/mozillaWildcardTrigger-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-webapi:
-	echo building web-api for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/TLS-Observer/web-api
-	[ -x "$(BINDIR)/web-api-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
-
-go_get_deps_into_system:
-	make GOGETTER="go get -u" go_get_deps
-
-go_get_deps:
-	$(GOGETTER) github.com/streadway/amqp
-	$(GOGETTER) github.com/mattbaird/elastigo/lib
-	$(GOGETTER) github.com/gorilla/mux
-	$(GOGETTER) code.google.com/p/gcfg
+go_vendor_dependencies:
+	$(GOGETTER) github.com/Sirupsen/logrus
+	$(GOGETTER) gopkg.in/gcfg.v1
 	$(GOGETTER) github.com/jvehent/gozdef
+	$(GOGETTER) github.com/lib/pq
+	$(GOGETTER) github.com/gorilla/mux
+	$(GOGETTER) github.com/gorilla/context
+	echo 'removing .git from vendored pkg and moving them to vendor'
+	find .tmpdeps/src -type d -name ".git" ! -name ".gitignore" -exec rm -rf {} \; || exit 0
+	cp -ar .tmpdeps/src/* vendor/
+	rm -rf .tmpdeps
 
 deb-pkg: all
 	rm -fr tmppkg
@@ -143,7 +109,7 @@ deb-pkg: all
 	$(INSTALL) -D -m 0755 conn_schema.json tmppkg/etc/observer/conn_schema.json
 # make a debian package
 	fpm -C tmppkg -n mozilla-tls-observer --license GPL --vendor mozilla --description "Mozilla TLS Observer" \
-		-m "Mozilla OpSec" --url https://github.com/mozilla/TLS-Observer --architecture $(FPMARCH) -v $(BUILDREV) \
+		-m "Mozilla OpSec" --url https://github.com/mozilla/tls-observatory --architecture $(FPMARCH) -v $(BUILDREV) \
 		-s dir -t deb .
 
 clean:

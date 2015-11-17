@@ -56,7 +56,8 @@ CREATE TABLE scans  (
 	is_valid                   	bool NOT NULL,
 	completion_perc				integer NOT NULL,
 	validation_error           	varchar NOT NULL,
-	conn_info                	jsonb NOT NULL
+	conn_info                	jsonb NOT NULL,
+	ack 						bool NOT NULL
 );
 
 CREATE TABLE analysis  (
@@ -65,3 +66,14 @@ CREATE TABLE analysis  (
 	worker_name	           		varchar NOT NULL,
 	output						jsonb NULL
 );
+
+CREATE FUNCTION notify_trigger() RETURNS trigger AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('scan_listener', ''||NEW.id );
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER watched_table_trigger AFTER INSERT ON scans
+FOR EACH ROW EXECUTE PROCEDURE notify_trigger();
