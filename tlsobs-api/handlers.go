@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
@@ -13,27 +12,22 @@ import (
 )
 
 func ScanHandler(w http.ResponseWriter, r *http.Request) {
-
-	log := logger.GetLogger()
-
-	log.WithFields(logrus.Fields{
-		"form values": r.Form,
-		"headers":     r.Header,
-	}).Debug("Received request")
-
 	var (
 		status int
 		err    error
 	)
-
 	defer func() {
 		if nil != err {
 			http.Error(w, err.Error(), status)
 		}
 	}()
+	log := logger.GetLogger()
+	log.WithFields(logrus.Fields{
+		"form values": r.Form,
+		"headers":     r.Header,
+	}).Debug("Received request")
 
 	val, ok := context.GetOk(r, dbKey)
-
 	if !ok {
 		log.Error("Could not find db in request context")
 		status = http.StatusInternalServerError
@@ -41,17 +35,12 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := val.(*pg.DB)
-
 	db.Ping()
 
 	domain := r.FormValue("target")
-
 	if validateDomain(domain) {
 
 		scan, err := db.NewScan(domain, -1) //no replay
-
-		sID := strconv.FormatInt(scan.ID, 10)
-
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"domain": domain,
@@ -64,7 +53,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		resp := fmt.Sprintf(`{"scan_id":"%d"}`, scan.ID)
 
 		_, err = w.Write([]byte(resp))
-
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"domain":  domain,
@@ -74,7 +62,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			status = http.StatusInternalServerError
 			return
 		}
-
 		status = http.StatusOK
 	} else {
 		status = http.StatusBadRequest
