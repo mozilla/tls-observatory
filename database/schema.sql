@@ -77,3 +77,15 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER watched_table_trigger AFTER INSERT ON scans
 FOR EACH ROW EXECUTE PROCEDURE notify_trigger();
+
+CREATE ROLE tlsobsapi;
+GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsapi;
+GRANT INSERT ON scans TO tlsobsapi;
+GRANT USAGE ON scans_id_seq TO tlsobsapi;
+
+CREATE ROLE tlsobsscanner;
+GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsscanner;
+GRANT INSERT ON analysis, certificates, scans, trust TO tlsobsscanner;
+GRANT UPDATE ON analysis, certificates, scans, trust TO tlsobsscanner;
+GRANT USAGE ON analysis_id_seq, certificates_id_seq, scans_id_seq, trust_id_seq TO tlsobsscanner;
+
