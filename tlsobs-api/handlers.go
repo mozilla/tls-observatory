@@ -7,7 +7,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
-	"github.com/streadway/amqp"
 
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
@@ -49,18 +48,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 
 	if validateDomain(domain) {
 
-		conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer conn.Close()
-
-		ch, err := conn.Channel()
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer ch.Close()
-
 		scan, err := db.NewScan(domain, -1) //no replay
 
 		sID := strconv.FormatInt(scan.ID, 10)
@@ -83,28 +70,14 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 				"domain":  domain,
 				"error":   err.Error(),
 				"scan_id": scan.ID,
-			}).Error("Could not write scan id to respons")
+			}).Error("Could not write scan id to response")
 			status = http.StatusInternalServerError
 			return
 		}
 
 		status = http.StatusOK
-
-		log.Println("Publishing ", domain)
-		err = ch.Publish(
-			"amq.direct", // exchange
-			"scan_ready", // routing key
-			false,        // mandatory
-			false,
-			amqp.Publishing{
-				DeliveryMode: amqp.Persistent,
-				ContentType:  "text/plain",
-				Body:         []byte(sID),
-			})
-
 	} else {
 		status = http.StatusBadRequest
-		return
 	}
 
 }
