@@ -70,42 +70,34 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 }
 
 func (db *DB) acquireNotification(id string) bool {
-
 	tx, err := db.Begin()
-
 	if err != nil {
 		return false
 	}
+	// `ack` is a mutex in the database that each scanner will try to select
+	// for update. if a scanner succeeds, it will return true, otherwise it
+	// will return false.
+	row := tx.QueryRow("SELECT ack FROM scans WHERE id=$1 FOR UPDATE", id)
 
-	r := tx.QueryRow("SELECT ack FROM scans WHERE id=$1 FOR UPDATE", id)
-
-	var ack bool
-
-	err = r.Scan(&ack)
-
+	ack := false
+	err = row.Scan(&ack)
 	if err != nil {
 		tx.Rollback()
 		return false
 	}
-
 	if !ack {
-
 		_, err = tx.Exec("UPDATE scans SET ack=$1 WHERE id=$2", true, id)
 		if err != nil {
 			tx.Rollback()
 			return false
 		}
-
 		err = tx.Commit()
-
 		if err != nil {
 			tx.Rollback()
 			return false
-		} else {
-			return true
 		}
-	} else {
-		tx.Rollback()
-		return false
+		return true
 	}
+	tx.Rollback()
+	return false
 }
