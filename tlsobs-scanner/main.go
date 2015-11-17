@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 	"runtime"
-	"strconv"
+	//"strconv"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -36,7 +36,10 @@ func main() {
 	}
 
 	_, err := os.Stat(cfgFile)
-	log.Fatal("Missing configuration file from '-c' or /etc/tls-observatory/config.cfg")
+
+	if err != nil {
+		log.Fatal("Missing configuration file from '-c' or /etc/tls-observatory/config.cfg")
+	}
 
 	_, err = os.Stat(cipherscan)
 	if err != nil {
@@ -60,17 +63,18 @@ func main() {
 		}).Fatal("Failed to connect to database")
 	}
 
-	incomingScans := make(chan int64)
+	incomingScans := db.RegisterScanListener(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
 	certificate.Setup(conf, db)
 
-	for sid := range incomingScans {
-		scanId, err := strconv.ParseInt(string(sid), 10, 64)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"error": err.Error(),
-			}).Error("Invalid Scan ID")
-			continue
-		}
+	for scanId := range incomingScans {
+		//		scanId, err := strconv.ParseInt(string(sid), 10, 64)
+		//		if err != nil {
+		//			log.WithFields(logrus.Fields{
+		//				"error": err.Error(),
+		//			}).Error("Invalid Scan ID")
+		//			continue
+		//		}
+
 		scan(scanId, cipherscan)
 	}
 }
