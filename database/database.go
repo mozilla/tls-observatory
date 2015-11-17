@@ -29,9 +29,10 @@ type Scan struct {
 	Validation_error string
 	Complperc        int
 	Conn_info        []byte
+	Ack              bool
 }
 
-func RegisterConnection(dbname, user, password, hostport string, sslmode string) (*DB, error) {
+func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, error) {
 
 	url := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		user, password, hostport, dbname, sslmode)
@@ -51,7 +52,7 @@ func (db *DB) NewScan(domain string, rplay int) (Scan, error) {
 
 	var id int64
 
-	err := db.QueryRow("INSERT INTO scans (timestamp,target,replay,has_tls,is_valid,completion_perc,validation_error,conn_info) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id", timestamp, domain, rplay, false, false, 0, "", []byte("null")).Scan(&id)
+	err := db.QueryRow("INSERT INTO scans (timestamp,target,replay,has_tls,is_valid,completion_perc,validation_error,conn_info,ack) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id", timestamp, domain, rplay, false, false, 0, "", []byte("null"), false).Scan(&id)
 
 	if err != nil {
 		return Scan{}, err
@@ -70,11 +71,10 @@ func (db *DB) GetScan(id int64) (Scan, error) {
 	var isvalid sql.NullBool
 
 	row := db.QueryRow(`SELECT timestamp, target, replay, has_tls, cert_id, trust_id,
-	is_valid, completion_perc, validation_error, conn_info
-	FROM scans WHERE id=$1`, id)
+	is_valid, completion_perc, validation_error, conn_info, ack FROM scans WHERE id=$1`, id)
 
 	err := row.Scan(&s.Timestamp, &s.Target, &s.Replay, &s.Has_tls, &cID, &tID,
-		&isvalid, &s.Complperc, &s.Validation_error, &s.Conn_info)
+		&isvalid, &s.Complperc, &s.Validation_error, &s.Conn_info, &s.Ack)
 
 	if cID.Valid {
 		s.Cert_id = cID.Int64
