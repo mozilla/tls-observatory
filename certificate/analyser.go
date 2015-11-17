@@ -19,8 +19,10 @@ import (
 var trustStores []TrustStore
 var log = logger.GetLogger()
 
-func Setup(c config.ObserverConfig, db *pg.DB) {
+func Setup(c config.ObserverConfig, DB *pg.DB) {
 	ts := c.TrustStores
+
+	db = DB
 	// Load truststores from configuration. We expect that the truststore names and path
 	// are ordered correctly in the configuration, thus if truststore "mozilla" is at
 	// position 0 in conf.TrustStores.Name, its path will be found at conf.TrustStores.Path[0]
