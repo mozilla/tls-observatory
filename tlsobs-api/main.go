@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"os"
 
 	_ "github.com/Sirupsen/logrus"
 
@@ -30,6 +31,9 @@ func main() {
 	conf, err := config.Load(cfgFile)
 	if err != nil {
 		log.Fatal("Failed to load configuration: %v", err)
+	}
+	if !conf.General.Enable && os.Getenv("TLSOBS_API_ENABLE") != "on" {
+		log.Fatal("API is disabled in configuration")
 	}
 
 	db, err := pg.RegisterConnection(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")

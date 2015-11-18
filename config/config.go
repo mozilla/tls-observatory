@@ -10,7 +10,7 @@ import (
 
 type Config struct {
 	General struct {
-		RabbitMQRelay  string
+		Enable         bool
 		Postgres       string
 		PostgresDB     string
 		PostgresUser   string

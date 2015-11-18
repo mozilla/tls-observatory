@@ -34,10 +34,12 @@ func main() {
 		logger.SetLevelToDebug()
 	}
 
-	_, err := os.Stat(cfgFile)
-
+	conf, err := config.Load(cfgFile)
 	if err != nil {
-		log.Fatal("Missing configuration file from '-c' or /etc/tls-observatory/config.cfg")
+		log.Fatal("Failed to load configuration: %v", err)
+	}
+	if !conf.General.Enable && os.Getenv("TLSOBS_SCANNER_ENABLE") != "on" {
+		log.Fatal("Scanner is disabled in configuration")
 	}
 
 	_, err = os.Stat(cipherscan)
@@ -45,11 +47,6 @@ func main() {
 		log.WithFields(logrus.Fields{
 			"error": err.Error(),
 		}).Error("Could not locate cipherscan executable. TLS connection capabilities will not be available.")
-	}
-
-	conf, err := config.Load(cfgFile)
-	if err != nil {
-		log.Fatal("Failed to load configuration: %v", err)
 	}
 
 	cores := runtime.NumCPU()
