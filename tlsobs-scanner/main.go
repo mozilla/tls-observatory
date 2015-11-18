@@ -21,12 +21,11 @@ var db *pg.DB
 var log = logger.GetLogger()
 
 func main() {
-
-	conf := config.ObserverConfig{}
-
-	var cfgFile, cipherscan string
-	var debug bool
-	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/config.cfg", "Input file csv format")
+	var (
+		cfgFile, cipherscan string
+		debug               bool
+	)
+	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/scanner.cfg", "Input file csv format")
 	flag.StringVar(&cipherscan, "b", "/opt/cipherscan/cipherscan", "Cipherscan binary location")
 	flag.BoolVar(&debug, "debug", false, "Set debug logging")
 	flag.Parse()
@@ -48,9 +47,9 @@ func main() {
 		}).Error("Could not locate cipherscan executable. TLS connection capabilities will not be available.")
 	}
 
-	conf, err = config.ObserverConfigLoad(cfgFile)
+	conf, err := config.Load(cfgFile)
 	if err != nil {
-		conf = config.GetObserverDefaults()
+		log.Fatal("Failed to load configuration: %v", err)
 	}
 
 	cores := runtime.NumCPU()

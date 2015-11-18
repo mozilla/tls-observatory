@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"net/http"
-	"os"
 
 	_ "github.com/Sirupsen/logrus"
 
@@ -18,11 +17,9 @@ func main() {
 
 	router := NewRouter()
 
-	conf := config.ObserverConfig{}
-
 	var cfgFile string
 	var debug bool
-	flag.StringVar(&cfgFile, "c", "/etc/observer/observer.cfg", "Input file csv format")
+	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/api.cfg", "Input file csv format")
 	flag.BoolVar(&debug, "debug", false, "Set debug logging")
 	flag.Parse()
 
@@ -30,16 +27,9 @@ func main() {
 		logger.SetLevelToDebug()
 	}
 
-	_, err := os.Stat(cfgFile)
+	conf, err := config.Load(cfgFile)
 	if err != nil {
-		log.Println(err)
-		conf = config.GetObserverDefaults()
-	} else {
-		conf, err = config.ObserverConfigLoad(cfgFile)
-		if err != nil {
-			log.Println(err)
-			conf = config.GetObserverDefaults()
-		}
+		log.Fatal("Failed to load configuration: %v", err)
 	}
 
 	db, err := pg.RegisterConnection(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")

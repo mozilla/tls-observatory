@@ -2,18 +2,19 @@ package config
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/jvehent/gozdef"
 	"gopkg.in/gcfg.v1"
 )
 
-type ObserverConfig struct {
+type Config struct {
 	General struct {
 		RabbitMQRelay  string
 		Postgres       string
-		PostgresPass   string
 		PostgresDB     string
 		PostgresUser   string
+		PostgresPass   string
 		CipherscanPath string
 		GoRoutines     int // * cores = The Max number of spawned Goroutines
 	}
@@ -24,47 +25,27 @@ type ObserverConfig struct {
 	MozDef gozdef.MqConf
 }
 
-type APIConfig struct {
-	Postgres     string
-	PostgresPass string
-}
-
-func APIConfigLoad(path string) (conf APIConfig, err error) {
+func Load(path string) (conf Config, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("configLoad() -> %v", e)
 		}
 	}()
-	var c APIConfig
-	err = gcfg.ReadFileInto(&c, path)
-
-	return c, err
-}
-
-func ObserverConfigLoad(path string) (conf ObserverConfig, err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			err = fmt.Errorf("configLoad() -> %v", e)
-		}
-	}()
-	var c ObserverConfig
-	err = gcfg.ReadFileInto(&c, path)
-
-	return c, err
-}
-
-func GetObserverDefaults() ObserverConfig {
-	conf := ObserverConfig{}
-
-	conf.General.RabbitMQRelay = "amqp://guest:guest@localhost:5672/"
-	conf.TrustStores.Name = append(conf.TrustStores.Name, "")
-	conf.TrustStores.Path = append(conf.TrustStores.Path, "")
-	conf.General.Postgres = "127.0.0.1:5432"
-	conf.General.PostgresPass = "password"
-	conf.General.PostgresDB = "observer"
-	conf.General.PostgresUser = "observer"
-	conf.General.CipherscanPath = "../../../cipherscan/cipherscan"
-	conf.General.GoRoutines = 10
-
-	return conf
+	err = gcfg.ReadFileInto(&conf, path)
+	if err != nil {
+		panic(err)
+	}
+	if os.Getenv("TLSOBS_POSTGRES") != "" {
+		conf.General.Postgres = os.Getenv("TLSOBS_POSTGRES")
+	}
+	if os.Getenv("TLSOBS_POSTGRESDB") != "" {
+		conf.General.PostgresDB = os.Getenv("TLSOBS_POSTGRESDB")
+	}
+	if os.Getenv("TLSOBS_POSTGRESUSER") != "" {
+		conf.General.PostgresUser = os.Getenv("TLSOBS_POSTGRESUSER")
+	}
+	if os.Getenv("TLSOBS_POSTGRESPASS") != "" {
+		conf.General.PostgresPass = os.Getenv("TLSOBS_POSTGRESPASS")
+	}
+	return
 }

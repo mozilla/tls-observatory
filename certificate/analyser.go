@@ -19,7 +19,7 @@ import (
 var trustStores []TrustStore
 var log = logger.GetLogger()
 
-func Setup(c config.ObserverConfig, DB *pg.DB) {
+func Setup(c config.Config, DB *pg.DB) {
 	ts := c.TrustStores
 
 	db = DB
