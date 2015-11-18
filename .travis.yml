@@ -9,9 +9,7 @@ env:
     - DOCKER_EMAIL=jvehent@mozilla.com
     - DOCKER_USERNAME=jvehent
     - secure: "LwcQZ/M+4M+HJf6b/bKcGdmuTcT4XeN5MVuBSy34ag79/Zz3UinwBpW3peOhFNizJUbMVzPJJ7FGMWeUouq6lCcjjQZAIBnPWx/bhP0z7vIO8t2+XqKV47D3HqPOokqEdeKHvzr4xvfKGMBy+VMCWeuFI7Z3BLCqtWSQYDjAMTg="
-    - TAG=$(date +%Y%m%d%H%M)
-before_deploy:
-  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 before_install:
-    - sudo docker build -t tls-observatory:$TAG .
-    - sudo docker push jvehent/tls-observatory
+    - docker build -t jvehent/tls-observatory .
+    - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+    - docker push jvehent/tls-observatory:latest
