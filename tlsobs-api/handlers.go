@@ -31,11 +31,9 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		log.Error("Could not find db in request context")
 		status = http.StatusInternalServerError
-		return
 	}
 
 	db := val.(*pg.DB)
-	db.Ping()
 
 	domain := r.FormValue("target")
 	if validateDomain(domain) {
@@ -47,26 +45,15 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 				"error":  err.Error(),
 			}).Error("Could not create new scan")
 			status = http.StatusInternalServerError
-			return
 		}
 
 		resp := fmt.Sprintf(`{"scan_id":"%d"}`, scan.ID)
-
-		_, err = w.Write([]byte(resp))
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"domain":  domain,
-				"error":   err.Error(),
-				"scan_id": scan.ID,
-			}).Error("Could not write scan id to response")
-			status = http.StatusInternalServerError
-			return
-		}
-		status = http.StatusOK
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, resp)
 	} else {
-		status = http.StatusBadRequest
+		w.WriteHeader(http.StatusBadRequest)
 	}
-
 }
 
 func ResultHandler(w http.ResponseWriter, r *http.Request) {
