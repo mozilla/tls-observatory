@@ -15,5 +15,7 @@ USER tlsobs
 RUN go install $PROJECT/tlsobs-scanner
 RUN go install $PROJECT/tlsobs-api
 
-ENTRYPOINT /go/bin/tlsobs-scanner
-ENTRYPOINT /go/bin/tlsobs-api
+# the API listening port
+EXPOSE 8083
+
+ENTRYPOINT ["/go/bin/tlsobs-scanner", "/go/bin/tlsobs-api"]
