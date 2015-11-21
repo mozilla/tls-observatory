@@ -3,15 +3,10 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
 )
-
-const separator = "--"
-
-//using latest https://hub.docker.com/_/postgres/ image for testing
 
 type DB struct {
 	*sql.DB
@@ -108,26 +103,4 @@ func (db *DB) InsertWorkerAnalysis(scanid int64, jsonRes []byte, workerName stri
 	_, err := db.Exec("INSERT INTO analysis(scan_id,worker_name,	output) VALUES($1,$2,$3)", scanid, workerName, jsonRes)
 
 	return err
-}
-
-func StringSliceToString(slice []string) string {
-
-	res := ""
-
-	for _, s := range slice {
-		if res == "" {
-			res = s
-		} else {
-			res = res + separator + s
-		}
-	}
-
-	return res
-
-}
-
-func StringToStringSlice(s string) []string {
-
-	return strings.Split(s, separator)
-
 }
