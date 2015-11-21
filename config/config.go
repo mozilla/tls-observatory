@@ -19,8 +19,11 @@ type Config struct {
 		GoRoutines     int // * cores = The Max number of spawned Goroutines
 	}
 	TrustStores struct {
-		Name []string
-		Path []string
+		Ubuntu_TS    string
+		Mozilla_TS   string
+		Microsoft_TS string
+		Apple_TS     string
+		Android_TS   string
 	}
 	MozDef gozdef.MqConf
 }
