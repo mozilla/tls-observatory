@@ -505,17 +505,3 @@ func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSNa
 	}
 
 }
-
-//getCert tries to retrieve a stored certificate from the database.
-//If the document is not found it returns an error.
-func getCert(sha1 string) (Certificate, error) {
-
-	stored := Certificate{}
-
-	//get a cert from the db
-	log.Println(sha1)
-
-	var err error
-
-	return stored, err
-}
