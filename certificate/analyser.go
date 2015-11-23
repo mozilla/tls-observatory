@@ -19,17 +19,48 @@ import (
 var trustStores []TrustStore
 var log = logger.GetLogger()
 
+var TS = []string{ubuntu_TS_name, mozilla_TS_name, microsoft_TS_name, apple_TS_name, android_TS_name}
+
 func Setup(c config.Config, DB *pg.DB) {
 	ts := c.TrustStores
 
 	db = DB
-	// Load truststores from configuration. We expect that the truststore names and path
-	// are ordered correctly in the configuration, thus if truststore "mozilla" is at
-	// position 0 in conf.TrustStores.Name, its path will be found at conf.TrustStores.Path[0]
-	for i, name := range ts.Name {
+
+	for _, name := range TS {
+
+		path := ""
+
+		switch name {
+		case ubuntu_TS_name:
+			path = ts.UbuntuTS
+
+		case mozilla_TS_name:
+			path = ts.MozillaTS
+
+		case microsoft_TS_name:
+			path = ts.MicrosoftTS
+
+		case apple_TS_name:
+			path = ts.AppleTS
+
+		case android_TS_name:
+			path = ts.AndroidTS
+
+		default:
+
+			log.WithFields(logrus.Fields{
+				"tsname": name,
+			}).Warning("Invalid Truststore name.")
+		}
+
+		log.WithFields(logrus.Fields{
+			"tsname": name,
+			"path":   path,
+		}).Debug("Loading Truststore")
+
 		// load the entire trustore into pooldata, then iterate over each PEM block
 		// until all of pooldata is read
-		poolData, err := ioutil.ReadFile(ts.Path[i])
+		poolData, err := ioutil.ReadFile(path)
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"tsname": name,
