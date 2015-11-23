@@ -121,7 +121,18 @@ func scan(scanId int64, cipherscan string) {
 		"trust_id": trustID,
 	}).Debug("Retrieved certs")
 
-	_, err = db.Exec("UPDATE scans SET cert_id=$1,trust_id=$2,has_tls=TRUE WHERE id=$3", certID, trustID, scanId)
+	isTrustValid, err := certificate.IsTrustValid(trustID)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanId,
+			"cert_id": certID,
+			"error":   err.Error(),
+		}).Error("Could not get if trust is valid")
+		return
+	}
+
+	_, err = db.Exec("UPDATE scans SET cert_id=$1,trust_id=$2,has_tls=TRUE,is_valid=$3 WHERE id=$4", certID, trustID, isTrustValid, scanId)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"scan_id": scanId,

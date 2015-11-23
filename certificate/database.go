@@ -358,3 +358,18 @@ func getCurrentTrust(certID, issuerID int64) (int64, error) {
 
 	return trustID, nil
 }
+
+// IsTrustValid returns the validity of the trust relationship for the given id.
+// It returns a "valid" if any of the per truststore valitities is valid
+// It returns a boolean that represent if trust is valid or not.
+func IsTrustValid(id int64) (bool, error) {
+
+	row := db.QueryRow("SELECT trusted_ubuntu OR trusted_mozilla OR trusted_microsoft OR trusted_apple OR trusted_android FROM trust WHERE id=$1", id)
+
+	var isValid bool
+	isValid = false
+
+	err := row.Scan(&isValid)
+
+	return isValid, err
+}
