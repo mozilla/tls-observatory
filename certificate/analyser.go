@@ -33,21 +33,15 @@ func Setup(c config.Config, DB *pg.DB) {
 		switch name {
 		case ubuntu_TS_name:
 			path = ts.UbuntuTS
-
 		case mozilla_TS_name:
 			path = ts.MozillaTS
-
 		case microsoft_TS_name:
 			path = ts.MicrosoftTS
-
 		case apple_TS_name:
 			path = ts.AppleTS
-
 		case android_TS_name:
 			path = ts.AndroidTS
-
 		default:
-
 			log.WithFields(logrus.Fields{
 				"tsname": name,
 			}).Warning("Invalid Truststore name.")
@@ -89,13 +83,22 @@ func Setup(c config.Config, DB *pg.DB) {
 				}).Warning("Could not parse PEM block")
 				continue
 			}
+
 			// if the cert version is 1 or 2, the cert will not contain a CA: True extension
 			// so we set it manually instead. This assumes that all certs found in truststoresfile:///media/Projects/GoProjects/src/github.com/mozilla/TLS-Observer/certificate/analyserPool.go
-
 			// should be considered valid certificate authorities
 			if cert.Version < 3 {
 				cert.IsCA = true
 			}
+
+			if !cert.IsCA {
+				log.WithFields(logrus.Fields{
+					"tsname":  name,
+					"cert no": poollen + 1,
+					"SHA1":    SHA1Hash(cert.Raw),
+				}).Warning("Certificate in truststore is not a CA cert")
+			}
+
 			certPool.AddCert(cert)
 
 			//Push current certificate to DB as trusted
