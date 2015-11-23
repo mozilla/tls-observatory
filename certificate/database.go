@@ -53,8 +53,8 @@ func InsertCertificatetoDB(cert *Certificate) (int64, error) {
 	$12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
 		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
 		cert.Version, cert.CA, time.Now(), time.Now(), time.Now(),
-		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, string(cert.X509v3Extensions.AuthorityKeyId),
-		string(cert.X509v3Extensions.SubjectKeyId), keyusage,
+		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
+		cert.X509v3Extensions.SubjectKeyId, keyusage,
 		subaltname, cert.SignatureAlgorithm, cert.Raw).Scan(&id)
 
 	if err != nil {
@@ -126,8 +126,8 @@ func InsertCACertificatetoDB(cert *Certificate, tsName string) (int64, error) {
 	err = db.QueryRow(queryStr,
 		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
 		cert.Version, cert.CA, time.Now(), time.Now(), time.Now(),
-		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, string(cert.X509v3Extensions.AuthorityKeyId),
-		string(cert.X509v3Extensions.SubjectKeyId), keyusage,
+		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
+		cert.X509v3Extensions.SubjectKeyId, keyusage,
 		subaltname, cert.SignatureAlgorithm, cert.Raw, true).Scan(&id)
 
 	if err != nil {
@@ -263,25 +263,22 @@ func GetCertIDFromTrust(trustID int64) (int64, error) {
 // It returns a pointer to a Certificate struct and any errors that occur.
 func GetCertwithSHA1Fingerprint(sha1 string) (*Certificate, error) {
 
-	row := db.QueryRow(`SELECT sha256_fingerprint,
-		issuer, subject, version, is_ca, valid_not_before, valid_not_after, 
-		first_seen, last_Seen, x509_basicConstraints, x509_crlDistPoints, x509_extendedKeyUsage
-		x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
-		signature_algo, parent_id, raw_cert
-		FROM certificates
-		WHERE sha1_fingerprint=$1`, sha1)
+	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
+	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
+	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
+	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
+	signature_algo, raw_cert
+	FROM certificates
+	WHERE sha1_fingerprint=$1`, sha1)
 
 	cert := &Certificate{}
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname []byte
 
-	err := row.Scan(&cert.Hashes.SHA256, &cert.Issuer.CommonName, &cert.Subject.CommonName,
+	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Issuer.CommonName, &cert.Subject.CommonName,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
-		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points,
-		&extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
-		&cert.X509v3Extensions.SubjectKeyId, &keyusage,
-		&subaltname, &cert.SignatureAlgorithm,
-		&cert.ParentSignature)
+		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
+		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
 
 	if err != nil {
 		return nil, err
@@ -319,11 +316,11 @@ func GetCertwithSHA1Fingerprint(sha1 string) (*Certificate, error) {
 // It returns a pointer to a Certificate struct and any errors that occur.
 func GetCertwithID(id string) (*Certificate, error) {
 
-	row := db.QueryRow(`SELECT sha1_fingerprint,sha256_fingerprint,
-		issuer, subject, version, is_ca, valid_not_before, valid_not_after, 
-		first_seen, last_Seen, x509_basicConstraints, x509_crlDistPoints, x509_extendedKeyUsage
-		x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
-		signature_algo, parent_id, raw_cert
+	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
+	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
+	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
+	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
+	signature_algo, raw_cert
 		FROM certificates
 		WHERE id=$1`, id)
 
@@ -333,11 +330,8 @@ func GetCertwithID(id string) (*Certificate, error) {
 
 	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Issuer.CommonName, &cert.Subject.CommonName,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
-		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &cert.X509v3Extensions.CRLDistributionPoints,
-		&cert.X509v3Extensions.ExtendedKeyUsage, &cert.X509v3Extensions.AuthorityKeyId,
-		&cert.X509v3Extensions.SubjectKeyId, &cert.X509v3Extensions.KeyUsage,
-		&cert.X509v3Extensions.SubjectAlternativeName, &cert.SignatureAlgorithm,
-		&cert.ParentSignature)
+		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
+		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
 
 	if err != nil {
 		return nil, err
