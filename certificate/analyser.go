@@ -32,15 +32,12 @@ func Setup(c config.Config, DB *pg.DB) {
 
 		switch name {
 		case ubuntu_TS_name:
-
 			path = ts.UbuntuTS
 
 		case mozilla_TS_name:
-
 			path = ts.MozillaTS
 
 		case microsoft_TS_name:
-
 			path = ts.MicrosoftTS
 
 		case apple_TS_name:
@@ -53,7 +50,7 @@ func Setup(c config.Config, DB *pg.DB) {
 
 			log.WithFields(logrus.Fields{
 				"tsname": name,
-			}).Warning("Wrong slice name entry. This should not be there")
+			}).Warning("Invalid Truststore name.")
 		}
 
 		log.WithFields(logrus.Fields{
