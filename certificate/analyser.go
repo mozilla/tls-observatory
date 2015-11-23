@@ -33,21 +33,21 @@ func Setup(c config.Config, DB *pg.DB) {
 		switch name {
 		case ubuntu_TS_name:
 
-			path = ts.Ubuntu_TS
+			path = ts.UbuntuTS
 
 		case mozilla_TS_name:
 
-			path = ts.Mozilla_TS
+			path = ts.MozillaTS
 
 		case microsoft_TS_name:
 
-			path = ts.Microsoft_TS
+			path = ts.MicrosoftTS
 
 		case apple_TS_name:
-			path = ts.Apple_TS
+			path = ts.AppleTS
 
 		case android_TS_name:
-			path = ts.Android_TS
+			path = ts.AndroidTS
 
 		default:
 
@@ -55,6 +55,11 @@ func Setup(c config.Config, DB *pg.DB) {
 				"tsname": name,
 			}).Warning("Wrong slice name entry. This should not be there")
 		}
+
+		log.WithFields(logrus.Fields{
+			"tsname": name,
+			"path":   path,
+		}).Debug("Loading Truststore")
 
 		// load the entire trustore into pooldata, then iterate over each PEM block
 		// until all of pooldata is read
