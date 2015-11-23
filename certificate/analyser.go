@@ -19,18 +19,18 @@ import (
 var trustStores []TrustStore
 var log = logger.GetLogger()
 
-var TS = []string{ubuntu_TS_name, mozilla_TS_name, microsoft_TS_name, apple_TS_name, android_TS_name}
+var allowedTruststoreNames = []string{ubuntu_TS_name, mozilla_TS_name, microsoft_TS_name, apple_TS_name, android_TS_name}
 
 func Setup(c config.Config, DB *pg.DB) {
 	ts := c.TrustStores
 
 	db = DB
 
-	for _, name := range TS {
+	for _, tsName := range allowedTruststoreNames {
 
 		path := ""
 
-		switch name {
+		switch tsName {
 		case ubuntu_TS_name:
 			path = ts.UbuntuTS
 		case mozilla_TS_name:
@@ -43,12 +43,12 @@ func Setup(c config.Config, DB *pg.DB) {
 			path = ts.AndroidTS
 		default:
 			log.WithFields(logrus.Fields{
-				"tsname": name,
+				"tsname": tsName,
 			}).Warning("Invalid Truststore name.")
 		}
 
 		log.WithFields(logrus.Fields{
-			"tsname": name,
+			"tsname": tsName,
 			"path":   path,
 		}).Debug("Loading Truststore")
 
@@ -57,7 +57,7 @@ func Setup(c config.Config, DB *pg.DB) {
 		poolData, err := ioutil.ReadFile(path)
 		if err != nil {
 			log.WithFields(logrus.Fields{
-				"tsname": name,
+				"tsname": tsName,
 				"error":  err.Error(),
 			}).Warning("Failed to load truststore")
 		}
@@ -77,7 +77,7 @@ func Setup(c config.Config, DB *pg.DB) {
 			cert, err := x509.ParseCertificate(block.Bytes)
 			if err != nil {
 				log.WithFields(logrus.Fields{
-					"tsname":  name,
+					"tsname":  tsName,
 					"cert no": poollen + 1,
 					"error":   err.Error(),
 				}).Warning("Could not parse PEM block")
@@ -93,7 +93,7 @@ func Setup(c config.Config, DB *pg.DB) {
 
 			if !cert.IsCA {
 				log.WithFields(logrus.Fields{
-					"tsname":  name,
+					"tsname":  tsName,
 					"cert no": poollen + 1,
 					"SHA1":    SHA1Hash(cert.Raw),
 				}).Warning("Certificate in truststore is not a CA cert")
@@ -117,7 +117,7 @@ func Setup(c config.Config, DB *pg.DB) {
 			if err != nil {
 
 				log.WithFields(logrus.Fields{
-					"tsname":      name,
+					"tsname":      tsName,
 					"certificate": SHA256Hash(cert.Raw),
 					"error":       err.Error(),
 				}).Error("Could not check if certificate is in db")
@@ -129,25 +129,25 @@ func Setup(c config.Config, DB *pg.DB) {
 				vinfo.IsValid = true
 				vinfo.ValidationError = ""
 
-				st := certtoStored(cert, parentSignature, "", "", name, vinfo)
-				id, err = InsertCertificatetoDB(&st)
+				st := certtoStored(cert, parentSignature, "", "", tsName, vinfo)
+				id, err = InsertCACertificatetoDB(&st, tsName)
 
 				if err != nil {
 					log.WithFields(logrus.Fields{
-						"tsname":      name,
+						"tsname":      tsName,
 						"certificate": SHA256Hash(cert.Raw),
 						"error":       err.Error(),
 					}).Error("Could not insert certificate in db")
 				}
 			} else {
-				UpdateCertLastSeenWithID(id)
+				UpdateCACertTruststore(id, tsName)
 			}
 
 			poollen++
 		}
-		trustStores = append(trustStores, TrustStore{name, certPool})
+		trustStores = append(trustStores, TrustStore{tsName, certPool})
 		log.WithFields(logrus.Fields{
-			"tsname":              name,
+			"tsname":              tsName,
 			"certificates loaded": poollen,
 		}).Info("Successfully loaded TS ")
 	}

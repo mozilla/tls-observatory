@@ -3,6 +3,7 @@ package certificate
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -63,6 +64,79 @@ func InsertCertificatetoDB(cert *Certificate) (int64, error) {
 	return id, nil
 }
 
+// InsertCACertificatetoDB inserts a x509 certificate imported from a truststore to the database.
+// It takes as input a Certificate pointer and the name of the imported trust store.
+// It does a "dumb" translation from trust store name to mapped certificate table variables.
+// It returns the database ID of the inserted certificate ( -1 if an error occures ) and an error, if it occures.
+func InsertCACertificatetoDB(cert *Certificate, tsName string) (int64, error) {
+
+	var id int64
+
+	crl_dist_points, err := json.Marshal(cert.X509v3Extensions.CRLDistributionPoints)
+
+	if err != nil {
+		return -1, err
+	}
+
+	extkeyusage, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsage)
+
+	if err != nil {
+		return -1, err
+	}
+
+	keyusage, err := json.Marshal(cert.X509v3Extensions.KeyUsage)
+
+	if err != nil {
+		return -1, err
+	}
+
+	subaltname, err := json.Marshal(cert.X509v3Extensions.SubjectAlternativeName)
+
+	if err != nil {
+		return -1, err
+	}
+
+	tsVariable := ""
+	switch tsName {
+	case ubuntu_TS_name:
+		tsVariable = "in_ubuntu_root_store"
+	case mozilla_TS_name:
+		tsVariable = "in_mozilla_root_store"
+	case microsoft_TS_name:
+		tsVariable = "in_microsoft_root_store"
+	case apple_TS_name:
+		tsVariable = "in_apple_root_store"
+	case android_TS_name:
+		tsVariable = "in_android_root_store"
+	default:
+		log.WithFields(logrus.Fields{
+			"tsname": tsName,
+		}).Error("Invalid Truststore name, Cannot insert certificate to DB")
+
+		return -1, errors.New(fmt.Sprintf("Cannot insert to DB, %s does not represent a valid truststore name.", tsName))
+	}
+
+	queryStr := fmt.Sprintf(`INSERT INTO certificates(  sha1_fingerprint, sha256_fingerprint,
+	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
+	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
+	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
+	signature_algo, raw_cert, %s ) VALUES ( $1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+	$12, $13, $14, $15, $16, $17, $18, $19, $20 ) RETURNING id`, tsVariable)
+
+	err = db.QueryRow(queryStr,
+		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
+		cert.Version, cert.CA, time.Now(), time.Now(), time.Now(),
+		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, string(cert.X509v3Extensions.AuthorityKeyId),
+		string(cert.X509v3Extensions.SubjectKeyId), keyusage,
+		subaltname, cert.SignatureAlgorithm, cert.Raw, true).Scan(&id)
+
+	if err != nil {
+		return -1, err
+	}
+
+	return id, nil
+}
+
 // UpdateCertLastSeen updates the last_seen timestamp of the input certificate.
 // Outputs an error if it occurs.
 func UpdateCertLastSeen(cert *Certificate) error {
@@ -76,6 +150,38 @@ func UpdateCertLastSeen(cert *Certificate) error {
 func UpdateCertLastSeenWithID(id int64) error {
 
 	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE id=$2", time.Now(), id)
+	return err
+}
+
+// UpdateCACertTruststore updates the last_seen timestamp and the in_xxx_root_store variables of the certificate with the given id.
+// It takes as input a certificate id and the name of the imported trust store.
+// It does a "dumb" translation from trust store name to mapped certificate table variables.
+// Outputs an error if any occur.
+func UpdateCACertTruststore(id int64, tsName string) error {
+
+	tsVariable := ""
+	switch tsName {
+	case ubuntu_TS_name:
+		tsVariable = "in_ubuntu_root_store"
+	case mozilla_TS_name:
+		tsVariable = "in_mozilla_root_store"
+	case microsoft_TS_name:
+		tsVariable = "in_microsoft_root_store"
+	case apple_TS_name:
+		tsVariable = "in_apple_root_store"
+	case android_TS_name:
+		tsVariable = "in_android_root_store"
+	default:
+		log.WithFields(logrus.Fields{
+			"tsname": tsName,
+		}).Error("Invalid Truststore name, Cannot insert certificate to DB")
+
+		return errors.New(fmt.Sprintf("Cannot update DB, %s does not represent a valid truststore name.", tsName))
+	}
+
+	queryStr := fmt.Sprintf("UPDATE certificates SET %s=$1,last_seen=$2 WHERE id=$3", tsVariable)
+
+	_, err := db.Exec(queryStr, true, time.Now(), id)
 	return err
 }
 
