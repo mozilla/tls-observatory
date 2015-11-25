@@ -13,17 +13,17 @@ type DB struct {
 }
 
 type Scan struct {
-	ID               int64
-	Timestamp        time.Time
-	Target           string
-	Replay           int //hours or days
-	Has_tls          bool
-	Cert_id          int64
-	Trust_id         int64
-	Is_valid         bool
-	Validation_error string
-	Complperc        int
-	Conn_info        []byte
+	ID               int64     `json:"id"`
+	Timestamp        time.Time `json:"timestamp"`
+	Target           string    `json:"target"`
+	Replay           int       `json:"replay"` //hours or days
+	Has_tls          bool      `json:"has_tls"`
+	Cert_id          int64     `json:"cert_id"`
+	Trust_id         int64     `json:"trust_id"`
+	Is_valid         bool      `json:"is_valid"`
+	Validation_error string    `json:"validation_error,omitempty"`
+	Complperc        int       `json:"completion_perc"`
+	Conn_info        []byte    `json:"connection_info"`
 	Ack              bool
 }
 
