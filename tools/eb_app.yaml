@@ -1,0 +1,207 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an ElasticBeanstalk application. !!! JSON generated from YAML file. DO NOT EDIT THE JSON
+Parameters:
+  SSHKeyName:
+    Description: SSH Keypair to use
+    Type: String
+  SSLCertARN:
+    Description: ARN of SSL Certificate to use
+    Type: String
+  ASGDesiredCapacity:
+    Description: 'Number of application servers to start. Allowed: 0,1,2,3,4,5,6,7,8,9,10'
+    Default: '2'
+    Type: Number
+    AllowedValues: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+  ASGMinimumSize:
+    Description: 'Minimum ASG size. Recommended 2 for production. Valid: [0,1,2,3,4,5,6]'
+    Default: '2'
+    Type: Number
+    AllowedValues: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+  Environment:
+    Description: 'Environment, Allowed: dev, stage, prod'
+    AllowedValues: [dev, stage, prod]
+    Default: prod
+    Type: String
+  InstanceType:
+    Description: Instance type supported by ElasticBeanstalk
+    Default: t2.small
+    Type: String
+  RDSSecurityGroupID:
+    Description: SecurityGroup ID for app servers to access the RDS DB
+    Type: String
+  CNAMEPrefix:
+    Description: CNAME prefix for the .elasticbeanstalk.com domain
+    Type: String
+    Default: tlsobservatory
+  Owner:
+    Description: Owner of this stack
+    Type: String
+    Default: cloudops
+  
+
+  # environment variables to be passed
+  # to the application, these are created as part of the EB 
+  # Environment settings so they over-ride all previous 
+  # env vars with lower precedence
+  envTLSOBS_POSTGRES:
+    Type: String
+    Default: "this should be set"
+  envTLSOBS_POSTGRESDB:
+    Type: String
+    Default: "observatory"
+  envTLSOBS_POSTGRESUSER:
+    Type: String
+    Default: "tlsobsapi"
+  envTLSOBS_POSTGRESPASS:
+    Type: String
+    Default: "this should be set"
+    NoEcho: "true"
+
+  envDatadogAPIKey:
+    Type: String
+    Default: ""
+  envDatadogAppKey:
+    Type: String
+    Default: ""
+    NoEcho: "true"
+
+Resources:
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /tlsobservatory/
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+      #Policies:
+      #- PolicyName: TLSObservatory
+      #  PolicyDocument:
+      #    Statement:
+      #    - Action: S3:*
+      #      Effect: Allow
+      #      Resource:
+      #      - Fn::Join:
+      #        - ''
+      #        - - 'arn:aws:s3:::'
+      #          - Ref: S3Bucket
+      #          - /*
+      #      - Fn::Join:
+      #        - ''
+      #        - - 'arn:aws:s3:::'
+      #          - Ref: S3Bucket
+    
+  IAMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /tlsobservatory/
+      Roles: 
+        - Ref: IAMRole
+      
+  EBApp:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      Description: TLS Observatory
+  configTemplate:
+    Type: AWS::ElasticBeanstalk::ConfigurationTemplate
+    Properties:
+      SolutionStackName: 64bit Amazon Linux 2015.09 v2.0.4 running Docker 1.7.1
+      ApplicationName:
+        Ref: EBApp
+      Description: EB configuration
+      OptionSettings:
+      - Namespace: aws:autoscaling:asg
+        OptionName: MinSize
+        Value:
+          Ref: ASGMinimumSize
+      - Namespace: aws:autoscaling:asg
+        OptionName: MaxSize
+        Value: '4'
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: InstanceType
+        Value: 
+          Ref: InstanceType
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: IamInstanceProfile
+        Value: 
+          Ref: IAMInstanceProfile
+      - Namespace: aws:elasticbeanstalk:environment
+        OptionName: EnvironmentType
+        Value: LoadBalanced
+      - Namespace: aws:elb:listener:443
+        OptionName: ListenerProtocol
+        Value: HTTPS
+      - Namespace: aws:elb:listener:443
+        OptionName: InstancePort
+        Value: "8083"
+      - Namespace: aws:elb:listener:443
+        OptionName: InstanceProtocol
+        Value: HTTP
+      - Namespace: aws:elb:listener:80
+        OptionName: ListenerEnabled
+        Value: "false"
+      - Namespace: aws:elb:listener:443
+        OptionName: SSLCertificateId
+        Value:
+          Ref: SSLCertARN
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: InstanceType
+        Value:
+          Ref: InstanceType
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: SecurityGroups
+        Value:
+          Fn::Join:
+          - ','
+          - - shared-base
+            - Ref: RDSSecurityGroupID
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: EC2KeyName
+        Value:
+          Ref: SSHKeyName
+  ebEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      Description: AWS ElasticBeanstalk Sample Environment
+      ApplicationName:
+        Ref: EBApp
+      TemplateName:
+        Ref: configTemplate
+      CNAMEPrefix:
+        Ref: CNAMEPrefix
+      Tags:
+      - Key: App
+        Value: tlsobservatory
+      - Key: Env
+        Value:
+          Ref: Environment
+      - Key: Type
+        Value: tlsobservatory
+      - Key: Stack
+        Value:
+          Ref: AWS::StackName
+      - Key: Owner
+        Value:
+          Ref: Owner
+      # Environment variables to pass to the application
+      OptionSettings:
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: TLSOBS_POSTGRES
+        Value: {Ref: envTLSOBS_POSTGRES  }
+
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: TLSOBS_POSTGRESDB
+        Value: {Ref: envTLSOBS_POSTGRESDB }
+
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: TLSOBS_POSTGRESUSER
+        Value: {Ref: envTLSOBS_POSTGRESUSER }
+
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: TLSOBS_POSTGRESPASS
+        Value: {Ref: envTLSOBS_POSTGRESPASS }
