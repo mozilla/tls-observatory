@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
@@ -21,7 +24,11 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), status)
 		}
 	}()
+
+	status = http.StatusInternalServerError
+
 	log := logger.GetLogger()
+
 	log.WithFields(logrus.Fields{
 		"form values": r.Form,
 		"headers":     r.Header,
@@ -30,12 +37,14 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	val, ok := context.GetOk(r, dbKey)
 	if !ok {
 		log.Error("Could not find db in request context")
-		status = http.StatusInternalServerError
+		err = errors.New("Could not access database.")
+		return
 	}
 
 	db := val.(*pg.DB)
 
 	domain := r.FormValue("target")
+
 	if validateDomain(domain) {
 
 		scan, err := db.NewScan(domain, -1) //no replay
@@ -69,16 +78,69 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	domain := r.FormValue("id")
+	status = http.StatusInternalServerError
 
-	if validateDomain(domain) {
+	log := logger.GetLogger()
 
-		status = http.StatusOK
+	log.WithFields(logrus.Fields{
+		"form values": r.Form,
+		"headers":     r.Header,
+	}).Debug("Received request")
 
-	} else {
-		status = http.StatusBadRequest
+	val, ok := context.GetOk(r, dbKey)
+	if !ok {
+		log.Error("Could not find db in request context")
+		err = errors.New("Could not access database.")
 		return
 	}
+
+	db := val.(*pg.DB)
+
+	scanIDStr := r.FormValue("scan_id")
+
+	scanID, err := strconv.ParseInt(scanIDStr, 10, 64)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanIDStr,
+			"error":   err.Error(),
+		}).Error("Could not parse scanid")
+		err = errors.New("Something went wrong :\\")
+		status = http.StatusInternalServerError
+		return
+	}
+
+	//TODO add 404
+
+	scan, err := db.GetScan(scanID)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanIDStr,
+			"error":   err.Error(),
+		}).Error("Could not get scan from database")
+
+		err = errors.New("Something went wrong :\\")
+		status = http.StatusInternalServerError
+		return
+	}
+
+	jsScan, err := json.MarshalIndent(scan, "", "	")
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanIDStr,
+			"error":   err.Error(),
+		}).Error("Could not Marshal scan")
+
+		err = errors.New("Something went wrong :\\")
+		status = http.StatusInternalServerError
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, string(jsScan))
 
 }
 
