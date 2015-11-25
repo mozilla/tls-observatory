@@ -63,28 +63,15 @@ func main() {
 	certificate.Setup(conf, db)
 
 	for scanId := range incomingScans {
-		//		scanId, err := strconv.ParseInt(string(sid), 10, 64)
-		//		if err != nil {
-		//			log.WithFields(logrus.Fields{
-		//				"error": err.Error(),
-		//			}).Error("Invalid Scan ID")
-		//			continue
-		//		}
-
-		scan(scanId, cipherscan)
+		go scan(scanId, cipherscan)
 	}
 }
 
 func scan(scanId int64, cipherscan string) {
+
 	log.WithFields(logrus.Fields{
 		"scan_id": scanId,
 	}).Debug("Received new scan ")
-
-	tx, err := db.Begin()
-	if err != nil {
-		log.Println(err)
-		return
-	}
 
 	scan, err := db.GetScan(scanId)
 	if err != nil {
@@ -92,7 +79,6 @@ func scan(scanId int64, cipherscan string) {
 			"scan_id": scanId,
 			"error":   err.Error(),
 		}).Error("Could not find/decode scan")
-		tx.Rollback()
 		return
 	}
 	var completion int = 0
@@ -103,7 +89,6 @@ func scan(scanId int64, cipherscan string) {
 		err, ok := err.(certificate.NoTLSCertsErr)
 		if ok {
 			//nil cert, does not implement TLS
-			tx.Rollback()
 			db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", scanId)
 			return
 		} else {
@@ -112,7 +97,6 @@ func scan(scanId int64, cipherscan string) {
 				"scan_Target": scan.Target,
 				"error":       err.Error(),
 			}).Error("Could not get certificate info")
-			tx.Rollback()
 		}
 	}
 	log.WithFields(logrus.Fields{
@@ -121,7 +105,18 @@ func scan(scanId int64, cipherscan string) {
 		"trust_id": trustID,
 	}).Debug("Retrieved certs")
 
-	_, err = db.Exec("UPDATE scans SET cert_id=$1,trust_id=$2,has_tls=TRUE WHERE id=$3", certID, trustID, scanId)
+	isTrustValid, err := certificate.IsTrustValid(trustID)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanId,
+			"cert_id": certID,
+			"error":   err.Error(),
+		}).Error("Could not get if trust is valid")
+		return
+	}
+
+	_, err = db.Exec("UPDATE scans SET cert_id=$1,trust_id=$2,has_tls=TRUE,is_valid=$3 WHERE id=$4", certID, trustID, isTrustValid, scanId)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"scan_id": scanId,
@@ -144,7 +139,6 @@ func scan(scanId int64, cipherscan string) {
 		err, ok := err.(connection.NoTLSConnErr)
 		if ok {
 			//does not implement TLS
-			tx.Rollback()
 			db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", scanId)
 			return
 		} else {
@@ -152,7 +146,6 @@ func scan(scanId int64, cipherscan string) {
 				"scan_id": scanId,
 				"error":   err.Error(),
 			}).Error("Could not get TLS connection info")
-			tx.Rollback()
 		}
 	} else {
 		db.Exec("UPDATE scans SET conn_info=$1 WHERE id=$2", js, scanId)
@@ -168,33 +161,41 @@ func scan(scanId int64, cipherscan string) {
 
 	// launch workers that evaluate the results
 	resChan := make(chan worker.WorkerResult)
-	go func() {
-		for _, wrkInfo := range worker.AvailableWorkers {
-			go wrkInfo.Runner.(worker.Worker).Run([]byte(scan.Target), resChan)
-		}
-	}()
+	for _, wrkInfo := range worker.AvailableWorkers {
+		go wrkInfo.Runner.(worker.Worker).Run([]byte(scan.Target), resChan)
+	}
 
 	totalWorkers := len(worker.AvailableWorkers)
+
+	log.WithFields(logrus.Fields{
+		"scan_id": scanId,
+		"workers": totalWorkers,
+	}).Debug("Running workers")
+
 	if totalWorkers > 0 {
 		endedWorkers := 0
 		select {
-
 		case <-time.After(10 * time.Second):
 
 			log.WithFields(logrus.Fields{
 				"scan_id": scanId,
 			}).Debug("Scanners timed out")
-			err := tx.Commit()
 
 			if err != nil {
 				log.Println(err)
 			}
 			return
-			//wait no more than 10 secs for all workers to finish.
 
 		case res := <-resChan:
 			endedWorkers += endedWorkers
 			currCompletionPercentage := ((endedWorkers/totalWorkers)*60 + 40)
+
+			log.WithFields(logrus.Fields{
+				"scan_id":        scanId,
+				"worker_name":    res.WorkerName,
+				"result_success": res.Success,
+				"result_data":    string(res.Result),
+			}).Debug("Received results from worker")
 
 			err = db.UpdateScanCompletionPercentage(scanId, currCompletionPercentage)
 			if err != nil {
@@ -205,7 +206,7 @@ func scan(scanId int64, cipherscan string) {
 			}
 
 			if res.Success {
-				tx.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", scanId, res.WorkerName, res.Result)
+				db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", scanId, res.WorkerName, res.Result)
 			} else {
 				log.WithFields(logrus.Fields{
 					"worker_name": res.WorkerName,

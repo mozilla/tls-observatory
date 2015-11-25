@@ -82,8 +82,8 @@ type SubjectPublicKeyInfo struct {
 
 //Currently exporting extensions that are already decoded into the x509 Certificate structure
 type Extensions struct {
-	AuthorityKeyId         []byte   `json:"authorityKeyId"`
-	SubjectKeyId           []byte   `json:"subjectKeyId"`
+	AuthorityKeyId         string   `json:"authorityKeyId"`
+	SubjectKeyId           string   `json:"subjectKeyId"`
 	KeyUsage               []string `json:"keyUsage"`
 	ExtendedKeyUsage       []string `json:"extendedKeyUsage"`
 	SubjectAlternativeName []string `json:"subjectAlternativeName"`
@@ -118,11 +118,6 @@ type TrustStore struct {
 type ValidationInfo struct {
 	IsValid         bool   `json:"isValid"`
 	ValidationError string `json:"validationError"`
-}
-
-type Stored struct {
-	Certificate Certificate
-	Raw         []byte
 }
 
 var SignatureAlgorithm = [...]string{
@@ -292,8 +287,8 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 
 	extensions := Extensions{}
 
-	extensions.AuthorityKeyId = []byte(base64.StdEncoding.EncodeToString(cert.AuthorityKeyId))
-	extensions.SubjectKeyId = []byte(base64.StdEncoding.EncodeToString(cert.SubjectKeyId))
+	extensions.AuthorityKeyId = base64.StdEncoding.EncodeToString(cert.AuthorityKeyId)
+	extensions.SubjectKeyId = base64.StdEncoding.EncodeToString(cert.SubjectKeyId)
 
 	extensions.KeyUsage = getKeyUsageAsStringArray(cert)
 
@@ -428,6 +423,8 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Hashes.SHA1 = SHA1Hash(cert.Raw)
 	stored.Hashes.SHA256 = SHA256Hash(cert.Raw)
 
+	stored.Raw = base64.StdEncoding.EncodeToString(cert.Raw)
+
 	return stored
 
 }
@@ -448,48 +445,3 @@ func printRawCertExtensions(cert *x509.Certificate) {
 	}
 
 }
-
-//func GetRootStoreInclusion(in_ubuntu_ts, in_mozilla_ts, in_microsoft_ts, in_apple_ts, in_android_ts *bool, ts_name string) bool {
-
-//	haschanged := false
-//	if ts_name == ubuntu_TS_name {
-
-//		if !in_ubuntu_ts {
-//			has_changed = true
-//		}
-
-//		in_ubuntu_ts = true
-
-//	} else if ts_name == mozilla_TS_name {
-
-//		if !in_mozilla_ts {
-//			has_changed = true
-//		}
-
-//		in_mozilla_ts = true
-//	} else if ts_name == apple_TS_name {
-
-//		if !in_apple_ts {
-//			has_changed = true
-//		}
-
-//		in_apple_ts = true
-//	} else if ts_name == microsoft_TS_name {
-
-//		if !in_microsoft_ts {
-//			has_changed = true
-//		}
-
-//		in_microsoft_ts = true
-//	} else if ts_name == android_TS_name {
-
-//		if !in_android_ts {
-//			has_changed = true
-//		}
-
-//		in_android_ts = true
-//	}
-
-//	return haschanged
-
-//}
