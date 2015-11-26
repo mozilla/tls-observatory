@@ -53,7 +53,8 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 				"domain": domain,
 				"error":  err.Error(),
 			}).Error("Could not create new scan")
-			status = http.StatusInternalServerError
+			err = errors.New("Could not create new scan")
+			return
 		}
 
 		resp := fmt.Sprintf(`{"scan_id":"%d"}`, scan.ID)
@@ -78,9 +79,9 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	status = http.StatusInternalServerError
-
 	log := logger.GetLogger()
+
+	status = http.StatusInternalServerError
 
 	log.WithFields(logrus.Fields{
 		"form values": r.Form,
@@ -106,11 +107,8 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 			"error":   err.Error(),
 		}).Error("Could not parse scanid")
 		err = errors.New("Something went wrong :\\")
-		status = http.StatusInternalServerError
 		return
 	}
-
-	//TODO add 404
 
 	scan, err := db.GetScan(scanID)
 
@@ -121,7 +119,16 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		}).Error("Could not get scan from database")
 
 		err = errors.New("Something went wrong :\\")
-		status = http.StatusInternalServerError
+		return
+	}
+
+	if scan.ID == -1 {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanIDStr,
+		}).Debug("Did not find scan in database")
+
+		err = errors.New("Could not find a scan with the id you provided")
+		status = http.StatusNotFound
 		return
 	}
 
@@ -134,14 +141,12 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		}).Error("Could not Marshal scan")
 
 		err = errors.New("Something went wrong :\\")
-		status = http.StatusInternalServerError
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
-
 }
 
 func CertificateHandler(w http.ResponseWriter, r *http.Request) {

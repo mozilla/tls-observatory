@@ -2,10 +2,13 @@ package database
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	_ "github.com/lib/pq"
+
+	"github.com/mozilla/tls-observatory/connection"
 )
 
 type DB struct {
@@ -13,17 +16,17 @@ type DB struct {
 }
 
 type Scan struct {
-	ID               int64     `json:"id"`
-	Timestamp        time.Time `json:"timestamp"`
-	Target           string    `json:"target"`
-	Replay           int       `json:"replay"` //hours or days
-	Has_tls          bool      `json:"has_tls"`
-	Cert_id          int64     `json:"cert_id"`
-	Trust_id         int64     `json:"trust_id"`
-	Is_valid         bool      `json:"is_valid"`
-	Validation_error string    `json:"validation_error,omitempty"`
-	Complperc        int       `json:"completion_perc"`
-	Conn_info        []byte    `json:"connection_info"`
+	ID               int64             `json:"id"`
+	Timestamp        time.Time         `json:"timestamp"`
+	Target           string            `json:"target"`
+	Replay           int               `json:"replay"` //hours or days
+	Has_tls          bool              `json:"has_tls"`
+	Cert_id          int64             `json:"cert_id"`
+	Trust_id         int64             `json:"trust_id"`
+	Is_valid         bool              `json:"is_valid"`
+	Validation_error string            `json:"validation_error,omitempty"`
+	Complperc        int               `json:"completion_perc"`
+	Conn_info        connection.Stored `json:"connection_info"`
 	Ack              bool
 }
 
@@ -65,11 +68,20 @@ func (db *DB) GetScan(id int64) (Scan, error) {
 
 	var isvalid sql.NullBool
 
+	var ci []byte
+
 	row := db.QueryRow(`SELECT timestamp, target, replay, has_tls, cert_id, trust_id,
 	is_valid, completion_perc, validation_error, conn_info, ack FROM scans WHERE id=$1`, id)
 
 	err := row.Scan(&s.Timestamp, &s.Target, &s.Replay, &s.Has_tls, &cID, &tID,
-		&isvalid, &s.Complperc, &s.Validation_error, &s.Conn_info, &s.Ack)
+		&isvalid, &s.Complperc, &s.Validation_error, &ci, &s.Ack)
+
+	if err == sql.ErrNoRows {
+		s.ID = -1
+		return s, nil
+	} else {
+		return s, err
+	}
 
 	if cID.Valid {
 		s.Cert_id = cID.Int64
@@ -89,8 +101,9 @@ func (db *DB) GetScan(id int64) (Scan, error) {
 		s.Is_valid = false
 	}
 
-	return s, err
+	err = json.Unmarshal(ci, &s.Conn_info)
 
+	return s, err
 }
 
 func (db *DB) UpdateScanCompletionPercentage(id int64, p int) error {
