@@ -10,6 +10,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
 
+	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
 )
@@ -162,25 +163,67 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	domain := r.FormValue("target")
+	log := logger.GetLogger()
 
-	if validateDomain(domain) {
+	status = http.StatusInternalServerError
 
-		//		raw := r.FormValue("raw")
+	log.WithFields(logrus.Fields{
+		"form values": r.Form.Encode(),
+		"headers":     r.Header,
+	}).Debug("Received request")
 
-		//		rawCert := false
+	val, ok := context.GetOk(r, dbKey)
 
-		//		if raw == "true" {
-		//			rawCert = true
-		//		}
-
-		status = http.StatusOK
-
-	} else {
-		status = http.StatusBadRequest
+	if !ok {
+		log.Error("Could not find db in request context")
+		err = errors.New("Could not access database.")
 		return
 	}
 
+	db := val.(*pg.DB)
+
+	certIDstr := r.FormValue("cert_id")
+
+	certID, err := strconv.ParseInt(certIDstr, 10, 64)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": certID,
+			"error":   err.Error(),
+		}).Error("Could not parse scanid")
+		err = errors.New("Something went wrong :\\")
+		return
+	}
+
+	certificate.SetDB(db)
+
+	cert, err := certificate.GetCertwithID(certID)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": certID,
+			"error":   err.Error(),
+		}).Error("Could not get cert from database")
+
+		err = errors.New("Something went wrong :\\")
+		return
+	}
+
+	jsScan, err := json.MarshalIndent(cert, "", "	")
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"cert_id": certID,
+			"error":   err.Error(),
+		}).Error("Could not Marshal cert")
+
+		err = errors.New("Something went wrong :\\")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, string(jsScan))
 }
 
 func validateDomain(domain string) bool {
