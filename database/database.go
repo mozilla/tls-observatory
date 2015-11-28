@@ -76,15 +76,18 @@ func (db *DB) GetScan(id int64) (Scan, error) {
 	err := row.Scan(&s.Timestamp, &s.Target, &s.Replay, &s.Has_tls, &cID, &tID,
 		&isvalid, &s.Complperc, &s.Validation_error, &ci, &s.Ack)
 
-	if err == sql.ErrNoRows {
-		s.ID = -1
-		return s, nil
-	} else {
-		return s, err
+	if err != nil {
+		if err == sql.ErrNoRows {
+			s.ID = -1
+			return s, nil
+		} else {
+			return s, err
+		}
 	}
 
 	if cID.Valid {
 		s.Cert_id = cID.Int64
+
 	} else {
 		s.Cert_id = -1
 	}
