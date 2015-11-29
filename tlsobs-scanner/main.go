@@ -9,7 +9,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
-	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/config"
 	"github.com/mozilla/tls-observatory/connection"
 	pg "github.com/mozilla/tls-observatory/database"
@@ -60,7 +59,7 @@ func main() {
 	}
 
 	incomingScans := db.RegisterScanListener(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
-	certificate.Setup(conf, db)
+	Setup(conf)
 
 	for scanId := range incomingScans {
 		go scan(scanId, cipherscan)
@@ -84,9 +83,9 @@ func scan(scanId int64, cipherscan string) {
 	var completion int = 0
 
 	// Retrieve the certificate from the target
-	certID, trustID, err := certificate.HandleCert(scan.Target)
+	certID, trustID, err := handleCert(scan.Target)
 	if err != nil {
-		err, ok := err.(certificate.NoTLSCertsErr)
+		err, ok := err.(NoTLSCertsErr)
 		if ok {
 			//nil cert, does not implement TLS
 			db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", scanId)
@@ -105,7 +104,7 @@ func scan(scanId int64, cipherscan string) {
 		"trust_id": trustID,
 	}).Debug("Retrieved certs")
 
-	isTrustValid, err := certificate.IsTrustValid(trustID)
+	isTrustValid, err := db.IsTrustValid(trustID)
 
 	if err != nil {
 		log.WithFields(logrus.Fields{
