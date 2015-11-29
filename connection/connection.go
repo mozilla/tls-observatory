@@ -131,8 +131,6 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 		return c, err
 	}
 
-	c.FirstSeenTimestamp = t
-	c.LastSeenTimestamp = t
 	c.ServerSide = stringtoBool(s.ServerSide)
 	c.CurvesFallback = stringtoBool(s.CurvesFallback)
 	c.ScanIP = s.IP
