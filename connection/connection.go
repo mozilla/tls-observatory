@@ -125,12 +125,6 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 
 	var err error
 
-	t, err := s.convertTimestamp(s.Timestamp)
-
-	if err != nil {
-		return c, err
-	}
-
 	c.ServerSide = stringtoBool(s.ServerSide)
 	c.CurvesFallback = stringtoBool(s.CurvesFallback)
 	c.ScanIP = s.IP
