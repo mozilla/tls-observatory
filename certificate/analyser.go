@@ -24,7 +24,7 @@ var allowedTruststoreNames = []string{ubuntu_TS_name, mozilla_TS_name, microsoft
 func Setup(c config.Config, DB *pg.DB) {
 	ts := c.TrustStores
 
-	db = DB
+	SetDB(DB)
 
 	for _, tsName := range allowedTruststoreNames {
 
@@ -409,7 +409,7 @@ func storeCertificates(m map[string]Certificate) (int64, error) {
 				UpdateCertLastSeenWithID(parID)
 			}
 
-			trustID, err := getCurrentTrust(certID, parID)
+			trustID, err := getCurrentTrustID(certID, parID)
 
 			if err != nil {
 				log.WithFields(logrus.Fields{

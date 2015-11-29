@@ -23,48 +23,48 @@ const android_TS_name = "Android"
 type Certificate struct {
 	ScanTarget             string                    `json:"scanTarget,omitempty"`
 	IPs                    []string                  `json:"ips,omitempty"`
-	Version                float64                   `json:"version"`
-	SignatureAlgorithm     string                    `json:"signatureAlgorithm"`
-	Issuer                 Issuer                    `json:"issuer"`
-	Validity               Validity                  `json:"validity"`
-	Subject                Subject                   `json:"subject"`
-	SubjectPublicKeyInfo   SubjectPublicKeyInfo      `json:"subjectPublicKeyInfo"`
-	X509v3Extensions       Extensions                `json:"x509v3Extensions"`
-	X509v3BasicConstraints string                    `json:"x509v3BasicConstraints"`
-	CA                     bool                      `json:"ca"`
-	Analysis               interface{}               `json:"analysis"` //for future use...
-	ParentSignature        []string                  `json:"parentSignature"`
-	ValidationInfo         map[string]ValidationInfo `json:"validationInfo"`
-	FirstSeenTimestamp     string                    `json:"firstSeenTimestamp"`
-	LastSeenTimestamp      string                    `json:"lastSeenTimestamp"`
-	Hashes                 Hashes                    `json:"hashes"`
-	Raw                    string                    `json:"Raw"`
+	Version                float64                   `json:"version,omitempty"`
+	SignatureAlgorithm     string                    `json:"signatureAlgorithm,omitempty"`
+	Issuer                 Issuer                    `json:"issuer,omitempty"`
+	Validity               Validity                  `json:"validity,omitempty"`
+	Subject                Subject                   `json:"subject,omitempty"`
+	SubjectPublicKeyInfo   SubjectPublicKeyInfo      `json:"subjectPublicKeyInfo,omitempty"`
+	X509v3Extensions       Extensions                `json:"x509v3Extensions,omitempty"`
+	X509v3BasicConstraints string                    `json:"x509v3BasicConstraints,omitempty"`
+	CA                     bool                      `json:"ca,omitempty"`
+	Analysis               interface{}               `json:"analysis,omitempty"` //for future use...
+	ParentSignature        []string                  `json:"parentSignature,omitempty"`
+	ValidationInfo         map[string]ValidationInfo `json:"validationInfo,omitempty"`
+	FirstSeenTimestamp     time.Time                 `json:"firstSeenTimestamp"`
+	LastSeenTimestamp      time.Time                 `json:"lastSeenTimestamp"`
+	Hashes                 Hashes                    `json:"hashes,omitempty"`
+	Raw                    string                    `json:"Raw,omitempty"`
 	Anomalies              string                    `json:"anomalies,omitempty"`
 }
 
 type Issuer struct {
-	Country      []string `json:"c"`
-	Organisation []string `json:"o"`
-	OrgUnit      []string `json:"ou"`
-	CommonName   string   `json:"cn"`
+	Country      []string `json:"c,omitempty"`
+	Organisation []string `json:"o,omitempty"`
+	OrgUnit      []string `json:"ou,omitempty"`
+	CommonName   string   `json:"cn,omitempty"`
 }
 
 type Hashes struct {
-	MD5    string `json:"md5"`
-	SHA1   string `json:"sha1"`
-	SHA256 string `json:"sha256"`
+	MD5    string `json:"md5,omitempty"`
+	SHA1   string `json:"sha1,omitempty"`
+	SHA256 string `json:"sha256,omitempty"`
 }
 
 type Validity struct {
-	NotBefore string `json:"notBefore"`
-	NotAfter  string `json:"notAfter"`
+	NotBefore time.Time `json:"notBefore"`
+	NotAfter  time.Time `json:"notAfter"`
 }
 
 type Subject struct {
-	Country      []string `json:"c"`
-	Organisation []string `json:"o"`
-	OrgUnit      []string `json:"ou"`
-	CommonName   string   `json:"cn"`
+	Country      []string `json:"c,omitempty"`
+	Organisation []string `json:"o,omitempty"`
+	OrgUnit      []string `json:"ou,omitempty"`
+	CommonName   string   `json:"cn,omitempty"`
 }
 
 type SubjectPublicKeyInfo struct {
@@ -82,17 +82,17 @@ type SubjectPublicKeyInfo struct {
 
 //Currently exporting extensions that are already decoded into the x509 Certificate structure
 type Extensions struct {
-	AuthorityKeyId         string   `json:"authorityKeyId"`
-	SubjectKeyId           string   `json:"subjectKeyId"`
-	KeyUsage               []string `json:"keyUsage"`
-	ExtendedKeyUsage       []string `json:"extendedKeyUsage"`
-	SubjectAlternativeName []string `json:"subjectAlternativeName"`
-	CRLDistributionPoints  []string `json:"crlDistributionPoints"`
+	AuthorityKeyId         string   `json:"authorityKeyId,omitempty"`
+	SubjectKeyId           string   `json:"subjectKeyId,omitempty"`
+	KeyUsage               []string `json:"keyUsage,omitempty"`
+	ExtendedKeyUsage       []string `json:"extendedKeyUsage,omitempty"`
+	SubjectAlternativeName []string `json:"subjectAlternativeName,omitempty"`
+	CRLDistributionPoints  []string `json:"crlDistributionPoint,omitemptys"`
 }
 
 type X509v3BasicConstraints struct {
-	CA       bool        `json:"ca"`
-	Analysis interface{} `json:"analysis"`
+	CA       bool        `json:"ca,omitempty"`
+	Analysis interface{} `json:"analysis,omitempty"`
 }
 
 type Chain struct {
@@ -116,8 +116,21 @@ type TrustStore struct {
 }
 
 type ValidationInfo struct {
-	IsValid         bool   `json:"isValid"`
-	ValidationError string `json:"validationError"`
+	IsValid         bool   `json:"isValid,omitempty"`
+	ValidationError string `json:"validationError,omitempty"`
+}
+
+type Trust struct {
+	ID               int64
+	CertID           int64
+	IssuerID         int64
+	Timestamp        time.Time
+	TrustUbuntu      bool
+	TrustMozilla     bool
+	TrustedMicrosoft bool
+	TrustedApple     bool
+	TrustedAndroid   bool
+	Current          bool
 }
 
 var SignatureAlgorithm = [...]string{
@@ -221,6 +234,27 @@ func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trus
 		trusted_android = valInfo.IsValid
 	}
 	return
+}
+
+// GetValidityMap converts boolean validity variables to a validity map.
+func GetValidityMap(trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_apple, trusted_android bool) map[string]ValidationInfo {
+
+	vUbuntu := ValidationInfo{IsValid: trusted_ubuntu}
+	vMozilla := ValidationInfo{IsValid: trusted_mozilla}
+	vMicrosoft := ValidationInfo{IsValid: trusted_microsoft}
+	vApple := ValidationInfo{IsValid: trusted_apple}
+	vAndroid := ValidationInfo{IsValid: trusted_android}
+
+	m := make(map[string]ValidationInfo)
+
+	m[ubuntu_TS_name] = vUbuntu
+	m[mozilla_TS_name] = vMozilla
+	m[microsoft_TS_name] = vMicrosoft
+	m[apple_TS_name] = vApple
+	m[android_TS_name] = vAndroid
+
+	return m
+
 }
 
 func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
@@ -378,10 +412,8 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Subject.OrgUnit = cert.Subject.OrganizationalUnit
 	stored.Subject.CommonName = cert.Subject.CommonName
 
-	nbtime := cert.NotBefore.UTC()
-	natime := cert.NotAfter.UTC()
-	stored.Validity.NotBefore = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", nbtime.Year(), nbtime.Month(), nbtime.Day(), nbtime.Hour(), nbtime.Minute(), nbtime.Second())
-	stored.Validity.NotAfter = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", natime.Year(), natime.Month(), natime.Day(), natime.Hour(), natime.Minute(), natime.Second())
+	stored.Validity.NotBefore = cert.NotBefore.UTC()
+	stored.Validity.NotAfter = cert.NotAfter.UTC()
 
 	stored.X509v3Extensions = getCertExtensions(cert)
 
@@ -406,8 +438,8 @@ func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 
 	t := time.Now().UTC()
 
-	stored.FirstSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-	stored.LastSeenTimestamp = fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	stored.FirstSeenTimestamp = t
+	stored.LastSeenTimestamp = t
 
 	stored.ParentSignature = append(stored.ParentSignature, parentSignature)
 

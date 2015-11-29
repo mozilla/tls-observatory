@@ -33,23 +33,23 @@ type CipherscanCiphersuite struct {
 //the following structs represent the output we want to provide to DB.
 
 type Stored struct {
-	ScanIP             string                       `json:"scanIP"`
-	FirstSeenTimestamp string                       `json:"firstSeenTimestamp"`
-	LastSeenTimestamp  string                       `json:"lastSeenTimestamp"`
-	ServerSide         bool                         `json:"serverside"`
-	CipherSuites       map[string]StoredCiphersuite `json:"cipherscanCiphersuite"`
-	CurvesFallback     bool                         `json:"curvesFallback"`
+	ScanIP             string                       `json:"scanIP,omitempty"`
+	FirstSeenTimestamp string                       `json:"firstSeenTimestamp,omitempty"`
+	LastSeenTimestamp  string                       `json:"lastSeenTimestamp,omitempty"`
+	ServerSide         bool                         `json:"serverside,omitempty"`
+	CipherSuites       map[string]StoredCiphersuite `json:"cipherscanCiphersuite,omitempty"`
+	CurvesFallback     bool                         `json:"curvesFallback,omitempty"`
 	ObsoletedBy        string                       `json:"obsoletedBy,omitempty"`
 }
 
 type StoredCiphersuite struct {
-	Cipher       string   `json:"cipher"`
-	Protocols    []string `json:"protocols"`
-	PubKey       float64  `json:"pubkey"`
-	SigAlg       string   `json:"sigalg"`
-	TicketHint   string   `json:"ticket_hint"`
-	OCSPStapling bool     `json:"ocsp_stapling"`
-	PFS          string   `json:"pfs"`
+	Cipher       string   `json:"cipher,omitempty"`
+	Protocols    []string `json:"protocols,omitempty"`
+	PubKey       float64  `json:"pubkey,omitempty"`
+	SigAlg       string   `json:"sigalg,omitempty"`
+	TicketHint   string   `json:"ticket_hint,omitempty"`
+	OCSPStapling bool     `json:"ocsp_stapling,omitempty"`
+	PFS          string   `json:"pfs,omitempty"`
 	Curves       []string `json:"curves,omitempty"`
 }
 

@@ -73,7 +73,7 @@ func scan(scanId int64, cipherscan string) {
 		"scan_id": scanId,
 	}).Debug("Received new scan ")
 
-	scan, err := db.GetScan(scanId)
+	scan, err := db.GetScanByID(scanId)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"scan_id": scanId,

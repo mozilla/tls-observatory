@@ -14,6 +14,12 @@ import (
 
 var db *pg.DB
 
+// SetDB sets the pointer to the database.
+// Probably some bad design decisions led to this... :)
+func SetDB(DB *pg.DB) {
+	db = DB
+}
+
 // InsertCertificatetoDB inserts a x509 certificate to the database.
 // It takes as input a Certificate pointer.
 // It returns the database ID of the inserted certificate ( -1 if an error occures ) and an error, if it occures.
@@ -314,7 +320,7 @@ func GetCertwithSHA1Fingerprint(sha1 string) (*Certificate, error) {
 
 // GetCertwithID fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
-func GetCertwithID(id string) (*Certificate, error) {
+func GetCertByID(certID int64) (*Certificate, error) {
 
 	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
 	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
@@ -322,7 +328,7 @@ func GetCertwithID(id string) (*Certificate, error) {
 	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
 	signature_algo, raw_cert
 		FROM certificates
-		WHERE id=$1`, id)
+		WHERE id=$1`, certID)
 
 	cert := &Certificate{}
 
@@ -343,22 +349,30 @@ func GetCertwithID(id string) (*Certificate, error) {
 		return nil, err
 	}
 
-	err = json.Unmarshal(extkeyusage, cert.X509v3Extensions.ExtendedKeyUsage)
+	err = json.Unmarshal(extkeyusage, &cert.X509v3Extensions.ExtendedKeyUsage)
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(keyusage, cert.X509v3Extensions.KeyUsage)
+	err = json.Unmarshal(keyusage, &cert.X509v3Extensions.KeyUsage)
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(subaltname, cert.X509v3Extensions.SubjectAlternativeName)
+	err = json.Unmarshal(subaltname, &cert.X509v3Extensions.SubjectAlternativeName)
 
 	if err != nil {
 		return nil, err
+	}
+
+	cert.ValidationInfo, err = GetValidationMapForCert(certID)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": err,
+		}).Error("could not retrieve validation map")
 	}
 
 	return cert, nil
@@ -439,7 +453,7 @@ func updateTrust(trustID int64, cert Certificate) (int64, error) {
 	}
 }
 
-func getCurrentTrust(certID, issuerID int64) (int64, error) {
+func getCurrentTrustID(certID, issuerID int64) (int64, error) {
 
 	var trustID int64
 
@@ -457,6 +471,46 @@ func getCurrentTrust(certID, issuerID int64) (int64, error) {
 	}
 
 	return trustID, nil
+}
+
+func getCurrentTrustIDForCert(certID int64) (int64, error) {
+
+	var trustID int64
+
+	row := db.QueryRow("SELECT id FROM trust WHERE cert_id=$1 AND is_current=TRUE", certID)
+
+	err := row.Scan(&trustID)
+
+	if err != nil {
+
+		if err == sql.ErrNoRows {
+			return -1, nil
+		} else {
+			return -1, err
+		}
+	}
+
+	return trustID, nil
+}
+
+func GetValidationMapForCert(certID int64) (map[string]ValidationInfo, error) {
+
+	var ubuntu, mozilla, microsoft, apple, android bool
+	m := make(map[string]ValidationInfo)
+	row := db.QueryRow("SELECT trusted_ubuntu,trusted_mozilla,trusted_microsoft,trusted_apple,trusted_android FROM trust WHERE cert_id=$1 AND is_current=TRUE", certID)
+
+	err := row.Scan(&ubuntu, &mozilla, &microsoft, &apple, &android)
+
+	if err != nil {
+
+		if err == sql.ErrNoRows {
+			return m, nil
+		} else {
+			return m, err
+		}
+	}
+
+	return GetValidityMap(ubuntu, mozilla, microsoft, apple, android), nil
 }
 
 // IsTrustValid returns the validity of the trust relationship for the given id.
