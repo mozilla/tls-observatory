@@ -20,20 +20,20 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		status int
 		err    error
 	)
+
 	defer func() {
 		if nil != err {
 			http.Error(w, err.Error(), status)
 		}
 	}()
 
-	status = http.StatusInternalServerError
-
 	log := logger.GetLogger()
+	status = http.StatusInternalServerError
 
 	log.WithFields(logrus.Fields{
 		"form values": r.Form,
 		"headers":     r.Header,
-	}).Debug("Received request")
+	}).Debug("Scan endpoint received request")
 
 	val, ok := context.GetOk(r, dbKey)
 	if !ok {
@@ -81,13 +81,12 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	log := logger.GetLogger()
-
 	status = http.StatusInternalServerError
 
 	log.WithFields(logrus.Fields{
 		"form values": r.Form,
 		"headers":     r.Header,
-	}).Debug("Received request")
+	}).Debug("Results endpoint received request")
 
 	val, ok := context.GetOk(r, dbKey)
 	if !ok {
@@ -98,50 +97,47 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 
 	db := val.(*pg.DB)
 
-	scanIDStr := r.FormValue("scan_id")
+	idStr := r.FormValue("id")
 
-	scanID, err := strconv.ParseInt(scanIDStr, 10, 64)
-
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": scanIDStr,
+			"scan_id": idStr,
 			"error":   err.Error(),
 		}).Error("Could not parse scanid")
-		err = errors.New("Something went wrong :\\")
+		err = errors.New("Could not parse provided scan id")
+		status = http.StatusBadRequest
 		return
 	}
 
-	scan, err := db.GetScan(scanID)
-
+	scan, err := db.GetScanByID(id)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": scanIDStr,
+			"scan_id": id,
 			"error":   err.Error(),
 		}).Error("Could not get scan from database")
-
-		err = errors.New("Something went wrong :\\")
+		err = errors.New("Could not access database to get requested scan.")
 		return
 	}
 
 	if scan.ID == -1 {
 		log.WithFields(logrus.Fields{
-			"scan_id": scanIDStr,
+			"scan_id": id,
 		}).Debug("Did not find scan in database")
 
-		err = errors.New("Could not find a scan with the id you provided")
+		err = errors.New("Could not find a scan with the id you provided.")
 		status = http.StatusNotFound
 		return
 	}
 
-	jsScan, err := json.MarshalIndent(scan, "", "	")
-
+	jsScan, err := json.Marshal(scan)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": scanIDStr,
+			"scan_id": id,
 			"error":   err.Error(),
 		}).Error("Could not Marshal scan")
 
-		err = errors.New("Something went wrong :\\")
+		err = errors.New("Could not process the requested scan")
 		return
 	}
 
@@ -164,16 +160,14 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	log := logger.GetLogger()
-
 	status = http.StatusInternalServerError
 
 	log.WithFields(logrus.Fields{
 		"form values": r.Form.Encode(),
 		"headers":     r.Header,
-	}).Debug("Received request")
+	}).Debug("Certificate Endpoint received request")
 
 	val, ok := context.GetOk(r, dbKey)
-
 	if !ok {
 		log.Error("Could not find db in request context")
 		err = errors.New("Could not access database.")
@@ -182,42 +176,41 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 
 	db := val.(*pg.DB)
 
-	certIDstr := r.FormValue("cert_id")
+	idStr := r.FormValue("id")
 
-	certID, err := strconv.ParseInt(certIDstr, 10, 64)
-
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": certID,
+			"cert_id": id,
 			"error":   err.Error(),
-		}).Error("Could not parse scanid")
-		err = errors.New("Something went wrong :\\")
+		}).Error("Could not parse certificate id")
+
+		status = http.StatusBadRequest
+		err = errors.New("Could not parse provided certificate id")
 		return
 	}
 
 	certificate.SetDB(db)
 
-	cert, err := certificate.GetCertwithID(certID)
-
+	cert, err := certificate.GetCertByID(id)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": certID,
+			"cert_id": id,
 			"error":   err.Error(),
 		}).Error("Could not get cert from database")
 
-		err = errors.New("Something went wrong :\\")
+		err = errors.New("Could not access database to get requested certificate")
 		return
 	}
 
-	jsScan, err := json.MarshalIndent(cert, "", "	")
-
+	jsScan, err := json.Marshal(cert)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"cert_id": certID,
+			"cert_id": id,
 			"error":   err.Error(),
 		}).Error("Could not Marshal cert")
 
-		err = errors.New("Something went wrong :\\")
+		err = errors.New("Could not process requested certificate")
 		return
 	}
 

@@ -320,7 +320,7 @@ func GetCertwithSHA1Fingerprint(sha1 string) (*Certificate, error) {
 
 // GetCertwithID fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
-func GetCertwithID(certID int64) (*Certificate, error) {
+func GetCertByID(certID int64) (*Certificate, error) {
 
 	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
 	issuer, subject, version, is_ca, not_valid_before, not_valid_after,

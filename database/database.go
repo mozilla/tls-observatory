@@ -59,7 +59,7 @@ func (db *DB) NewScan(domain string, rplay int) (Scan, error) {
 	return Scan{ID: id, Timestamp: timestamp, Replay: rplay}, nil
 }
 
-func (db *DB) GetScan(id int64) (Scan, error) {
+func (db *DB) GetScanByID(id int64) (Scan, error) {
 
 	s := Scan{}
 	s.ID = id
