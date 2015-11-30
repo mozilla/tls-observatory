@@ -14,6 +14,8 @@ import (
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
 	"github.com/mozilla/tls-observatory/worker"
+
+	_ "github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
 )
 
 var db *pg.DB
@@ -163,7 +165,7 @@ func scan(scanId int64, cipherscan string) {
 	// launch workers that evaluate the results
 	resChan := make(chan worker.WorkerResult)
 	for _, wrkInfo := range worker.AvailableWorkers {
-		go wrkInfo.Runner.(worker.Worker).Run([]byte(scan.Target), resChan)
+		go wrkInfo.Runner.(worker.Worker).Run(js, resChan)
 	}
 
 	totalWorkers := len(worker.AvailableWorkers)
@@ -189,7 +191,7 @@ func scan(scanId int64, cipherscan string) {
 
 		case res := <-resChan:
 			endedWorkers += endedWorkers
-			completion := ((endedWorkers/totalWorkers)*60 + completion)
+			completion = ((endedWorkers/totalWorkers)*60 + completion)
 
 			log.WithFields(logrus.Fields{
 				"scan_id":        scanId,
@@ -207,6 +209,12 @@ func scan(scanId int64, cipherscan string) {
 			}
 
 			if res.Success {
+
+				log.WithFields(logrus.Fields{
+					"scan_id":     scanId,
+					"worker_name": res.WorkerName,
+					"result_data": string(res.Result),
+				}).Debug("Storing results from worker")
 				db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", scanId, res.WorkerName, res.Result)
 			} else {
 				log.WithFields(logrus.Fields{
