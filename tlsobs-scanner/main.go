@@ -14,8 +14,6 @@ import (
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
 	"github.com/mozilla/tls-observatory/worker"
-
-	_ "github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
 )
 
 var db *pg.DB
