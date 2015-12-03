@@ -10,7 +10,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
 
-	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
 )
@@ -190,9 +189,7 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	certificate.SetDB(db)
-
-	cert, err := certificate.GetCertByID(id)
+	cert, err := db.GetCertByID(id)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"cert_id": id,

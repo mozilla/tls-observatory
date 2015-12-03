@@ -1,4 +1,4 @@
-package certificate
+package database
 
 import (
 	"database/sql"
@@ -7,23 +7,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-
-	pg "github.com/mozilla/tls-observatory/database"
+	"github.com/mozilla/tls-observatory/certificate"
 )
-
-var db *pg.DB
-
-// SetDB sets the pointer to the database.
-// Probably some bad design decisions led to this... :)
-func SetDB(DB *pg.DB) {
-	db = DB
-}
 
 // InsertCertificatetoDB inserts a x509 certificate to the database.
 // It takes as input a Certificate pointer.
 // It returns the database ID of the inserted certificate ( -1 if an error occures ) and an error, if it occures.
-func InsertCertificatetoDB(cert *Certificate) (int64, error) {
+func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error) {
 
 	var id int64
 
@@ -74,7 +64,7 @@ func InsertCertificatetoDB(cert *Certificate) (int64, error) {
 // It takes as input a Certificate pointer and the name of the imported trust store.
 // It does a "dumb" translation from trust store name to mapped certificate table variables.
 // It returns the database ID of the inserted certificate ( -1 if an error occures ) and an error, if it occures.
-func InsertCACertificatetoDB(cert *Certificate, tsName string) (int64, error) {
+func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName string) (int64, error) {
 
 	var id int64
 
@@ -104,21 +94,17 @@ func InsertCACertificatetoDB(cert *Certificate, tsName string) (int64, error) {
 
 	tsVariable := ""
 	switch tsName {
-	case ubuntu_TS_name:
+	case certificate.Ubuntu_TS_name:
 		tsVariable = "in_ubuntu_root_store"
-	case mozilla_TS_name:
+	case certificate.Mozilla_TS_name:
 		tsVariable = "in_mozilla_root_store"
-	case microsoft_TS_name:
+	case certificate.Microsoft_TS_name:
 		tsVariable = "in_microsoft_root_store"
-	case apple_TS_name:
+	case certificate.Apple_TS_name:
 		tsVariable = "in_apple_root_store"
-	case android_TS_name:
+	case certificate.Android_TS_name:
 		tsVariable = "in_android_root_store"
 	default:
-		log.WithFields(logrus.Fields{
-			"tsname": tsName,
-		}).Error("Invalid Truststore name, Cannot insert certificate to DB")
-
 		return -1, errors.New(fmt.Sprintf("Cannot insert to DB, %s does not represent a valid truststore name.", tsName))
 	}
 
@@ -145,7 +131,7 @@ func InsertCACertificatetoDB(cert *Certificate, tsName string) (int64, error) {
 
 // UpdateCertLastSeen updates the last_seen timestamp of the input certificate.
 // Outputs an error if it occurs.
-func UpdateCertLastSeen(cert *Certificate) error {
+func (db *DB) UpdateCertLastSeen(cert *certificate.Certificate) error {
 
 	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE sha1_fingerprint=$2", cert.LastSeenTimestamp, cert.Hashes.SHA1)
 	return err
@@ -153,7 +139,7 @@ func UpdateCertLastSeen(cert *Certificate) error {
 
 // UpdateCertLastSeenWithID updates the last_seen timestamp of the certificate with the given id.
 // Outputs an error if it occurs.
-func UpdateCertLastSeenWithID(id int64) error {
+func (db *DB) UpdateCertLastSeenByID(id int64) error {
 
 	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE id=$2", time.Now(), id)
 	return err
@@ -163,25 +149,21 @@ func UpdateCertLastSeenWithID(id int64) error {
 // It takes as input a certificate id and the name of the imported trust store.
 // It does a "dumb" translation from trust store name to mapped certificate table variables.
 // Outputs an error if any occur.
-func UpdateCACertTruststore(id int64, tsName string) error {
+func (db *DB) UpdateCACertTruststore(id int64, tsName string) error {
 
 	tsVariable := ""
 	switch tsName {
-	case ubuntu_TS_name:
+	case certificate.Ubuntu_TS_name:
 		tsVariable = "in_ubuntu_root_store"
-	case mozilla_TS_name:
+	case certificate.Mozilla_TS_name:
 		tsVariable = "in_mozilla_root_store"
-	case microsoft_TS_name:
+	case certificate.Microsoft_TS_name:
 		tsVariable = "in_microsoft_root_store"
-	case apple_TS_name:
+	case certificate.Apple_TS_name:
 		tsVariable = "in_apple_root_store"
-	case android_TS_name:
+	case certificate.Android_TS_name:
 		tsVariable = "in_android_root_store"
 	default:
-		log.WithFields(logrus.Fields{
-			"tsname": tsName,
-		}).Error("Invalid Truststore name, Cannot insert certificate to DB")
-
 		return errors.New(fmt.Sprintf("Cannot update DB, %s does not represent a valid truststore name.", tsName))
 	}
 
@@ -195,7 +177,7 @@ func UpdateCACertTruststore(id int64, tsName string) error {
 // Returns the mentioned id and any errors that happen.
 // It wraps the sql.ErrNoRows error in order to avoid passing not existing row errors to upper levels.
 // In that case it returns -1 with no error.
-func GetCertIDWithSHA1Fingerprint(sha1 string) (int64, error) {
+func (db *DB) GetCertIDBySHA1Fingerprint(sha1 string) (int64, error) {
 
 	query := fmt.Sprintf(`SELECT id FROM certificates WHERE sha1_fingerprint='%s'`, sha1)
 
@@ -220,7 +202,7 @@ func GetCertIDWithSHA1Fingerprint(sha1 string) (int64, error) {
 // Returns the mentioned id and any errors that happen.
 // It wraps the sql.ErrNoRows error in order to avoid passing not existing row errors to upper levels.
 // In that case it returns -1 with no error.
-func GetCertIDWithSHA256Fingerprint(sha256 string) (int64, error) {
+func (db *DB) GetCertIDBySHA256Fingerprint(sha256 string) (int64, error) {
 
 	query := fmt.Sprintf(`SELECT id FROM certificates WHERE sha256_fingerprint='%s'`, sha256)
 
@@ -245,7 +227,7 @@ func GetCertIDWithSHA256Fingerprint(sha256 string) (int64, error) {
 // Returns the mentioned id and any errors that happen.
 // It wraps the sql.ErrNoRows error in order to avoid passing not existing row errors to upper levels.
 // In that case it returns -1 with no error.
-func GetCertIDFromTrust(trustID int64) (int64, error) {
+func (db *DB) GetCertIDFromTrust(trustID int64) (int64, error) {
 
 	row := db.QueryRow("SELECT cert_id FROM trust WHERE id=$1", trustID)
 
@@ -267,7 +249,7 @@ func GetCertIDFromTrust(trustID int64) (int64, error) {
 
 // GetCertwithSHA1Fingerprint fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
-func GetCertwithSHA1Fingerprint(sha1 string) (*Certificate, error) {
+func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, error) {
 
 	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
 	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
@@ -277,7 +259,7 @@ func GetCertwithSHA1Fingerprint(sha1 string) (*Certificate, error) {
 	FROM certificates
 	WHERE sha1_fingerprint=$1`, sha1)
 
-	cert := &Certificate{}
+	cert := &certificate.Certificate{}
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname []byte
 
@@ -320,7 +302,7 @@ func GetCertwithSHA1Fingerprint(sha1 string) (*Certificate, error) {
 
 // GetCertwithID fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
-func GetCertByID(certID int64) (*Certificate, error) {
+func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 
 	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
 	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
@@ -330,7 +312,7 @@ func GetCertByID(certID int64) (*Certificate, error) {
 		FROM certificates
 		WHERE id=$1`, certID)
 
-	cert := &Certificate{}
+	cert := &certificate.Certificate{}
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname []byte
 
@@ -367,19 +349,13 @@ func GetCertByID(certID int64) (*Certificate, error) {
 		return nil, err
 	}
 
-	cert.ValidationInfo, err = GetValidationMapForCert(certID)
+	cert.ValidationInfo, err = db.GetValidationMapForCert(certID)
 
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": err,
-		}).Error("could not retrieve validation map")
-	}
-
-	return cert, nil
+	return cert, err
 
 }
 
-func insertTrustToDB(cert Certificate, certID, parID int64) (int64, error) {
+func (db *DB) InsertTrustToDB(cert certificate.Certificate, certID, parID int64) (int64, error) {
 
 	var trustID int64
 
@@ -396,7 +372,7 @@ func insertTrustToDB(cert Certificate, certID, parID int64) (int64, error) {
 
 }
 
-func updateTrust(trustID int64, cert Certificate) (int64, error) {
+func (db *DB) UpdateTrust(trustID int64, cert certificate.Certificate) (int64, error) {
 
 	var trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_apple, trusted_android bool
 
@@ -419,26 +395,15 @@ func updateTrust(trustID int64, cert Certificate) (int64, error) {
 
 	if !isTrustCurrent { // create new trust and obsolete old one
 
-		newID, err := insertTrustToDB(cert, certID, parID)
+		newID, err := db.InsertTrustToDB(cert, certID, parID)
 
 		if err != nil {
-
-			log.WithFields(logrus.Fields{
-				"to_obsolete": trustID,
-				"error":       err.Error(),
-			}).Error("Could not add new/current trust")
-
 			return -1, err
 		}
 
 		_, err = db.Exec("UPDATE trust SET is_current=$1 WHERE id=$2", false, trustID)
 
 		if err != nil {
-
-			log.WithFields(logrus.Fields{
-				"obsolete_trust_id": trustID,
-				"error":             err.Error(),
-			}).Error("Could not update is_current=false")
 			return -1, err
 		}
 
@@ -453,7 +418,7 @@ func updateTrust(trustID int64, cert Certificate) (int64, error) {
 	}
 }
 
-func getCurrentTrustID(certID, issuerID int64) (int64, error) {
+func (db *DB) GetCurrentTrustID(certID, issuerID int64) (int64, error) {
 
 	var trustID int64
 
@@ -473,7 +438,7 @@ func getCurrentTrustID(certID, issuerID int64) (int64, error) {
 	return trustID, nil
 }
 
-func getCurrentTrustIDForCert(certID int64) (int64, error) {
+func (db *DB) GetCurrentTrustIDForCert(certID int64) (int64, error) {
 
 	var trustID int64
 
@@ -493,10 +458,10 @@ func getCurrentTrustIDForCert(certID int64) (int64, error) {
 	return trustID, nil
 }
 
-func GetValidationMapForCert(certID int64) (map[string]ValidationInfo, error) {
+func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.ValidationInfo, error) {
 
 	var ubuntu, mozilla, microsoft, apple, android bool
-	m := make(map[string]ValidationInfo)
+	m := make(map[string]certificate.ValidationInfo)
 	row := db.QueryRow("SELECT trusted_ubuntu,trusted_mozilla,trusted_microsoft,trusted_apple,trusted_android FROM trust WHERE cert_id=$1 AND is_current=TRUE", certID)
 
 	err := row.Scan(&ubuntu, &mozilla, &microsoft, &apple, &android)
@@ -510,13 +475,13 @@ func GetValidationMapForCert(certID int64) (map[string]ValidationInfo, error) {
 		}
 	}
 
-	return GetValidityMap(ubuntu, mozilla, microsoft, apple, android), nil
+	return certificate.GetValidityMap(ubuntu, mozilla, microsoft, apple, android), nil
 }
 
 // IsTrustValid returns the validity of the trust relationship for the given id.
 // It returns a "valid" if any of the per truststore valitities is valid
 // It returns a boolean that represent if trust is valid or not.
-func IsTrustValid(id int64) (bool, error) {
+func (db *DB) IsTrustValid(id int64) (bool, error) {
 
 	row := db.QueryRow("SELECT trusted_ubuntu OR trusted_mozilla OR trusted_microsoft OR trusted_apple OR trusted_android FROM trust WHERE id=$1", id)
 

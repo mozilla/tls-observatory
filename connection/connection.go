@@ -33,16 +33,13 @@ type CipherscanCiphersuite struct {
 //the following structs represent the output we want to provide to DB.
 
 type Stored struct {
-	ScanIP             string                       `json:"scanIP,omitempty"`
-	FirstSeenTimestamp string                       `json:"firstSeenTimestamp,omitempty"`
-	LastSeenTimestamp  string                       `json:"lastSeenTimestamp,omitempty"`
-	ServerSide         bool                         `json:"serverside,omitempty"`
-	CipherSuites       map[string]StoredCiphersuite `json:"cipherscanCiphersuite,omitempty"`
-	CurvesFallback     bool                         `json:"curvesFallback,omitempty"`
-	ObsoletedBy        string                       `json:"obsoletedBy,omitempty"`
+	ScanIP         string        `json:"scanIP"`
+	ServerSide     bool          `json:"serverside,omitempty"`
+	CipherSuite    []Ciphersuite `json:"ciphersuite,omitempty"`
+	CurvesFallback bool          `json:"curvesFallback,omitempty"`
 }
 
-type StoredCiphersuite struct {
+type Ciphersuite struct {
 	Cipher       string   `json:"cipher,omitempty"`
 	Protocols    []string `json:"protocols,omitempty"`
 	PubKey       float64  `json:"pubkey,omitempty"`
@@ -59,7 +56,6 @@ func stringtoBool(s string) bool {
 	} else {
 		return false
 	}
-
 }
 
 func (c Stored) Equal(ci Stored) bool {
@@ -72,9 +68,9 @@ func (c Stored) Equal(ci Stored) bool {
 		return false
 	}
 
-	for pos, suite := range c.CipherSuites {
+	for i, suite := range c.CipherSuite {
 
-		if !suite.equal(ci.CipherSuites[pos]) {
+		if !suite.equal(ci.CipherSuite[i]) {
 			return false
 		}
 	}
@@ -82,7 +78,7 @@ func (c Stored) Equal(ci Stored) bool {
 	return true
 }
 
-func (s StoredCiphersuite) equal(cs StoredCiphersuite) bool {
+func (s Ciphersuite) equal(cs Ciphersuite) bool {
 
 	if s.Cipher != cs.Cipher {
 		return false
@@ -122,33 +118,20 @@ func (s CipherscanOutput) convertTimestamp(t string) (time.Time, error) {
 	return time.Parse(layout, t)
 }
 
+// Stored creates a Stored struct from the CipherscanOutput struct
 func (s CipherscanOutput) Stored() (Stored, error) {
 
 	c := Stored{}
 
 	var err error
 
-	t, err := s.convertTimestamp(s.Timestamp)
-
-	if err != nil {
-		return c, err
-	}
-
-	timestamp := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.UTC().Year(), t.UTC().Month(), t.UTC().Day(), t.UTC().Hour(), t.UTC().Minute(), t.UTC().Second())
-
-	c.FirstSeenTimestamp = timestamp
-	c.LastSeenTimestamp = timestamp
 	c.ServerSide = stringtoBool(s.ServerSide)
 	c.CurvesFallback = stringtoBool(s.CurvesFallback)
 	c.ScanIP = s.IP
 
-	c.CipherSuites = make(map[string]StoredCiphersuite)
-
-	pos := 1
-
 	for _, cipher := range s.CipherSuites {
 
-		newcipher := StoredCiphersuite{}
+		newcipher := Ciphersuite{}
 
 		newcipher.Cipher = cipher.Cipher
 		newcipher.OCSPStapling = stringtoBool(cipher.OCSPStapling)
@@ -157,9 +140,7 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 		newcipher.Protocols = cipher.Protocols
 
 		if len(cipher.PubKey) > 1 {
-
 			return c, fmt.Errorf("Multiple PubKeys for ", s.Target, " at cipher :", cipher.Cipher)
-
 		}
 
 		if len(cipher.PubKey) > 0 {
@@ -180,15 +161,12 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 		}
 
 		newcipher.TicketHint = cipher.TicketHint
-
 		if err != nil {
 			return c, err
 		}
 
 		newcipher.Curves = append(newcipher.Curves, cipher.Curves...)
-
-		c.CipherSuites[strconv.Itoa(pos)] = newcipher
-		pos++
+		c.CipherSuite = append(c.CipherSuite, newcipher)
 	}
 
 	return c, nil

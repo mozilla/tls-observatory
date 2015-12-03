@@ -1,6 +1,4 @@
-//certRetriever tries to connect to a domain received by a queue (rxQueue). If it succeeds it retrieves the certificate
-//chain provided by that domain and publishes it to another queue(txQueue).
-package certificate
+package main
 
 import (
 	// stdlib packages
@@ -14,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/mozilla/tls-observatory/certificate"
 )
 
 type NoTLSCertsErr string
@@ -25,7 +24,7 @@ func (f NoTLSCertsErr) Error() string {
 //HandleCert is the main function called to verify certificates.
 //It retrieves certificates and feeds them to handleCertChain. It then returns
 //its result.
-func HandleCert(domain string) (int64, int64, error) {
+func handleCert(domain string) (int64, int64, error) {
 
 	certs, ip, err := retrieveCertFromHost(domain, "443", true)
 
@@ -42,7 +41,7 @@ func HandleCert(domain string) (int64, int64, error) {
 		return -1, -1, e
 	}
 
-	var chain = Chain{}
+	var chain = certificate.Chain{}
 
 	chain.Domain = domain
 

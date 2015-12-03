@@ -1,6 +1,4 @@
-//certAnalyser provides a client that receives certificates from a queue, processes them and
-//indexes them in an ElasticSearch database. The Certificate struct is used as the storage document template
-package certificate
+package main
 
 import (
 	// stdlib packages
@@ -11,35 +9,30 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
+	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/config"
-	pg "github.com/mozilla/tls-observatory/database"
-	"github.com/mozilla/tls-observatory/logger"
 )
 
-var trustStores []TrustStore
-var log = logger.GetLogger()
+var trustStores []certificate.TrustStore
+var allowedTruststoreNames = []string{certificate.Ubuntu_TS_name, certificate.Mozilla_TS_name, certificate.Microsoft_TS_name, certificate.Apple_TS_name, certificate.Android_TS_name}
 
-var allowedTruststoreNames = []string{ubuntu_TS_name, mozilla_TS_name, microsoft_TS_name, apple_TS_name, android_TS_name}
-
-func Setup(c config.Config, DB *pg.DB) {
+func Setup(c config.Config) {
 	ts := c.TrustStores
-
-	SetDB(DB)
 
 	for _, tsName := range allowedTruststoreNames {
 
 		path := ""
 
 		switch tsName {
-		case ubuntu_TS_name:
+		case certificate.Ubuntu_TS_name:
 			path = ts.UbuntuTS
-		case mozilla_TS_name:
+		case certificate.Mozilla_TS_name:
 			path = ts.MozillaTS
-		case microsoft_TS_name:
+		case certificate.Microsoft_TS_name:
 			path = ts.MicrosoftTS
-		case apple_TS_name:
+		case certificate.Apple_TS_name:
 			path = ts.AppleTS
-		case android_TS_name:
+		case certificate.Android_TS_name:
 			path = ts.AndroidTS
 		default:
 			log.WithFields(logrus.Fields{
@@ -95,57 +88,57 @@ func Setup(c config.Config, DB *pg.DB) {
 				log.WithFields(logrus.Fields{
 					"tsname":  tsName,
 					"cert no": poollen + 1,
-					"SHA1":    SHA1Hash(cert.Raw),
+					"SHA1":    certificate.SHA1Hash(cert.Raw),
 				}).Warning("Certificate in truststore is not a CA cert")
 			}
 
 			certPool.AddCert(cert)
 
 			//Push current certificate to DB as trusted
-			v := &ValidationInfo{}
+			v := &certificate.ValidationInfo{}
 			v.IsValid = true
 
 			parentSignature := ""
 			if cert.Subject.CommonName == cert.Issuer.CommonName {
-				parentSignature = SHA256Hash(cert.Raw)
+				parentSignature = certificate.SHA256Hash(cert.Raw)
 			}
 
 			var id int64
 			id = -1
-			id, err = GetCertIDWithSHA256Fingerprint(SHA256Hash(cert.Raw))
+			id, err = db.GetCertIDBySHA256Fingerprint(certificate.SHA256Hash(cert.Raw))
 
 			if err != nil {
 
 				log.WithFields(logrus.Fields{
 					"tsname":      tsName,
-					"certificate": SHA256Hash(cert.Raw),
+					"certificate": certificate.SHA256Hash(cert.Raw),
 					"error":       err.Error(),
 				}).Error("Could not check if certificate is in db")
 			}
 
 			if id == -1 {
 
-				vinfo := &ValidationInfo{}
+				vinfo := &certificate.ValidationInfo{}
 				vinfo.IsValid = true
 				vinfo.ValidationError = ""
 
-				st := certtoStored(cert, parentSignature, "", "", tsName, vinfo)
-				id, err = InsertCACertificatetoDB(&st, tsName)
+				st := certificate.CertToStored(cert, parentSignature, "", "", tsName, vinfo)
+				id, err = db.InsertCACertificatetoDB(&st, tsName)
 
 				if err != nil {
 					log.WithFields(logrus.Fields{
 						"tsname":      tsName,
-						"certificate": SHA256Hash(cert.Raw),
+						"certificate": certificate.SHA256Hash(cert.Raw),
 						"error":       err.Error(),
 					}).Error("Could not insert certificate in db")
 				}
 			} else {
-				UpdateCACertTruststore(id, tsName)
+				db.UpdateCACertTruststore(id, tsName)
 			}
 
 			poollen++
 		}
-		trustStores = append(trustStores, TrustStore{tsName, certPool})
+		trustStores = append(trustStores, certificate.TrustStore{tsName, certPool})
 		log.WithFields(logrus.Fields{
 			"tsname":              tsName,
 			"certificates loaded": poollen,
@@ -159,7 +152,7 @@ func Setup(c config.Config, DB *pg.DB) {
 
 //handleCertChain takes the chain retrieved from the queue and tries to validate it
 //against each of the truststores provided.
-func handleCertChain(chain *Chain) (int64, int64, error) {
+func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 
 	var intermediates []*x509.Certificate
 	var leafCert *x509.Certificate
@@ -202,7 +195,7 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 		}).Warning("Didi not receive server/ leaf certificate")
 	}
 
-	var certmap = make(map[string]Certificate)
+	var certmap = make(map[string]certificate.Certificate)
 
 	//validate against each truststore
 	for _, curTS := range trustStores {
@@ -237,7 +230,7 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 
 	if trustID != -1 {
 
-		leafID, err = GetCertIDFromTrust(trustID)
+		leafID, err = db.GetCertIDFromTrust(trustID)
 
 		if err != nil {
 			log.WithFields(logrus.Fields{
@@ -254,9 +247,9 @@ func handleCertChain(chain *Chain) (int64, int64, error) {
 //isChainValid creates the valid certificate chains by combining the chain retrieved with the provided truststore.
 //It return true if it finds at least on validation chain or false if no valid chain of trust can be created.
 //It also updates the certificate map which gets pushed at the end of each iteration.
-func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificate, curTS *TrustStore, domain, IP string, certmap map[string]Certificate) bool {
+func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificate, curTS *certificate.TrustStore, domain, IP string, certmap map[string]certificate.Certificate) bool {
 
-	valInfo := &ValidationInfo{}
+	valInfo := &certificate.ValidationInfo{}
 
 	valInfo.IsValid = true
 
@@ -292,7 +285,7 @@ func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificat
 				c := getFirstParent(cert, ch)
 
 				if c != nil {
-					parentSignature = SHA256Hash(c.Raw)
+					parentSignature = certificate.SHA256Hash(c.Raw)
 				} else {
 					log.Println("could not retrieve parent for " + dnsName)
 				}
@@ -315,11 +308,11 @@ func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificat
 		c := getFirstParent(serverCert, intermediates)
 
 		if c != nil {
-			parentSignature = SHA256Hash(c.Raw)
+			parentSignature = certificate.SHA256Hash(c.Raw)
 		} else {
 			log.WithFields(logrus.Fields{
 				"domain":     domain,
-				"servercert": SHA256Hash(serverCert.Raw),
+				"servercert": certificate.SHA256Hash(serverCert.Raw),
 			}).Info("Could not get parent")
 		}
 
@@ -330,13 +323,13 @@ func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificat
 
 }
 
-func storeCertificates(m map[string]Certificate) (int64, error) {
+func storeCertificates(m map[string]certificate.Certificate) (int64, error) {
 
 	var leafTrust int64
 	leafTrust = -1
 	for _, c := range m {
 
-		certID, err := GetCertIDWithSHA256Fingerprint(c.Hashes.SHA256)
+		certID, err := db.GetCertIDBySHA256Fingerprint(c.Hashes.SHA256)
 
 		if err != nil {
 			log.WithFields(logrus.Fields{
@@ -347,7 +340,7 @@ func storeCertificates(m map[string]Certificate) (int64, error) {
 		}
 
 		if certID == -1 {
-			certID, err = InsertCertificatetoDB(&c)
+			certID, err = db.InsertCertificatetoDB(&c)
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"domain":      c.ScanTarget,
@@ -363,12 +356,12 @@ func storeCertificates(m map[string]Certificate) (int64, error) {
 				}).Debug("Inserted cert to db")
 			}
 		} else {
-			UpdateCertLastSeenWithID(certID)
+			db.UpdateCertLastSeenByID(certID)
 		}
 
 		for _, p := range c.ParentSignature {
 
-			parID, err := GetCertIDWithSHA256Fingerprint(p)
+			parID, err := db.GetCertIDBySHA256Fingerprint(p)
 
 			if err != nil {
 				log.WithFields(logrus.Fields{
@@ -391,7 +384,7 @@ func storeCertificates(m map[string]Certificate) (int64, error) {
 					}).Warning("Parent not found in chain")
 					continue
 				}
-				parID, err = InsertCertificatetoDB(&parent)
+				parID, err = db.InsertCertificatetoDB(&parent)
 				if err != nil {
 					log.WithFields(logrus.Fields{
 						"domain":      c.ScanTarget,
@@ -406,10 +399,10 @@ func storeCertificates(m map[string]Certificate) (int64, error) {
 					}).Debug("Inserted cert")
 				}
 			} else {
-				UpdateCertLastSeenWithID(parID)
+				db.UpdateCertLastSeenByID(parID)
 			}
 
-			trustID, err := getCurrentTrustID(certID, parID)
+			trustID, err := db.GetCurrentTrustID(certID, parID)
 
 			if err != nil {
 				log.WithFields(logrus.Fields{
@@ -423,7 +416,7 @@ func storeCertificates(m map[string]Certificate) (int64, error) {
 
 			if trustID == -1 {
 
-				trustID, err = insertTrustToDB(c, certID, parID)
+				trustID, err = db.InsertTrustToDB(c, certID, parID)
 				if err != nil {
 					log.WithFields(logrus.Fields{
 						"domain":      c.ScanTarget,
@@ -439,7 +432,7 @@ func storeCertificates(m map[string]Certificate) (int64, error) {
 					}).Debug("Stored trust for certs")
 				}
 			} else {
-				trustID, err = updateTrust(trustID, c)
+				trustID, err = db.UpdateTrust(trustID, c)
 				if err != nil {
 
 					log.WithFields(logrus.Fields{
@@ -481,13 +474,13 @@ func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Cer
 
 //updateCert takes the input certificate and updates the map holding all the certificates to be pushed.
 //If the certificates has already been inserted it updates the existing record else it creates it.
-func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *ValidationInfo, certmap map[string]Certificate) {
+func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certificate.ValidationInfo, certmap map[string]certificate.Certificate) {
 
-	id := SHA256Hash(cert.Raw)
+	id := certificate.SHA256Hash(cert.Raw)
 
 	if storedCert, ok := certmap[id]; !ok {
 
-		certmap[id] = certtoStored(cert, parentSignature, domain, ip, TSName, valInfo)
+		certmap[id] = certificate.CertToStored(cert, parentSignature, domain, ip, TSName, valInfo)
 
 	} else {
 

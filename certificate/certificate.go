@@ -14,11 +14,11 @@ import (
 	"time"
 )
 
-const ubuntu_TS_name = "Ubuntu"
-const mozilla_TS_name = "Mozilla"
-const microsoft_TS_name = "Microsoft"
-const apple_TS_name = "Apple"
-const android_TS_name = "Android"
+const Ubuntu_TS_name = "Ubuntu"
+const Mozilla_TS_name = "Mozilla"
+const Microsoft_TS_name = "Microsoft"
+const Apple_TS_name = "Apple"
+const Android_TS_name = "Android"
 
 type Certificate struct {
 	ScanTarget             string                    `json:"scanTarget,omitempty"`
@@ -190,7 +190,7 @@ func SHA1Hash(data []byte) string {
 func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_apple, trusted_android bool) {
 
 	//check Ubuntu validation info
-	valInfo, ok := c.ValidationInfo[ubuntu_TS_name]
+	valInfo, ok := c.ValidationInfo[Ubuntu_TS_name]
 
 	if !ok {
 		trusted_ubuntu = false
@@ -199,7 +199,7 @@ func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trus
 	}
 
 	//check Mozilla validation info
-	valInfo, ok = c.ValidationInfo[mozilla_TS_name]
+	valInfo, ok = c.ValidationInfo[Mozilla_TS_name]
 
 	if !ok {
 		trusted_mozilla = false
@@ -208,7 +208,7 @@ func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trus
 	}
 
 	//check Microsoft validation info
-	valInfo, ok = c.ValidationInfo[microsoft_TS_name]
+	valInfo, ok = c.ValidationInfo[Microsoft_TS_name]
 
 	if !ok {
 		trusted_microsoft = false
@@ -217,7 +217,7 @@ func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trus
 	}
 
 	//check Apple validation info
-	valInfo, ok = c.ValidationInfo[apple_TS_name]
+	valInfo, ok = c.ValidationInfo[Apple_TS_name]
 
 	if !ok {
 		trusted_apple = false
@@ -226,7 +226,7 @@ func (c Certificate) GetBooleanValidity() (trusted_ubuntu, trusted_mozilla, trus
 	}
 
 	//check Android validation info
-	valInfo, ok = c.ValidationInfo[android_TS_name]
+	valInfo, ok = c.ValidationInfo[Android_TS_name]
 
 	if !ok {
 		trusted_android = false
@@ -247,11 +247,11 @@ func GetValidityMap(trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_
 
 	m := make(map[string]ValidationInfo)
 
-	m[ubuntu_TS_name] = vUbuntu
-	m[mozilla_TS_name] = vMozilla
-	m[microsoft_TS_name] = vMicrosoft
-	m[apple_TS_name] = vApple
-	m[android_TS_name] = vAndroid
+	m[Ubuntu_TS_name] = vUbuntu
+	m[Mozilla_TS_name] = vMozilla
+	m[Microsoft_TS_name] = vMicrosoft
+	m[Apple_TS_name] = vApple
+	m[Android_TS_name] = vAndroid
 
 	return m
 
@@ -392,7 +392,7 @@ func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
 }
 
 //certtoStored returns a Certificate struct created from a X509.Certificate
-func certtoStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *ValidationInfo) Certificate {
+func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *ValidationInfo) Certificate {
 
 	var stored = Certificate{}
 
