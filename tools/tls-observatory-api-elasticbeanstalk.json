@@ -1,0 +1,15 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "hub.prod.mozaws.net/tls-observatory-api",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": "8083"
+    }
+  ],
+  "Volumes": [
+  ],
+  "Logging": "/var/log/nginx"
+}

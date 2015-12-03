@@ -1,0 +1,32 @@
+[
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_API_ENABLE", 
+        "Value": "on"
+    },
+    {
+        "Namespace": "aws:cloudformation:template:parameter", 
+        "OptionName": "EnvironmentVariables", 
+        "Value": "TLSOBS_POSTGRESUSER=tlsobsapi,TLSOBS_API_ENABLE=on,TLSOBS_POSTGRESDB=observatory,TLSOBS_POSTGRESPASS=POSTGRESPASSREPLACEME,TLSOBS_POSTGRES=POSTGRESHOSTREPLACEME"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_POSTGRES", 
+        "Value": "POSTGRESHOSTREPLACEME"
+    }, 
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_POSTGRESDB", 
+        "Value": "observatory"
+    }, 
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_POSTGRESPASS", 
+        "Value": "POSTGRESPASSREPLACEME"
+    }, 
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_POSTGRESUSER", 
+        "Value": "tlsobsapi"
+    }
+]

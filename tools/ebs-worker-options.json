@@ -1,0 +1,72 @@
+[
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_SCANNER_ENABLE", 
+        "Value": "on"
+    },
+    {
+        "Namespace": "aws:cloudformation:template:parameter", 
+        "OptionName": "EnvironmentVariables", 
+        "Value": "TLSOBS_POSTGRESUSER=tlsobsscanner,TLSOBS_SCANNER_ENABLE=on,TLSOBS_POSTGRESDB=observatory,TLSOBS_POSTGRESPASS=POSTGRESPASSREPLACEME,TLSOBS_POSTGRES=POSTGRESHOSTREPLACEME"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_POSTGRES", 
+        "Value": "POSTGRESHOSTREPLACEME"
+    }, 
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_POSTGRESDB", 
+        "Value": "observatory"
+    }, 
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_POSTGRESPASS", 
+        "Value": "POSTGRESPASSREPLACEME"
+    }, 
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment", 
+        "OptionName": "TLSOBS_POSTGRESUSER", 
+        "Value": "tlsobsscanner"
+    }, 
+    {
+        "Namespace": "aws:elasticbeanstalk:sqsd",
+        "OptionName": "WorkerQueueURL",
+        "Value": ""
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:sqsd",
+        "OptionName": "MimeType",
+        "Value": "application/json"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:sqsd",
+        "OptionName": "HttpConnections",
+        "Value": "75"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:sqsd",
+        "OptionName": "ConnectTimeout",
+        "Value": "10"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:sqsd",
+        "OptionName": "InactivityTimeout",
+        "Value": "10"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:sqsd",
+        "OptionName": "VisibilityTimeout",
+        "Value": "300"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:sqsd",
+        "OptionName": "RetentionPeriod",
+        "Value": "345600"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:sqsd",
+        "OptionName": "MaxRetries",
+        "Value": "50"
+    }
+]
