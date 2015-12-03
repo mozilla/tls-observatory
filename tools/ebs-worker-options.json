@@ -27,7 +27,7 @@
     {
         "Namespace": "aws:elasticbeanstalk:application:environment", 
         "OptionName": "TLSOBS_POSTGRESUSER", 
-        "Value": "tlsobsadmin"
+        "Value": "tlsobsscanner"
     }, 
     {
         "Namespace": "aws:elasticbeanstalk:sqsd",

@@ -27,6 +27,6 @@
     {
         "Namespace": "aws:elasticbeanstalk:application:environment", 
         "OptionName": "TLSOBS_POSTGRESUSER", 
-        "Value": "tlsobsadmin"
+        "Value": "tlsobsapi"
     }
 ]
