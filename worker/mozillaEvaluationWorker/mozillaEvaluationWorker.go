@@ -90,7 +90,7 @@ func Evaluate(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var isO, isI, isM bool
+	var isO, isI, isM, isB bool
 
 	results := EvaluationResults{}
 	results.Failures = make(map[string][]string)
@@ -98,16 +98,39 @@ func Evaluate(data []byte) ([]byte, error) {
 	isO, results.Failures["old"] = isOld(connInfo)
 	if isO {
 		results.Level = "old"
+
+		ord, ordres := isOrdered(connInfo, old.Ciphers, "old")
+		if !ord {
+			results.Level += " with bad ordering"
+			results.Failures["old"] = append(results.Failures["old"], ordres...)
+		}
 	}
 
 	isI, results.Failures["intermediate"] = isIntermediate(connInfo)
 	if isI {
 		results.Level = "intermediate"
+
+		ord, ordres := isOrdered(connInfo, intermediate.Ciphers, "intermediate")
+		if !ord {
+			results.Level += " with bad ordering"
+			results.Failures["intermediate"] = append(results.Failures["intermediate"], ordres...)
+		}
 	}
 
 	isM, results.Failures["modern"] = isModern(connInfo)
 	if isM {
 		results.Level = "modern"
+
+		ord, ordres := isOrdered(connInfo, modern.Ciphers, "modern")
+		if !ord {
+			results.Level += " with bad ordering"
+			results.Failures["modern"] = append(results.Failures["modern"], ordres...)
+		}
+	}
+
+	isB, results.Failures["bad"] = isBad(connInfo)
+	if isB {
+		results.Level = "bad"
 	}
 
 	js, err := json.Marshal(results)
@@ -116,6 +139,74 @@ func Evaluate(data []byte) ([]byte, error) {
 	}
 
 	return js, nil
+}
+
+func isBad(c connection.Stored) (bool, []string) {
+
+	var failures, allProtos, allCiphers []string
+	status := false
+	hasSSLv2 := false
+	hasBadPFS := false
+	hasBadPK := false
+	hasMD5 := false
+
+	for _, cs := range c.CipherSuite {
+
+		allCiphers = append(allCiphers, cs.Cipher)
+
+		if contains(cs.Protocols, "SSLv2") {
+			hasSSLv2 = true
+		}
+
+		for _, proto := range cs.Protocols {
+			if !contains(allProtos, proto) {
+				allProtos = append(allProtos, proto)
+			}
+		}
+
+		if cs.PFS != "None" {
+			if !hasGoodPFS(cs.PFS, 1024, 160, false) {
+				hasBadPFS = true
+			}
+		}
+
+		if cs.PubKey < 2048 {
+			hasBadPK = true
+		}
+
+		if cs.SigAlg == "md5WithRSAEncryption" {
+			hasMD5 = true
+		}
+	}
+
+	badCiphers := extra(old.Ciphers, allCiphers)
+	if len(badCiphers) > 0 {
+		for _, c := range badCiphers {
+			failures = append(failures, fmt.Sprintf("remove cipher %s", c))
+		}
+	}
+
+	if hasSSLv2 {
+		failures = append(failures, "disable SSLv2")
+		status = true
+	}
+
+	if hasBadPFS {
+		failures = append(failures, "don't use DHE smaller than 1024bits or ECC smaller than 160bits")
+		status = true
+	}
+
+	if hasBadPK {
+		failures = append(failures, "don't use a public key shorter than 2048bit")
+		status = true
+	}
+
+	if hasMD5 {
+		failures = append(failures, "don't use an MD5 signature")
+		status = true
+	}
+
+	return status, failures
 }
 
 func isOld(c connection.Stored) (bool, []string) {
