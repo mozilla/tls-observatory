@@ -217,10 +217,8 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func validateDomain(domain string) bool {
-
-	// TODO
-	// Need to validate the domain, in a way,
-	// before passing it to the retriever queue
-
+	if domain == "" {
+		return false
+	}
 	return true
 }
