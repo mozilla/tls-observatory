@@ -88,7 +88,7 @@ func scan(scanId int64, cipherscan string) {
 		err, ok := err.(NoTLSCertsErr)
 		if ok {
 			//nil cert, does not implement TLS
-			db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", scanId)
+			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanId)
 			return
 		} else {
 			log.WithFields(logrus.Fields{
@@ -114,23 +114,17 @@ func scan(scanId int64, cipherscan string) {
 		}).Error("Could not get if trust is valid")
 		return
 	}
-
-	_, err = db.Exec("UPDATE scans SET cert_id=$1,trust_id=$2,has_tls=TRUE,is_valid=$3 WHERE id=$4", certID, trustID, isTrustValid, scanId)
+	completion += 20
+	_, err = db.Exec(`UPDATE scans
+			SET cert_id=$1, trust_id=$2, has_tls=TRUE, is_valid=$3, completion_perc=$4
+			WHERE id=$5`, certID, trustID, isTrustValid, completion, scanId)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"scan_id": scanId,
 			"cert_id": certID,
 			"error":   err.Error(),
 		}).Error("Could not update scans for cert")
-	}
-
-	completion += 20
-	err = db.UpdateScanCompletionPercentage(scanId, completion)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"scan_id": scanId,
-			"error":   err.Error(),
-		}).Error("Could not update completion percentage for scan")
+		return
 	}
 
 	// Cipherscan the target
@@ -139,25 +133,23 @@ func scan(scanId int64, cipherscan string) {
 		err, ok := err.(connection.NoTLSConnErr)
 		if ok {
 			//does not implement TLS
-			db.Exec("UPDATE scans SET has_tls=FALSE WHERE id=$1", scanId)
-			return
+			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanId)
 		} else {
 			log.WithFields(logrus.Fields{
 				"scan_id": scanId,
 				"error":   err.Error(),
 			}).Error("Could not get TLS connection info")
-			return
 		}
-	} else {
-		db.Exec("UPDATE scans SET conn_info=$1 WHERE id=$2", js, scanId)
-		completion += 20
-		err = db.UpdateScanCompletionPercentage(scanId, completion)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"scan_id": scanId,
-				"error":   err.Error(),
-			}).Error("Could not update completion percentage for scan")
-		}
+		return
+	}
+	completion += 20
+	_, err = db.Exec("UPDATE scans SET conn_info=$1, completion_perc=$2 WHERE id=$3",
+		js, completion, scanId)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanId,
+			"error":   err.Error(),
+		}).Error("Could not update connection information for scan")
 	}
 
 	// launch workers that evaluate the results
