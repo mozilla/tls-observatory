@@ -494,7 +494,7 @@ func (i Issuer) String() (str string) {
 	if str != "" {
 		str += ", "
 	}
-	str = "CN=" + i.CommonName
+	str += "CN=" + i.CommonName
 	return str
 }
 
@@ -513,6 +513,6 @@ func (s Subject) String() (str string) {
 	if str != "" {
 		str += ", "
 	}
-	str = "CN=" + s.CommonName
+	str += "CN=" + s.CommonName
 	return str
 }
