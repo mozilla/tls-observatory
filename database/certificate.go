@@ -48,7 +48,7 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 	signature_algo, raw_cert ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
 	$12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
 		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
-		cert.Version, cert.CA, time.Now(), time.Now(), time.Now(),
+		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, time.Now(),
 		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId, keyusage,
 		subaltname, cert.SignatureAlgorithm, cert.Raw).Scan(&id)
@@ -117,7 +117,7 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 
 	err = db.QueryRow(queryStr,
 		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
-		cert.Version, cert.CA, time.Now(), time.Now(), time.Now(),
+		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, time.Now(),
 		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId, keyusage,
 		subaltname, cert.SignatureAlgorithm, cert.Raw, true).Scan(&id)
