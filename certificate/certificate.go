@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -476,4 +477,42 @@ func printRawCertExtensions(cert *x509.Certificate) {
 		fmt.Println("//", strconv.Itoa(i), ": {", numbers, "}", string(extension.Value))
 	}
 
+}
+
+// String() prints the issuer as a single string, following OpenSSL's display
+// format: Issuer: C=US, O=Google Inc, CN=Google Internet Authority G2
+func (i Issuer) String() (str string) {
+	if len(i.Country) > 0 {
+		str += "C=" + strings.Join(i.Country, ", C=")
+	}
+	if len(i.Organisation) > 0 {
+		str += "O=" + strings.Join(i.Organisation, ", O=")
+	}
+	if len(i.OrgUnit) > 0 {
+		str += "OU=" + strings.Join(i.OrgUnit, ", OU=")
+	}
+	if str != "" {
+		str += ", "
+	}
+	str = "CN=" + i.CommonName
+	return str
+}
+
+// String() prints the subject as a single string, following OpenSSL's display
+// format: Subject: C=US, ST=California, L=Mountain View, O=Google Inc, CN=*.google.com
+func (s Subject) String() (str string) {
+	if len(s.Country) > 0 {
+		str += "C=" + strings.Join(s.Country, ", C=")
+	}
+	if len(s.Organisation) > 0 {
+		str += "O=" + strings.Join(s.Organisation, ", O=")
+	}
+	if len(s.OrgUnit) > 0 {
+		str += "OU=" + strings.Join(s.OrgUnit, ", OU=")
+	}
+	if str != "" {
+		str += ", "
+	}
+	str = "CN=" + s.CommonName
+	return str
 }
