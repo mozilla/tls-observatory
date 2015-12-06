@@ -58,7 +58,8 @@ func main() {
 			"error": err.Error(),
 		}).Fatal("Failed to connect to database")
 	}
-
+	db.SetMaxOpenConns(cores * conf.General.GoRoutines)
+	db.SetMaxIdleConns(10)
 	incomingScans := db.RegisterScanListener(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
 	Setup(conf)
 

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"runtime"
 
 	_ "github.com/Sirupsen/logrus"
 
@@ -41,6 +42,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	db.SetMaxOpenConns(runtime.NumCPU() * 10)
+	db.SetMaxIdleConns(2)
 
 	// wait for clients
 	err = http.ListenAndServe(":8083", Adapt(router, AddDB(db)))
