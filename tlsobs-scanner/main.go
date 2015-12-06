@@ -52,6 +52,7 @@ func main() {
 	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
 
 	db, err = pg.RegisterConnection(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
+	defer db.Close()
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": err.Error(),
