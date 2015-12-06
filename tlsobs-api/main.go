@@ -36,8 +36,16 @@ func main() {
 	if !conf.General.Enable && os.Getenv("TLSOBS_API_ENABLE") != "on" {
 		log.Fatal("API is disabled in configuration")
 	}
-
-	db, err := pg.RegisterConnection(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
+	dbtls := "disable"
+	if conf.General.PostgresUseTLS {
+		dbtls = "verify-full"
+	}
+	db, err := pg.RegisterConnection(
+		conf.General.PostgresDB,
+		conf.General.PostgresUser,
+		conf.General.PostgresPass,
+		conf.General.Postgres,
+		dbtls)
 	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
