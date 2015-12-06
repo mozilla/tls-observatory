@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"runtime"
 
 	_ "github.com/Sirupsen/logrus"
 
@@ -35,12 +36,22 @@ func main() {
 	if !conf.General.Enable && os.Getenv("TLSOBS_API_ENABLE") != "on" {
 		log.Fatal("API is disabled in configuration")
 	}
-
-	db, err := pg.RegisterConnection(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
-
+	dbtls := "disable"
+	if conf.General.PostgresUseTLS {
+		dbtls = "verify-full"
+	}
+	db, err := pg.RegisterConnection(
+		conf.General.PostgresDB,
+		conf.General.PostgresUser,
+		conf.General.PostgresPass,
+		conf.General.Postgres,
+		dbtls)
+	defer db.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	db.SetMaxOpenConns(runtime.NumCPU() * 10)
+	db.SetMaxIdleConns(2)
 
 	// wait for clients
 	err = http.ListenAndServe(":8083", Adapt(router, AddDB(db)))

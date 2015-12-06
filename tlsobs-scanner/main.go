@@ -50,14 +50,24 @@ func main() {
 
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
-
-	db, err = pg.RegisterConnection(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
+	dbtls := "disable"
+	if conf.General.PostgresUseTLS {
+		dbtls = "verify-full"
+	}
+	db, err = pg.RegisterConnection(
+		conf.General.PostgresDB,
+		conf.General.PostgresUser,
+		conf.General.PostgresPass,
+		conf.General.Postgres,
+		dbtls)
+	defer db.Close()
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": err.Error(),
 		}).Fatal("Failed to connect to database")
 	}
-
+	db.SetMaxOpenConns(cores * conf.General.GoRoutines)
+	db.SetMaxIdleConns(10)
 	incomingScans := db.RegisterScanListener(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
 	Setup(conf)
 

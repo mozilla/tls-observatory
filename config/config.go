@@ -15,6 +15,7 @@ type Config struct {
 		PostgresDB     string
 		PostgresUser   string
 		PostgresPass   string
+		PostgresUseTLS bool
 		CipherscanPath string
 		GoRoutines     int // * cores = The Max number of spawned Goroutines
 	}
