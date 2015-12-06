@@ -1,10 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"runtime"
-	//"strconv"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -35,7 +36,7 @@ func main() {
 
 	conf, err := config.Load(cfgFile)
 	if err != nil {
-		log.Fatal("Failed to load configuration: %v", err)
+		log.Fatal(fmt.Sprintf("Failed to load configuration: %v", err))
 	}
 	if !conf.General.Enable && os.Getenv("TLSOBS_SCANNER_ENABLE") != "on" {
 		log.Fatal("Scanner is disabled in configuration")
@@ -71,26 +72,26 @@ func main() {
 	incomingScans := db.RegisterScanListener(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
 	Setup(conf)
 
-	for scanId := range incomingScans {
-		go scan(scanId, cipherscan)
+	for scanID := range incomingScans {
+		go scan(scanID, cipherscan)
 	}
 }
 
-func scan(scanId int64, cipherscan string) {
+func scan(scanID int64, cipherscan string) {
 
 	log.WithFields(logrus.Fields{
-		"scan_id": scanId,
+		"scan_id": scanID,
 	}).Debug("Received new scan ")
 
-	scan, err := db.GetScanByID(scanId)
+	scan, err := db.GetScanByID(scanID)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": scanId,
+			"scan_id": scanID,
 			"error":   err.Error(),
 		}).Error("Could not find/decode scan")
 		return
 	}
-	var completion int = 0
+	var completion int
 
 	// Retrieve the certificate from the target
 	certID, trustID, err := handleCert(scan.Target)
@@ -98,19 +99,18 @@ func scan(scanId int64, cipherscan string) {
 		err, ok := err.(NoTLSCertsErr)
 		if ok {
 			//nil cert, does not implement TLS
-			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanId)
-			return
-		} else {
-			log.WithFields(logrus.Fields{
-				"scan_id":     scanId,
-				"scan_Target": scan.Target,
-				"error":       err.Error(),
-			}).Error("Could not get certificate info")
+			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 			return
 		}
+		log.WithFields(logrus.Fields{
+			"scan_id":     scanID,
+			"scan_Target": scan.Target,
+			"error":       err.Error(),
+		}).Error("Could not get certificate info")
+		return
 	}
 	log.WithFields(logrus.Fields{
-		"scan_id":  scanId,
+		"scan_id":  scanID,
 		"cert_id":  certID,
 		"trust_id": trustID,
 	}).Debug("Retrieved certs")
@@ -118,7 +118,7 @@ func scan(scanId int64, cipherscan string) {
 	isTrustValid, err := db.IsTrustValid(trustID)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": scanId,
+			"scan_id": scanID,
 			"cert_id": certID,
 			"error":   err.Error(),
 		}).Error("Could not get if trust is valid")
@@ -127,10 +127,10 @@ func scan(scanId int64, cipherscan string) {
 	completion += 20
 	_, err = db.Exec(`UPDATE scans
 			SET cert_id=$1, trust_id=$2, has_tls=TRUE, is_valid=$3, completion_perc=$4
-			WHERE id=$5`, certID, trustID, isTrustValid, completion, scanId)
+			WHERE id=$5`, certID, trustID, isTrustValid, completion, scanID)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": scanId,
+			"scan_id": scanID,
 			"cert_id": certID,
 			"error":   err.Error(),
 		}).Error("Could not update scans for cert")
@@ -143,10 +143,10 @@ func scan(scanId int64, cipherscan string) {
 		err, ok := err.(connection.NoTLSConnErr)
 		if ok {
 			//does not implement TLS
-			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanId)
+			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 		} else {
 			log.WithFields(logrus.Fields{
-				"scan_id": scanId,
+				"scan_id": scanID,
 				"error":   err.Error(),
 			}).Error("Could not get TLS connection info")
 		}
@@ -154,24 +154,48 @@ func scan(scanId int64, cipherscan string) {
 	}
 	completion += 20
 	_, err = db.Exec("UPDATE scans SET conn_info=$1, completion_perc=$2 WHERE id=$3",
-		js, completion, scanId)
+		js, completion, scanID)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"scan_id": scanId,
+			"scan_id": scanID,
 			"error":   err.Error(),
 		}).Error("Could not update connection information for scan")
 	}
 
+	workerInput := worker.Input{}
+
+	workerInput.DBHandle = db
+	workerInput.Scanid = scanID
+	cert, err := db.GetCertByID(certID)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanID,
+			"cert_id": certID,
+		}).Error("Could not get certificate from db to pass to workers")
+
+		return
+	}
+	workerInput.Certificate = *cert
+
+	err = json.Unmarshal(js, &workerInput.Connection)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanID,
+		}).Error("Could not parse connection info to pass to workers")
+
+		return
+	}
+
 	// launch workers that evaluate the results
-	resChan := make(chan worker.WorkerResult)
+	resChan := make(chan worker.Result)
 	for _, wrkInfo := range worker.AvailableWorkers {
-		go wrkInfo.Runner.(worker.Worker).Run(js, resChan)
+		go wrkInfo.Runner.(worker.Worker).Run(workerInput, resChan)
 	}
 
 	totalWorkers := len(worker.AvailableWorkers)
 
 	log.WithFields(logrus.Fields{
-		"scan_id": scanId,
+		"scan_id": scanID,
 		"workers": totalWorkers,
 	}).Debug("Running workers")
 
@@ -181,7 +205,7 @@ func scan(scanId int64, cipherscan string) {
 		case <-time.After(10 * time.Second):
 
 			log.WithFields(logrus.Fields{
-				"scan_id": scanId,
+				"scan_id": scanID,
 			}).Debug("Scanners timed out")
 
 			if err != nil {
@@ -194,16 +218,16 @@ func scan(scanId int64, cipherscan string) {
 			completion = ((endedWorkers/totalWorkers)*60 + completion)
 
 			log.WithFields(logrus.Fields{
-				"scan_id":        scanId,
+				"scan_id":        scanID,
 				"worker_name":    res.WorkerName,
 				"result_success": res.Success,
 				"result_data":    string(res.Result),
 			}).Debug("Received results from worker")
 
-			err = db.UpdateScanCompletionPercentage(scanId, completion)
+			err = db.UpdateScanCompletionPercentage(scanID, completion)
 			if err != nil {
 				log.WithFields(logrus.Fields{
-					"scan_id": scanId,
+					"scan_id": scanID,
 					"error":   err.Error(),
 				}).Error("Could not update completion percentage")
 			}
@@ -211,11 +235,11 @@ func scan(scanId int64, cipherscan string) {
 			if res.Success {
 
 				log.WithFields(logrus.Fields{
-					"scan_id":     scanId,
+					"scan_id":     scanID,
 					"worker_name": res.WorkerName,
 					"result_data": string(res.Result),
 				}).Debug("Storing results from worker")
-				db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", scanId, res.WorkerName, res.Result)
+				db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", scanID, res.WorkerName, res.Result)
 			} else {
 				log.WithFields(logrus.Fields{
 					"worker_name": res.WorkerName,
@@ -224,6 +248,6 @@ func scan(scanId int64, cipherscan string) {
 			}
 		}
 	} else {
-		err = db.UpdateScanCompletionPercentage(scanId, 100)
+		err = db.UpdateScanCompletionPercentage(scanID, 100)
 	}
 }
