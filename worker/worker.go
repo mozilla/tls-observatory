@@ -3,23 +3,43 @@ package worker
 import (
 	"fmt"
 	"os"
+
+	"github.com/mozilla/tls-observatory/certificate"
+	"github.com/mozilla/tls-observatory/connection"
+	"github.com/mozilla/tls-observatory/database"
 )
 
-type WorkerResult struct {
+// Result contains all the info each worker can provide as a result,
+// through the result channel, to the caller.
+type Result struct {
 	Success    bool     `json:"success"`
 	WorkerName string   `json:"name"`
 	Result     []byte   `json:"result"`
 	Errors     []string `json:"errors"`
 }
 
-type WorkerInfo struct {
+// Input holds all the info that is given as input to each scanner.
+type Input struct {
+	Certificate certificate.Certificate
+	Connection  connection.Stored
+	Scanid      int64
+	DBHandle    *database.DB
+}
+
+// Info represents the information that every worker gives about itself at the
+// time of registration.
+// Runner is the "object" on which the run method is going to be called.
+type Info struct {
 	Runner      Worker
 	Description string
 }
 
-var AvailableWorkers = make(map[string]WorkerInfo)
+// AvailableWorkers is the global variable that contains all the workers that have registered
+// themselves as available.
+var AvailableWorkers = make(map[string]Info)
 
-func RegisterWorker(name string, info WorkerInfo) {
+// RegisterWorker is called by each worker in order to register itself as available.
+func RegisterWorker(name string, info Info) {
 	if _, exist := AvailableWorkers[name]; exist {
 		fmt.Fprintf(os.Stderr, "RegisterModule: a module named '%s' has already been registered.\nAre you trying to import the same module twice?\n", name)
 		os.Exit(1)
@@ -27,6 +47,8 @@ func RegisterWorker(name string, info WorkerInfo) {
 	AvailableWorkers[name] = info
 }
 
+// Worker is the interface that is used to provide transparent running of any type of worker
+// from the main application.
 type Worker interface {
-	Run([]byte, chan WorkerResult)
+	Run(Input, chan Result)
 }

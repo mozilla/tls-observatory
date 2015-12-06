@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mozilla/nothing/logger"
 	"github.com/mozilla/tls-observatory/connection"
+	"github.com/mozilla/tls-observatory/logger"
 	"github.com/mozilla/tls-observatory/worker"
 )
 
@@ -35,7 +35,7 @@ func init() {
 		log.Error("Could not load intermediate configuration. Evaluation Worker not available")
 		return
 	}
-	worker.RegisterWorker(workerName, worker.WorkerInfo{Runner: new(eval), Description: workerDesc})
+	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
 }
 
 // Configuration represents configurations levels declared by the Mozilla server-side-tls
@@ -64,11 +64,11 @@ type eval struct {
 }
 
 // Run implements the worker interface.It is called to get the worker results.
-func (e eval) Run(in []byte, resChan chan worker.WorkerResult) {
+func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
-	res := worker.WorkerResult{WorkerName: workerName}
+	res := worker.Result{WorkerName: workerName}
 
-	b, err := Evaluate(in)
+	b, err := Evaluate(in.Connection)
 	if err != nil {
 		res.Success = false
 		res.Errors = append(res.Errors, err.Error())
@@ -81,14 +81,7 @@ func (e eval) Run(in []byte, resChan chan worker.WorkerResult) {
 }
 
 // Evaluate runs compliance checks of the provided json Stored connection and returns the results
-func Evaluate(data []byte) ([]byte, error) {
-
-	connInfo := connection.Stored{}
-
-	err := json.Unmarshal(data, &connInfo)
-	if err != nil {
-		return nil, err
-	}
+func Evaluate(connInfo connection.Stored) ([]byte, error) {
 
 	var isO, isI, isM, isB bool
 
