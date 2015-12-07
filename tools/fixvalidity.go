@@ -29,7 +29,10 @@ func main() {
 	offset := 0
 	for {
 		fmt.Println("Processing batch", offset, "to", limit)
-		rows, err := db.Query(`SELECT id, raw_cert FROM certificates LIMIT $1 OFFSET $2`, limit, offset)
+		rows, err := db.Query(`SELECT id, raw_cert
+					FROM certificates
+					WHERE not_valid_after < NOW() AND not_valid_before > not_valid_after - INTERVAL '5 minutes'
+					LIMIT $1 OFFSET $2`, limit, offset)
 		if rows != nil {
 			defer rows.Close()
 		}
