@@ -5,7 +5,6 @@ package main
 
 import (
 	"crypto/x509"
-	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -28,10 +27,11 @@ func main() {
 	limit := 100
 	offset := 0
 	for {
-		fmt.Println("Processing batch", offset, "to", limit)
+		fmt.Println("Processing batch", offset, "to", offset+limit)
 		rows, err := db.Query(`SELECT id, raw_cert
 					FROM certificates
-					WHERE not_valid_after < NOW() AND not_valid_before > not_valid_after - INTERVAL '5 minutes'
+					WHERE not_valid_after < NOW() AND not_valid_after > NOW() - INTERVAL '4 days'
+					AND not_valid_before > not_valid_after - INTERVAL '5 minutes'
 					LIMIT $1 OFFSET $2`, limit, offset)
 		if rows != nil {
 			defer rows.Close()
@@ -39,15 +39,13 @@ func main() {
 		if err != nil {
 			panic(fmt.Errorf("Error while retrieving certs: '%v'", err))
 		}
+		i := 0
 		for rows.Next() {
+			i++
 			var raw string
 			var id int64
 			err = rows.Scan(&id, &raw)
 			if err != nil {
-				if err == sql.ErrNoRows {
-					fmt.Println("done!")
-					break
-				}
 				fmt.Println("error while parsing cert", id, ":", err)
 				continue
 			}
@@ -61,12 +59,16 @@ func main() {
 				fmt.Println("error while x509 parsing cert", id, ":", err)
 				continue
 			}
-			fmt.Println("cert", id, "has validity", c.NotBefore, c.NotAfter, "updating in database")
+			//fmt.Println("cert", id, "has validity", c.NotBefore, c.NotAfter, "updating in database")
 			_, err = db.Exec(`UPDATE certificates SET not_valid_before=$1, not_valid_after=$2 WHERE id=$3`,
 				c.NotBefore, c.NotAfter, id)
 			if err != nil {
 				fmt.Println("error while updating cert", id, "in database:", err)
 			}
+		}
+		if i == 0 {
+			fmt.Println("done!")
+			break
 		}
 		offset += limit
 	}
