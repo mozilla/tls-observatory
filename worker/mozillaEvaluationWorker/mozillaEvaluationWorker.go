@@ -88,6 +88,9 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 	results := EvaluationResults{}
 	results.Failures = make(map[string][]string)
 
+	// assume the worst
+	results.Level = "bad"
+
 	isO, results.Failures["old"] = isOld(connInfo)
 	if isO {
 		results.Level = "old"
