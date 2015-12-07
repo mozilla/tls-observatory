@@ -219,7 +219,7 @@ func isOld(c connection.Stored) (bool, []string) {
 
 	for _, cs := range c.CipherSuite {
 
-		if !contains(modern.Ciphers, cs.Cipher) {
+		if !contains(old.Ciphers, cs.Cipher) {
 			failures = append(failures, fmt.Sprintf("remove %s cipher", cs.Cipher))
 			status = false
 		}
@@ -241,7 +241,6 @@ func isOld(c connection.Stored) (bool, []string) {
 		if cs.PFS != "None" {
 			if !hasGoodPFS(cs.PFS, 1024, 256, true) {
 				hasPFS = false
-				status = false
 			}
 		}
 
@@ -258,7 +257,6 @@ func isOld(c connection.Stored) (bool, []string) {
 
 		if !cs.OCSPStapling {
 			hasOCSP = false
-			status = false
 		}
 	}
 
@@ -279,6 +277,7 @@ func isOld(c connection.Stored) (bool, []string) {
 
 	if !hasSSLv3 {
 		failures = append(failures, "add SSLv3 support")
+		status = false
 	}
 
 	if !hasOCSP {
@@ -287,14 +286,17 @@ func isOld(c connection.Stored) (bool, []string) {
 
 	if !hasSHA1 {
 		failures = append(failures, "it is recommended to use sha1")
+		status = false
 	}
 
 	if !has3DES {
 		failures = append(failures, "add cipher DES-CBC3-SHA")
+		status = false
 	}
 
 	if !hasPFS {
 		failures = append(failures, "use DHE of at least 2048bits and ECC of at least 256bits")
+		status = false
 	}
 
 	return status, failures
@@ -335,7 +337,6 @@ func isIntermediate(c connection.Stored) (bool, []string) {
 		if cs.PFS != "None" {
 			if !hasGoodPFS(cs.PFS, 2048, 256, false) {
 				hasPFS = false
-				status = false
 			}
 		}
 
@@ -346,12 +347,10 @@ func isIntermediate(c connection.Stored) (bool, []string) {
 				failures = append(failures, fail)
 			}
 			hasSHA256 = false
-			status = false
 		}
 
 		if !cs.OCSPStapling {
 			hasOCSP = false
-			status = false
 		}
 	}
 
@@ -415,7 +414,6 @@ func isModern(c connection.Stored) (bool, []string) {
 		if cs.PFS != "None" {
 			if !hasGoodPFS(cs.PFS, 2048, 256, false) {
 				hasPFS = false
-				status = false
 			}
 		}
 
@@ -425,12 +423,10 @@ func isModern(c connection.Stored) (bool, []string) {
 				failures = append(failures, fail)
 			}
 			hasSHA256 = false
-			status = false
 		}
 
 		if !cs.OCSPStapling {
 			hasOCSP = false
-			status = false
 		}
 	}
 
@@ -450,10 +446,12 @@ func isModern(c connection.Stored) (bool, []string) {
 
 	if !hasSHA256 {
 		failures = append(failures, "it is recommended to use sha256")
+		status = false
 	}
 
 	if !hasPFS {
 		failures = append(failures, "use DHE of at least 2048bits and ECC of at least 256bits")
+		status = false
 	}
 	return status, failures
 }
@@ -463,6 +461,7 @@ func isOrdered(c connection.Stored, conf []string, level string) (bool, []string
 	var failures []string
 	status := true
 	prevpos := 0
+
 	for _, ciphersuite := range c.CipherSuite {
 		for pos, cipher := range conf {
 			if ciphersuite.Cipher == cipher {
@@ -474,6 +473,7 @@ func isOrdered(c connection.Stored, conf []string, level string) (bool, []string
 			}
 		}
 	}
+
 	if !status {
 		failures = append(failures, fmt.Sprintf("fix ciphersuite ordering, use recommended %s ciphersuite", level))
 	}
