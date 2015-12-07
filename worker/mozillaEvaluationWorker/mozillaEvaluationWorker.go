@@ -126,6 +126,8 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 		results.Level = "bad"
 	}
 
+	fmt.Println(isB, isO, isI, isM)
+
 	js, err := json.Marshal(results)
 	if err != nil {
 		return nil, err
@@ -176,6 +178,7 @@ func isBad(c connection.Stored) (bool, []string) {
 	if len(badCiphers) > 0 {
 		for _, c := range badCiphers {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", c))
+			status = true
 		}
 	}
 
@@ -242,7 +245,12 @@ func isOld(c connection.Stored) (bool, []string) {
 		}
 
 		if cs.SigAlg != old.CertificateSignature {
-			failures = append(failures, fmt.Sprintf("%s is not an old signature", cs.SigAlg))
+
+			fail := fmt.Sprintf("%s is not an old signature", cs.SigAlg)
+			if !contains(failures, fail) {
+				failures = append(failures, fail)
+			}
+
 			hasSHA1 = false
 			status = false
 		}
@@ -331,7 +339,11 @@ func isIntermediate(c connection.Stored) (bool, []string) {
 		}
 
 		if cs.SigAlg != intermediate.CertificateSignature {
-			failures = append(failures, fmt.Sprintf("%s is not a modern signature", cs.SigAlg))
+
+			fail := fmt.Sprintf("%s is not an intermediate signature", cs.SigAlg)
+			if !contains(failures, fail) {
+				failures = append(failures, fail)
+			}
 			hasSHA256 = false
 			status = false
 		}
@@ -407,7 +419,10 @@ func isModern(c connection.Stored) (bool, []string) {
 		}
 
 		if cs.SigAlg != modern.CertificateSignature {
-			failures = append(failures, fmt.Sprintf("%s is not a modern signature", cs.SigAlg))
+			fail := fmt.Sprintf("%s is not a modern signature", cs.SigAlg)
+			if !contains(failures, fail) {
+				failures = append(failures, fail)
+			}
 			hasSHA256 = false
 			status = false
 		}
@@ -454,6 +469,7 @@ func isOrdered(c connection.Stored, conf []string, level string) (bool, []string
 					failures = append(failures, fmt.Sprintf("increase priority of %s over %s", ciphersuite.Cipher, conf[prevpos]))
 					status = false
 				}
+				prevpos = pos
 			}
 		}
 	}
@@ -466,7 +482,7 @@ func isOrdered(c connection.Stored, conf []string, level string) (bool, []string
 func hasGoodPFS(curPFS string, targetDH, targetECC int, mustMatch bool) bool {
 
 	pfs := strings.Split(curPFS, ",")
-	if len(pfs) < 3 {
+	if len(pfs) < 2 {
 		return false
 	}
 
