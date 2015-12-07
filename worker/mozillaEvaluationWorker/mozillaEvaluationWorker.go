@@ -126,8 +126,6 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 		results.Level = "bad"
 	}
 
-	fmt.Println(isB, isO, isI, isM)
-
 	js, err := json.Marshal(results)
 	if err != nil {
 		return nil, err
