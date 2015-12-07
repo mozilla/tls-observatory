@@ -112,6 +112,9 @@ deb-pkg: all
 		-m "Mozilla OpSec" --url https://github.com/mozilla/tls-observatory --architecture $(FPMARCH) -v $(BUILDREV) \
 		-s dir -t deb .
 
+test:
+	$(GO) test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
+
 clean:
 	rm -rf bin
 	find src/ -maxdepth 1 -mindepth 1 -name github* -exec rm -rf {} \;
