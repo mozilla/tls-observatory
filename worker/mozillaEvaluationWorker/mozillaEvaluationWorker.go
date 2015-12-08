@@ -68,7 +68,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
 	res := worker.Result{WorkerName: workerName}
 
-	b, err := Evaluate(in.Connection)
+	b, err := Evaluate(in.Connection, in.Certificate.SignatureAlgorithm)
 	if err != nil {
 		res.Success = false
 		res.Errors = append(res.Errors, err.Error())
@@ -81,7 +81,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 }
 
 // Evaluate runs compliance checks of the provided json Stored connection and returns the results
-func Evaluate(connInfo connection.Stored) ([]byte, error) {
+func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 
 	var isO, isI, isM, isB bool
 
@@ -91,7 +91,7 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 	// assume the worst
 	results.Level = "bad"
 
-	isO, results.Failures["old"] = isOld(connInfo)
+	isO, results.Failures["old"] = isOld(connInfo, certsigalg)
 	if isO {
 		results.Level = "old"
 
@@ -102,7 +102,7 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 		}
 	}
 
-	isI, results.Failures["intermediate"] = isIntermediate(connInfo)
+	isI, results.Failures["intermediate"] = isIntermediate(connInfo, certsigalg)
 	if isI {
 		results.Level = "intermediate"
 
@@ -113,7 +113,7 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 		}
 	}
 
-	isM, results.Failures["modern"] = isModern(connInfo)
+	isM, results.Failures["modern"] = isModern(connInfo, certsigalg)
 	if isM {
 		results.Level = "modern"
 
@@ -206,7 +206,7 @@ func isBad(c connection.Stored) (bool, []string) {
 	return status, failures
 }
 
-func isOld(c connection.Stored) (bool, []string) {
+func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 
 	status := true
 	var allProtos []string
@@ -244,7 +244,7 @@ func isOld(c connection.Stored) (bool, []string) {
 			}
 		}
 
-		if cs.SigAlg != old.CertificateSignature {
+		if certsigalg != old.CertificateSignature {
 
 			fail := fmt.Sprintf("%s is not an old signature", cs.SigAlg)
 			if !contains(failures, fail) {
@@ -302,7 +302,7 @@ func isOld(c connection.Stored) (bool, []string) {
 	return status, failures
 }
 
-func isIntermediate(c connection.Stored) (bool, []string) {
+func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 
 	status := true
 	var allProtos []string
@@ -340,7 +340,7 @@ func isIntermediate(c connection.Stored) (bool, []string) {
 			}
 		}
 
-		if cs.SigAlg != intermediate.CertificateSignature {
+		if certsigalg != intermediate.CertificateSignature {
 
 			fail := fmt.Sprintf("%s is not an intermediate signature", cs.SigAlg)
 			if !contains(failures, fail) {
@@ -389,7 +389,7 @@ func isIntermediate(c connection.Stored) (bool, []string) {
 	return status, failures
 }
 
-func isModern(c connection.Stored) (bool, []string) {
+func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 
 	status := true
 	var allProtos []string
@@ -417,7 +417,7 @@ func isModern(c connection.Stored) (bool, []string) {
 			}
 		}
 
-		if cs.SigAlg != modern.CertificateSignature {
+		if certsigalg != modern.CertificateSignature {
 			fail := fmt.Sprintf("%s is not a modern signature", cs.SigAlg)
 			if !contains(failures, fail) {
 				failures = append(failures, fail)
