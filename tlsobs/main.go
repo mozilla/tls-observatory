@@ -14,6 +14,7 @@ import (
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/database"
+	"github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
 )
 
 func usage() {
@@ -86,6 +87,7 @@ func main() {
 	}
 	fmt.Printf("\n")
 	printConnection(results.Conn_info)
+	printAnalysis(results.AnalysisResults)
 }
 
 func printCert(id int64, observatory string) {
@@ -93,6 +95,7 @@ func printCert(id int64, observatory string) {
 		cert certificate.Certificate
 		san  string
 	)
+	fmt.Println("\n--- Certificate ---")
 	resp, err := http.Get(fmt.Sprintf("%s/api/v1/certificate?id=%d", observatory, id))
 	if err != nil {
 		panic(err)
@@ -113,8 +116,7 @@ func printCert(id int64, observatory string) {
 			san += "- " + name + "\n"
 		}
 	}
-	fmt.Printf(`
-Subject  %s	
+	fmt.Printf(`Subject  %s	
 SubjectAlternativeName
 %sIssuer   %s
 Validity %s to %s
@@ -128,6 +130,7 @@ SigAlg   %s
 }
 
 func printConnection(c connection.Stored) {
+	fmt.Println("\n--- Ciphers Evaluation ---")
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 5, 0, 1, ' ', 0)
 	fmt.Fprintf(w, "prio\tcipher\tprotocols\tpfs\tcurves\n")
@@ -149,4 +152,23 @@ func printConnection(c connection.Stored) {
 Server Side Ordering %t
 Curves Fallback      %t
 `, c.CipherSuite[0].OCSPStapling, c.ServerSide, c.CurvesFallback)
+}
+
+func printAnalysis(ars []database.Analysis) {
+	if len(ars) == 0 {
+		return
+	}
+	fmt.Println("\n--- Analyzers ---")
+	for _, a := range ars {
+		switch a.Analyzer {
+		case "mozillaEvaluationWorker":
+			var eval mozillaEvaluationWorker.EvaluationResults
+			err := json.Unmarshal(a.Result, &eval)
+			if err != nil {
+				fmt.Println("failed to parse results for", a.Analyzer, "analyzer")
+				continue
+			}
+			fmt.Printf("\tMozilla evaluation level: %s\n", eval.Level)
+		}
+	}
 }

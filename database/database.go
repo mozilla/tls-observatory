@@ -27,7 +27,14 @@ type Scan struct {
 	Validation_error string            `json:"validation_error,omitempty"`
 	Complperc        int               `json:"completion_perc"`
 	Conn_info        connection.Stored `json:"connection_info"`
+	AnalysisResults  []Analysis        `json:"analysis,omitempty"`
 	Ack              bool
+}
+
+type Analysis struct {
+	ID       int64           `json:"id"`
+	Analyzer string          `json:"analyzer"`
+	Result   json.RawMessage `json:"result"`
 }
 
 func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, error) {
@@ -105,8 +112,34 @@ func (db *DB) GetScanByID(id int64) (Scan, error) {
 	}
 
 	err = json.Unmarshal(ci, &s.Conn_info)
+	if err != nil {
+		return s, err
+	}
 
-	return s, err
+	if s.Complperc > 40 {
+		s.AnalysisResults, err = db.GetAnalysisByScan(s.ID)
+		return s, err
+	}
+
+	return s, nil
+}
+
+func (db *DB) GetAnalysisByScan(id int64) ([]Analysis, error) {
+
+	var ana []Analysis
+	rows, err := db.Query("SELECT id,worker_name,output FROM analysis WHERE scan_id=$1", id)
+	if err != nil {
+		return ana, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		a := Analysis{}
+		if err := rows.Scan(&a.ID, &a.Analyzer, &a.Result); err != nil {
+			return ana, err
+		}
+		ana = append(ana, a)
+	}
+	return ana, nil
 }
 
 func (db *DB) UpdateScanCompletionPercentage(id int64, p int) error {
