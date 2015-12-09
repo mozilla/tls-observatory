@@ -199,29 +199,22 @@ func scan(scanID int64, cipherscan string) {
 		"workers": totalWorkers,
 	}).Debug("Running workers")
 
-	if totalWorkers > 0 {
-		endedWorkers := 0
+	// read the results from the results chan in a loop until all workers have ran or expired
+	for endedWorkers := 0; totalWorkers > endedWorkers; endedWorkers++ {
 		select {
-		case <-time.After(10 * time.Second):
-
+		case <-time.After(30 * time.Second):
 			log.WithFields(logrus.Fields{
 				"scan_id": scanID,
-			}).Debug("Scanners timed out")
-
-			if err != nil {
-				log.Println(err)
-			}
+			}).Error("Analysis workers timed out after 30 seconds")
 			return
-
 		case res := <-resChan:
 			endedWorkers += endedWorkers
 			completion = ((endedWorkers/totalWorkers)*60 + completion)
-
 			log.WithFields(logrus.Fields{
-				"scan_id":        scanID,
-				"worker_name":    res.WorkerName,
-				"result_success": res.Success,
-				"result_data":    string(res.Result),
+				"scan_id":     scanID,
+				"worker_name": res.WorkerName,
+				"success":     res.Success,
+				"result":      string(res.Result),
 			}).Debug("Received results from worker")
 
 			err = db.UpdateScanCompletionPercentage(scanID, completion)
@@ -230,24 +223,29 @@ func scan(scanID int64, cipherscan string) {
 					"scan_id": scanID,
 					"error":   err.Error(),
 				}).Error("Could not update completion percentage")
+				continue
 			}
-
-			if res.Success {
-
-				log.WithFields(logrus.Fields{
-					"scan_id":     scanID,
-					"worker_name": res.WorkerName,
-					"result_data": string(res.Result),
-				}).Debug("Storing results from worker")
-				db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", scanID, res.WorkerName, res.Result)
-			} else {
+			if !res.Success {
 				log.WithFields(logrus.Fields{
 					"worker_name": res.WorkerName,
 					"errors":      res.Errors,
 				}).Error("Worker returned with errors")
+				continue
 			}
+			_, err = db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)",
+				scanID, res.WorkerName, res.Result)
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"scan_id": scanID,
+					"error":   err.Error(),
+				}).Error("Could not insert worker results in database")
+				continue
+			}
+			log.WithFields(logrus.Fields{
+				"scan_id":     scanID,
+				"worker_name": res.WorkerName,
+			}).Info("Results from worker stored in database")
 		}
-	} else {
-		err = db.UpdateScanCompletionPercentage(scanID, 100)
 	}
+	err = db.UpdateScanCompletionPercentage(scanID, 100)
 }

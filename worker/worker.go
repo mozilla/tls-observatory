@@ -41,7 +41,7 @@ var AvailableWorkers = make(map[string]Info)
 // RegisterWorker is called by each worker in order to register itself as available.
 func RegisterWorker(name string, info Info) {
 	if _, exist := AvailableWorkers[name]; exist {
-		fmt.Fprintf(os.Stderr, "RegisterModule: a module named '%s' has already been registered.\nAre you trying to import the same module twice?\n", name)
+		fmt.Fprintf(os.Stderr, "RegisterWorker: a worker named %q has already been registered.\nAre you trying to import the same worker twice?\n", name)
 		os.Exit(1)
 	}
 	AvailableWorkers[name] = info
