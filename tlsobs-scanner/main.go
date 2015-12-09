@@ -162,45 +162,43 @@ func scan(scanID int64, cipherscan string) {
 		}).Error("Could not update connection information for scan")
 	}
 
-	workerInput := worker.Input{}
-
-	workerInput.DBHandle = db
-	workerInput.Scanid = scanID
+	// Prepare worker input
 	cert, err := db.GetCertByID(certID)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"scan_id": scanID,
 			"cert_id": certID,
 		}).Error("Could not get certificate from db to pass to workers")
-
 		return
 	}
-	workerInput.Certificate = *cert
-
-	err = json.Unmarshal(js, &workerInput.Connection)
+	var conn_info connection.Stored
+	err = json.Unmarshal(js, &conn_info)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"scan_id": scanID,
 		}).Error("Could not parse connection info to pass to workers")
-
 		return
 	}
-
+	workerInput := worker.Input{
+		DBHandle:    db,
+		Scanid:      scanID,
+		Certificate: *cert,
+		Connection:  conn_info,
+	}
 	// launch workers that evaluate the results
 	resChan := make(chan worker.Result)
+	totalWorkers := 0
 	for _, wrkInfo := range worker.AvailableWorkers {
 		go wrkInfo.Runner.(worker.Worker).Run(workerInput, resChan)
+		totalWorkers++
 	}
-
-	totalWorkers := len(worker.AvailableWorkers)
-
 	log.WithFields(logrus.Fields{
 		"scan_id": scanID,
-		"workers": totalWorkers,
+		"count":   totalWorkers,
 	}).Debug("Running workers")
 
 	// read the results from the results chan in a loop until all workers have ran or expired
-	for endedWorkers := 0; totalWorkers > endedWorkers; endedWorkers++ {
+	for endedWorkers := 0; endedWorkers <= totalWorkers; endedWorkers++ {
 		select {
 		case <-time.After(30 * time.Second):
 			log.WithFields(logrus.Fields{
@@ -248,4 +246,11 @@ func scan(scanID int64, cipherscan string) {
 		}
 	}
 	err = db.UpdateScanCompletionPercentage(scanID, 100)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scanID,
+			"error":   err.Error(),
+		}).Error("Could not update completion percentage")
+	}
+	return
 }
