@@ -81,7 +81,7 @@ func scan(scanID int64, cipherscan string) {
 
 	log.WithFields(logrus.Fields{
 		"scan_id": scanID,
-	}).Debug("Received new scan ")
+	}).Info("Received new scan")
 
 	scan, err := db.GetScanByID(scanID)
 	if err != nil {
@@ -195,7 +195,7 @@ func scan(scanID int64, cipherscan string) {
 	log.WithFields(logrus.Fields{
 		"scan_id": scanID,
 		"count":   totalWorkers,
-	}).Debug("Running workers")
+	}).Info("Running workers")
 
 	// read the results from the results chan in a loop until all workers have ran or expired
 	for endedWorkers := 0; endedWorkers <= totalWorkers; endedWorkers++ {

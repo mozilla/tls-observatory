@@ -17,7 +17,7 @@ func init_logger() *log.Logger {
 
 	f.DisableColors = true
 
-	l.Level = log.WarnLevel
+	l.Level = log.InfoLevel
 	l.Formatter = f
 
 	//add syslog.LOG_DEBUG as the lowest level of logging to syslog ( so no filtering is applied.
