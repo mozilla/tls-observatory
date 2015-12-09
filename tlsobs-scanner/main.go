@@ -198,7 +198,7 @@ func scan(scanID int64, cipherscan string) {
 	}).Info("Running workers")
 
 	// read the results from the results chan in a loop until all workers have ran or expired
-	for endedWorkers := 0; endedWorkers <= totalWorkers; endedWorkers++ {
+	for endedWorkers := 0; endedWorkers < totalWorkers; endedWorkers++ {
 		select {
 		case <-time.After(30 * time.Second):
 			log.WithFields(logrus.Fields{
