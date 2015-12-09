@@ -36,7 +36,6 @@ func init() {
 		return
 	}
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
-	log.Info("Worker %q registered successfully", workerName)
 }
 
 // Configuration represents configurations levels declared by the Mozilla server-side-tls
