@@ -27,14 +27,14 @@ type Scan struct {
 	Validation_error string            `json:"validation_error,omitempty"`
 	Complperc        int               `json:"completion_perc"`
 	Conn_info        connection.Stored `json:"connection_info"`
-	AnalysisResults  []Analysis        `json:"analysis"`
+	AnalysisResults  []Analysis        `json:"analysis,omitempty"`
 	Ack              bool
 }
 
 type Analysis struct {
-	ID       int64  `json:"id"`
-	Analyzer string `json:"analyzer"`
-	Result   []byte `json:"result"`
+	ID       int64           `json:"id"`
+	Analyzer string          `json:"analyzer"`
+	Result   json.RawMessage `json:"result"`
 }
 
 func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, error) {
@@ -116,14 +116,18 @@ func (db *DB) GetScanByID(id int64) (Scan, error) {
 		return s, err
 	}
 
-	s.AnalysisResults, err = db.GetAnalysisByScan(s.ID)
-	return s, err
+	if s.Complperc > 40 {
+		s.AnalysisResults, err = db.GetAnalysisByScan(s.ID)
+		return s, err
+	}
+
+	return s, nil
 }
 
 func (db *DB) GetAnalysisByScan(id int64) ([]Analysis, error) {
 
 	var ana []Analysis
-	rows, err := db.Query("SELECT id,worker_name, output FROM analysis WHERE scan_id=$1", id)
+	rows, err := db.Query("SELECT id,worker_name,output FROM analysis WHERE scan_id=$1", id)
 	if err != nil {
 		return ana, err
 	}
