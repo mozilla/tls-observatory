@@ -45,3 +45,30 @@ templates provided in `tools/tls-observatory-api-elasticbeanstalk.json` and
 ##License##
 
  * Mozilla Public License Version 2.0
+
+## Queries
+
+### Find certificates signed by CAs identified by their SHA256 fingerprint
+
+```sql
+SELECT certificates.id, certificates.subject, certificates.issuer
+FROM certificates INNER JOIN trust ON (certificates.id=trust.cert_id)
+WHERE trust.issuer_id in (
+    SELECT id FROM certificates
+    WHERE sha256_fingerprint IN (
+        'E7685634EFACF69ACE939A6B255B7B4FABEF42935B50A265ACB5CB6027E44E70',
+        'A4B6B3996FC2F306B3FD8681BD63413D8C5009CC4FA329C2CCF0E2FA1B140305'
+    ))
+AND certificates.is_ca='false';
+```
+
+### List signature algorithms of trusted certs
+
+```sql
+SELECT signature_algo, count(*)
+FROM certificates INNER JOIN trust ON (certificates.id=trust.cert_id)
+WHERE is_ca='false'
+AND trust.trusted_mozilla='true'
+GROUP BY signature_algo
+ORDER BY count(*) DESC;
+```
