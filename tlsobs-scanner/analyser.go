@@ -183,7 +183,23 @@ func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 		}
 
 		if !cert.IsCA {
-			leafCert = cert
+			if leafCert != nil {
+				log.WithFields(logrus.Fields{
+					"domain":           chain.Domain,
+					"cert no":          chaincertno,
+					"cert fingerprint": certificate.SHA256Hash(cert.Raw),
+				}).Warning("Second non CA cert in chain received from server. Just add it to intermediates.")
+				if cert.Version < 3 {
+					log.WithFields(logrus.Fields{
+						"domain":           chain.Domain,
+						"cert no":          chaincertno,
+						"cert fingerprint": certificate.SHA256Hash(cert.Raw),
+					}).Debug("Probably an old root CA cert")
+					intermediates = append(intermediates, cert)
+				}
+			} else {
+				leafCert = cert
+			}
 		} else {
 			intermediates = append(intermediates, cert)
 		}
