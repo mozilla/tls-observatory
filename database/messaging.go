@@ -69,26 +69,22 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 	}()
 
 	go func() {
-		fiveminticker := time.NewTicker(1 * time.Minute)
-		unackedQuery := fmt.Sprintf("select pg_notify('%s', ''||id ) from scans where ack=FALSE and timestamp < NOW() - INTERVAL '30 seconds'", listenerName)
-		zerocomplQuery := "update scans set ack=false where completion_perc=0 and timestamp < NOW() - INTERVAL '1 minute'"
 		for {
-			select {
-			case <-fiveminticker.C:
-				_, err := db.Exec(zerocomplQuery)
-				if err != nil {
-					log.WithFields(logrus.Fields{
-						"error": err,
-					}).Error("Could not run zero completion update query")
-				}
-
-				_, err = db.Exec(unackedQuery)
-				if err != nil {
-					log.WithFields(logrus.Fields{
-						"error": err,
-					}).Error("Could not run unacknowledged scans periodic check.")
-				}
+			_, err := db.Exec("update scans set ack=false where completion_perc=0 and timestamp < NOW() - INTERVAL '1 minute'")
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"error": err,
+				}).Error("Could not run zero completion update query")
 			}
+
+			_, err = db.Exec(fmt.Sprintf("select pg_notify('%s', ''||id ) from scans where ack=FALSE and timestamp < NOW() - INTERVAL '30 seconds'", listenerName))
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"error": err,
+				}).Error("Could not run unacknowledged scans periodic check.")
+			}
+
+			time.Sleep(5 * time.Minute)
 		}
 	}()
 
