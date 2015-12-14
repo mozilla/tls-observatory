@@ -77,7 +77,7 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 				}).Error("Could not run zero completion update query")
 			}
 
-			_, err = db.Exec(fmt.Sprintf("select pg_notify('%s', ''||id ) from scans where ack=FALSE and timestamp < NOW() - INTERVAL '30 seconds'", listenerName))
+			_, err = db.Exec(fmt.Sprintf("select pg_notify('%s', ''||id ) from scans where ack=FALSE and timestamp < NOW() - INTERVAL '30 seconds' LIMIT 1000", listenerName))
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"error": err,
