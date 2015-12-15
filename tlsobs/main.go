@@ -14,7 +14,8 @@ import (
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/database"
-	"github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
+	"github.com/mozilla/tls-observatory/worker"
+	_ "github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
 )
 
 func usage() {
@@ -32,25 +33,30 @@ func main() {
 		err     error
 		scan    scan
 		results database.Scan
+		resp    *http.Response
+		body    []byte
 	)
 	flag.Usage = func() {
 		usage()
 		flag.PrintDefaults()
 	}
 	var observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
+	var scanid = flag.String("scanid", "0", "View results from a previous scan instead of starting a new one")
 	flag.Parse()
+	if *scanid != "0" {
+		goto getresults
+	}
 	if len(flag.Args()) != 1 {
 		fmt.Println("error: must take only 1 non-flag argument as the target")
 		usage()
 		os.Exit(1)
 	}
-	resp, err := http.Post(*observatory+"/api/v1/scan?target="+flag.Arg(0),
-		"application/json", nil)
+	resp, err = http.Post(*observatory+"/api/v1/scan?target="+flag.Arg(0), "application/json", nil)
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
@@ -58,9 +64,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	*scanid = scan.ID
+	fmt.Printf("Started scan %s - %s/api/v1/results?id=%s\n", *scanid, *observatory, *scanid)
+getresults:
 	has_cert := false
 	for {
-		resp, err = http.Get(*observatory + "/api/v1/results?id=" + scan.ID)
+		resp, err = http.Get(*observatory + "/api/v1/results?id=" + *scanid)
 		if err != nil {
 			panic(err)
 		}
