@@ -160,15 +160,18 @@ func printAnalysis(ars []database.Analysis) {
 	}
 	fmt.Println("\n--- Analyzers ---")
 	for _, a := range ars {
-		switch a.Analyzer {
-		case "mozillaEvaluationWorker":
-			var eval mozillaEvaluationWorker.EvaluationResults
-			err := json.Unmarshal(a.Result, &eval)
-			if err != nil {
-				fmt.Println("failed to parse results for", a.Analyzer, "analyzer")
-				continue
-			}
-			fmt.Printf("\tMozilla evaluation level: %s\n", eval.Level)
+		if _, ok := worker.AvailableWorkers[a.Analyzer]; !ok {
+			fmt.Fprintf(os.Stderr, "analyzer %q not found\n", a.Analyzer)
+			continue
+		}
+		runner := worker.AvailableWorkers[a.Analyzer].Runner
+		results, err := runner.(worker.HasAnalysisPrinter).PrintAnalysis([]byte(a.Result))
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		for _, result := range results {
+			fmt.Println(result)
 		}
 	}
 }

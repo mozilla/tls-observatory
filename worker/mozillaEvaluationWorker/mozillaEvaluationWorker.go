@@ -545,6 +545,34 @@ func contains(s []string, e string) bool {
 func extra(s []string, e []string) []string {
 
 	var extra []string
+func (e eval) PrintAnalysis(r []byte) (results []string, err error) {
+	var (
+		eval           EvaluationResults
+		previousissues []string
+		prefix         string
+	)
+	err = json.Unmarshal(r, &eval)
+	if err != nil {
+		err = fmt.Errorf("Mozilla evaluation worker: failed to parse results: %v", err)
+		return
+	}
+	results = append(results, fmt.Sprintf("* Mozilla evaluation: %s", eval.Level))
+	for _, lvl := range []string{"bad", "old", "intermediate", "modern"} {
+		if _, ok := eval.Failures[lvl]; ok && len(eval.Failures[lvl]) > 0 {
+			for _, issue := range eval.Failures[lvl] {
+				for _, previousissue := range previousissues {
+					if issue == previousissue {
+						goto next
+					}
+				}
+				prefix = "for " + lvl + " level:"
+				if lvl == "bad" {
+					prefix = "bad configuration:"
+				}
+				results = append(results, fmt.Sprintf("  - %s %s", prefix, issue))
+				previousissues = append(previousissues, issue)
+			next:
+			}
 
 	for _, str := range e {
 		if !contains(s, str) {
@@ -552,4 +580,9 @@ func extra(s []string, e []string) []string {
 		}
 	}
 	return extra
+	if eval.Level != "bad" {
+		results = append(results,
+			fmt.Sprintf("  - oldest clients: %s", strings.Join(sstls.Configurations[eval.Level].OldestClients, ", ")))
+	}
+	return
 }

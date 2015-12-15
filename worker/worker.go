@@ -52,3 +52,7 @@ func RegisterWorker(name string, info Info) {
 type Worker interface {
 	Run(Input, chan Result)
 }
+
+type HasAnalysisPrinter interface {
+	PrintAnalysis([]byte) ([]string, error)
+}
