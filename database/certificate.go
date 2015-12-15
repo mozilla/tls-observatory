@@ -18,25 +18,31 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 	var id int64
 
 	crl_dist_points, err := json.Marshal(cert.X509v3Extensions.CRLDistributionPoints)
-
 	if err != nil {
 		return -1, err
 	}
 
 	extkeyusage, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsage)
-
 	if err != nil {
 		return -1, err
 	}
 
 	keyusage, err := json.Marshal(cert.X509v3Extensions.KeyUsage)
-
 	if err != nil {
 		return -1, err
 	}
 
 	subaltname, err := json.Marshal(cert.X509v3Extensions.SubjectAlternativeName)
+	if err != nil {
+		return -1, err
+	}
 
+	issuer, err := json.Marshal(cert.Issuer)
+	if err != nil {
+		return -1, err
+	}
+
+	subject, err := json.Marshal(cert.Subject)
 	if err != nil {
 		return -1, err
 	}
@@ -47,7 +53,7 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
 	signature_algo, raw_cert ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
 	$12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
-		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
+		cert.Hashes.SHA1, cert.Hashes.SHA256, issuer, subject,
 		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, time.Now(),
 		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId, keyusage,
@@ -92,6 +98,16 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 		return -1, err
 	}
 
+	issuer, err := json.Marshal(cert.Issuer)
+	if err != nil {
+		return -1, err
+	}
+
+	subject, err := json.Marshal(cert.Subject)
+	if err != nil {
+		return -1, err
+	}
+
 	tsVariable := ""
 	switch tsName {
 	case certificate.Ubuntu_TS_name:
@@ -116,7 +132,7 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 	$12, $13, $14, $15, $16, $17, $18, $19, $20 ) RETURNING id`, tsVariable)
 
 	err = db.QueryRow(queryStr,
-		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Issuer.CommonName, cert.Subject.CommonName,
+		cert.Hashes.SHA1, cert.Hashes.SHA256, issuer, subject,
 		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, time.Now(),
 		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId, keyusage,
@@ -247,11 +263,11 @@ func (db *DB) GetCertIDFromTrust(trustID int64) (int64, error) {
 
 }
 
-// GetCertwithSHA1Fingerprint fetches a certain certificate from the database.
+// GetCertBySHA1Fingerprint fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
 func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, error) {
 
-	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
+	row := db.QueryRow(`SELECT id, sha1_fingerprint, sha256_fingerprint,
 	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
 	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
 	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
@@ -261,46 +277,54 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 
 	cert := &certificate.Certificate{}
 
-	var crl_dist_points, extkeyusage, keyusage, subaltname []byte
+	var certID int64
 
-	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Issuer.CommonName, &cert.Subject.CommonName,
+	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject []byte
+
+	err := row.Scan(&certID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
-
 	if err != nil {
 		return nil, err
 	}
 
 	err = json.Unmarshal(crl_dist_points, &cert.X509v3Extensions.CRLDistributionPoints)
-
 	if err != nil {
 		return nil, err
 	}
 
 	err = json.Unmarshal(extkeyusage, cert.X509v3Extensions.ExtendedKeyUsage)
-
 	if err != nil {
 		return nil, err
 	}
 
 	err = json.Unmarshal(keyusage, cert.X509v3Extensions.KeyUsage)
-
 	if err != nil {
 		return nil, err
 	}
 
 	err = json.Unmarshal(subaltname, cert.X509v3Extensions.SubjectAlternativeName)
-
 	if err != nil {
 		return nil, err
 	}
 
-	return cert, nil
+	err = json.Unmarshal(issuer, &cert.Issuer)
+	if err != nil {
+		return nil, err
+	}
 
+	err = json.Unmarshal(subject, &cert.Subject)
+	if err != nil {
+		return nil, err
+	}
+
+	cert.ValidationInfo, err = db.GetValidationMapForCert(certID)
+
+	return cert, err
 }
 
-// GetCertwithID fetches a certain certificate from the database.
+// GetCertByID fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
 func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 
@@ -314,9 +338,9 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 
 	cert := &certificate.Certificate{}
 
-	var crl_dist_points, extkeyusage, keyusage, subaltname []byte
+	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject []byte
 
-	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Issuer.CommonName, &cert.Subject.CommonName,
+	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
@@ -345,6 +369,16 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 
 	err = json.Unmarshal(subaltname, &cert.X509v3Extensions.SubjectAlternativeName)
 
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(issuer, &cert.Issuer)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(subject, &cert.Subject)
 	if err != nil {
 		return nil, err
 	}

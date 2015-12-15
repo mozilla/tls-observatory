@@ -4,8 +4,8 @@ CREATE TABLE certificates  (
 	sha256_fingerprint          varchar NOT NULL,
 	serial_number              	varchar NULL,
 	version                    	integer NULL,
-	subject                    	varchar NULL,
-	issuer                     	varchar NULL,
+	subject                    	jsonb NULL,
+	issuer                     	jsonb NULL,
 	is_ca                      	bool NULL,
 	not_valid_before           	timestamp NULL,
 	not_valid_after            	timestamp NULL,
@@ -88,4 +88,3 @@ GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT INSERT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT UPDATE ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT USAGE ON analysis_id_seq, certificates_id_seq, scans_id_seq, trust_id_seq TO tlsobsscanner;
-
