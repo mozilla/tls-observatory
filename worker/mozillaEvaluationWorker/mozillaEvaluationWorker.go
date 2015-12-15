@@ -15,27 +15,26 @@ var workerName = "mozillaEvaluationWorker"
 var workerDesc = `The evaluation worker provided insight on the compliance level of the tls configuration of the audited target.
 For more info check https://wiki.mozilla.org/Security/Server_Side_TLS.`
 
+var sstls ServerSideTLSJson
 var modern, intermediate, old Configuration
 
 var log = logger.GetLogger()
 
 func init() {
-	err := json.Unmarshal([]byte(oldC), &old)
+	err := json.Unmarshal([]byte(ServerSideTLSConfiguration), &sstls)
 	if err != nil {
-		log.Error("Could not load old configuration. Evaluation Worker not available")
+		log.Error("Could not load Server Side TLS configuration. Evaluation Worker not available")
 		return
 	}
-	err = json.Unmarshal([]byte(modernC), &modern)
-	if err != nil {
-		log.Error("Could not load modern configuration. Evaluation Worker not available")
-		return
-	}
-	err = json.Unmarshal([]byte(intermediateC), &intermediate)
-	if err != nil {
-		log.Error("Could not load intermediate configuration. Evaluation Worker not available")
-		return
-	}
+	modern = sstls.Configurations["modern"]
+	intermediate = sstls.Configurations["intermediate"]
+	old = sstls.Configurations["old"]
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
+}
+
+type ServerSideTLSJson struct {
+	Configurations map[string]Configuration `json:"configurations"`
+	Version        float64                  `json:"version"`
 }
 
 // Configuration represents configurations levels declared by the Mozilla server-side-tls
