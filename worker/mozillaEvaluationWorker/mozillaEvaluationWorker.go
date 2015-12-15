@@ -48,7 +48,8 @@ type Configuration struct {
 	CertificateCurve     string   `json:"certificate_curve"`
 	CertificateSignature string   `json:"certificate_signature"`
 	RsaKeySize           float64  `json:"rsa_key_size"`
-	DhParamSize          float64  `json:"dh_param_size"`
+	DHParamSize          float64  `json:"dh_param_size"`
+	ECDHParamSize        float64  `json:"ecdh_param_size"`
 	Hsts                 string   `json:"hsts"`
 	OldestClients        []string `json:"oldest_clients"`
 }
@@ -160,12 +161,12 @@ func isBad(c connection.Stored) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, 1024, 160, false) {
+			if !hasGoodPFS(cs.PFS, old.DHParamSize, old.ECDHParamSize, false, false) {
 				hasBadPFS = true
 			}
 		}
 
-		if cs.PubKey < 2048 {
+		if cs.PubKey < old.RsaKeySize {
 			hasBadPK = true
 		}
 
@@ -188,8 +189,10 @@ func isBad(c connection.Stored) (bool, []string) {
 	}
 
 	if hasBadPFS {
-		failures = append(failures, "don't use DHE smaller than 1024bits or ECC smaller than 160bits")
 		status = true
+		failures = append(failures,
+			fmt.Sprintf("don't use DHE smaller than %.0fbits or ECC smaller than %.0fbits",
+				old.DHParamSize, old.ECDHParamSize))
 	}
 
 	if hasBadPK {
@@ -238,7 +241,7 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, 1024, 256, true) {
+			if !hasGoodPFS(cs.PFS, old.DHParamSize, old.ECDHParamSize, true, false) {
 				hasPFS = false
 			}
 		}
@@ -294,8 +297,10 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if !hasPFS {
-		failures = append(failures, "use DHE of at least 2048bits and ECC of at least 256bits")
 		status = false
+		failures = append(failures,
+			fmt.Sprintf("use DHE of %.0fbits and ECC of %.0fbits",
+				old.DHParamSize, old.ECDHParamSize))
 	}
 
 	return status, failures
@@ -334,7 +339,7 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, 2048, 256, false) {
+			if !hasGoodPFS(cs.PFS, intermediate.DHParamSize, intermediate.ECDHParamSize, false, false) {
 				hasPFS = false
 			}
 		}
@@ -411,7 +416,7 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, 2048, 256, false) {
+			if !hasGoodPFS(cs.PFS, modern.DHParamSize, modern.ECDHParamSize, false, false) {
 				hasPFS = false
 			}
 		}
@@ -449,8 +454,10 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if !hasPFS {
-		failures = append(failures, "use DHE of at least 2048bits and ECC of at least 256bits")
 		status = false
+		failures = append(failures,
+			fmt.Sprintf("use DHE of at least %.0fbits and ECC of at least %.0fbits",
+				modern.DHParamSize, modern.ECDHParamSize))
 	}
 	return status, failures
 }
@@ -479,8 +486,7 @@ func isOrdered(c connection.Stored, conf []string, level string) (bool, []string
 	return status, failures
 }
 
-func hasGoodPFS(curPFS string, targetDH, targetECC int, mustMatch bool) bool {
-
+func hasGoodPFS(curPFS string, targetDH, targetECC float64, mustMatchDH, mustMatchECDH bool) bool {
 	pfs := strings.Split(curPFS, ",")
 	if len(pfs) < 2 {
 		return false
@@ -489,17 +495,17 @@ func hasGoodPFS(curPFS string, targetDH, targetECC int, mustMatch bool) bool {
 	if "ECDH" == pfs[0] {
 		bitsStr := strings.TrimRight(pfs[2], "bits")
 
-		bits, err := strconv.Atoi(bitsStr)
+		bits, err := strconv.ParseFloat(bitsStr, 64)
 		if err != nil {
 			return false
 		}
 
-		if !mustMatch {
-			if bits < targetECC {
+		if mustMatchECDH {
+			if bits != targetECC {
 				return false
 			}
 		} else {
-			if bits != targetECC {
+			if bits < targetECC {
 				return false
 			}
 		}
@@ -507,17 +513,17 @@ func hasGoodPFS(curPFS string, targetDH, targetECC int, mustMatch bool) bool {
 	} else if "DH" == pfs[0] {
 		bitsStr := strings.TrimRight(pfs[1], "bits")
 
-		bits, err := strconv.Atoi(bitsStr)
+		bits, err := strconv.ParseFloat(bitsStr, 64)
 		if err != nil {
 			return false
 		}
 
-		if !mustMatch {
-			if bits < targetDH {
+		if mustMatchDH {
+			if bits != targetDH {
 				return false
 			}
 		} else {
-			if bits != targetDH {
+			if bits < targetDH {
 				return false
 			}
 		}
