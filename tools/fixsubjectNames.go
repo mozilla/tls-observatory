@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/mozilla/tls-observatory/certificate"
@@ -13,11 +14,11 @@ import (
 
 func main() {
 	db, err := database.RegisterConnection(
-		"postgres",
-		"postgres",
-		"pass",
-		"172.17.0.1:5432",
-		"disable")
+		os.Getenv("TLSOBS_POSTGRESDB"),
+		os.Getenv("TLSOBS_POSTGRESUSER"),
+		os.Getenv("TLSOBS_POSTGRESPASS"),
+		os.Getenv("TLSOBS_POSTGRES"),
+		"require")
 	defer db.Close()
 	if err != nil {
 		panic(err)
