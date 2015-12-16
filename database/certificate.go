@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mozilla/tls-observatory/certificate"
@@ -47,17 +48,38 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 		return -1, err
 	}
 
+	domainstr := ""
+
+	if !cert.CA {
+		domainfound := false
+		for _, d := range cert.X509v3Extensions.SubjectAlternativeName {
+			if d == cert.Subject.CommonName {
+				domainfound = true
+			}
+		}
+
+		var domains []string
+
+		if !domainfound {
+			domains = append(cert.X509v3Extensions.SubjectAlternativeName, cert.Subject.CommonName)
+		} else {
+			domains = cert.X509v3Extensions.SubjectAlternativeName
+		}
+
+		domainstr = strings.Join(domains, ",")
+	}
+
 	err = db.QueryRow(`INSERT INTO certificates(  sha1_fingerprint, sha256_fingerprint,
 	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
 	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
 	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
-	signature_algo, raw_cert ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-	$12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
+	signature_algo, domains, raw_cert ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+	$12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id`,
 		cert.Hashes.SHA1, cert.Hashes.SHA256, issuer, subject,
 		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, time.Now(),
 		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId, keyusage,
-		subaltname, cert.SignatureAlgorithm, cert.Raw).Scan(&id)
+		subaltname, cert.SignatureAlgorithm, domainstr, cert.Raw).Scan(&id)
 
 	if err != nil {
 		return -1, err
