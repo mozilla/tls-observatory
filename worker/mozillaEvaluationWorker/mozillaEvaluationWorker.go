@@ -15,27 +15,26 @@ var workerName = "mozillaEvaluationWorker"
 var workerDesc = `The evaluation worker provided insight on the compliance level of the tls configuration of the audited target.
 For more info check https://wiki.mozilla.org/Security/Server_Side_TLS.`
 
+var sstls ServerSideTLSJson
 var modern, intermediate, old Configuration
 
 var log = logger.GetLogger()
 
 func init() {
-	err := json.Unmarshal([]byte(oldC), &old)
+	err := json.Unmarshal([]byte(ServerSideTLSConfiguration), &sstls)
 	if err != nil {
-		log.Error("Could not load old configuration. Evaluation Worker not available")
+		log.Error("Could not load Server Side TLS configuration. Evaluation Worker not available")
 		return
 	}
-	err = json.Unmarshal([]byte(modernC), &modern)
-	if err != nil {
-		log.Error("Could not load modern configuration. Evaluation Worker not available")
-		return
-	}
-	err = json.Unmarshal([]byte(intermediateC), &intermediate)
-	if err != nil {
-		log.Error("Could not load intermediate configuration. Evaluation Worker not available")
-		return
-	}
+	modern = sstls.Configurations["modern"]
+	intermediate = sstls.Configurations["intermediate"]
+	old = sstls.Configurations["old"]
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
+}
+
+type ServerSideTLSJson struct {
+	Configurations map[string]Configuration `json:"configurations"`
+	Version        float64                  `json:"version"`
 }
 
 // Configuration represents configurations levels declared by the Mozilla server-side-tls
@@ -49,7 +48,8 @@ type Configuration struct {
 	CertificateCurve     string   `json:"certificate_curve"`
 	CertificateSignature string   `json:"certificate_signature"`
 	RsaKeySize           float64  `json:"rsa_key_size"`
-	DhParamSize          float64  `json:"dh_param_size"`
+	DHParamSize          float64  `json:"dh_param_size"`
+	ECDHParamSize        float64  `json:"ecdh_param_size"`
 	Hsts                 string   `json:"hsts"`
 	OldestClients        []string `json:"oldest_clients"`
 }
@@ -83,7 +83,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 // Evaluate runs compliance checks of the provided json Stored connection and returns the results
 func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 
-	var isO, isI, isM, isB bool
+	var isOldLvl, isInterLvl, isModernLvl, isBadLvl bool
 
 	results := EvaluationResults{}
 	results.Failures = make(map[string][]string)
@@ -91,41 +91,41 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 	// assume the worst
 	results.Level = "bad"
 
-	isO, results.Failures["old"] = isOld(connInfo, certsigalg)
-	if isO {
-		results.Level = "old"
-
-		ord, ordres := isOrdered(connInfo, old.Ciphers, "old")
-		if !ord {
-			results.Level += " with bad ordering"
-			results.Failures["old"] = append(results.Failures["old"], ordres...)
-		}
-	}
-
-	isI, results.Failures["intermediate"] = isIntermediate(connInfo, certsigalg)
-	if isI {
-		results.Level = "intermediate"
-
-		ord, ordres := isOrdered(connInfo, intermediate.Ciphers, "intermediate")
-		if !ord {
-			results.Level += " with bad ordering"
-			results.Failures["intermediate"] = append(results.Failures["intermediate"], ordres...)
-		}
-	}
-
-	isM, results.Failures["modern"] = isModern(connInfo, certsigalg)
-	if isM {
+	isModernLvl, results.Failures["modern"] = isModern(connInfo, certsigalg)
+	if isModernLvl {
 		results.Level = "modern"
 
 		ord, ordres := isOrdered(connInfo, modern.Ciphers, "modern")
 		if !ord {
-			results.Level += " with bad ordering"
+			ordres = append(ordres, "considering fixing ciphers ordering")
 			results.Failures["modern"] = append(results.Failures["modern"], ordres...)
 		}
 	}
 
-	isB, results.Failures["bad"] = isBad(connInfo)
-	if isB {
+	isInterLvl, results.Failures["intermediate"] = isIntermediate(connInfo, certsigalg)
+	if isInterLvl {
+		results.Level = "intermediate"
+
+		ord, ordres := isOrdered(connInfo, intermediate.Ciphers, "intermediate")
+		if !ord {
+			ordres = append(ordres, "considering fixing ciphers ordering")
+			results.Failures["intermediate"] = append(results.Failures["intermediate"], ordres...)
+		}
+	}
+
+	isOldLvl, results.Failures["old"] = isOld(connInfo, certsigalg)
+	if isOldLvl {
+		results.Level = "old"
+
+		ord, ordres := isOrdered(connInfo, old.Ciphers, "old")
+		if !ord {
+			ordres = append(ordres, "considering fixing ciphers ordering")
+			results.Failures["old"] = append(results.Failures["old"], ordres...)
+		}
+	}
+
+	isBadLvl, results.Failures["bad"] = isBad(connInfo)
+	if isBadLvl {
 		results.Level = "bad"
 	}
 
@@ -138,14 +138,16 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 }
 
 func isBad(c connection.Stored) (bool, []string) {
-
-	var failures, allProtos, allCiphers []string
-	status := false
-	hasSSLv2 := false
-	hasBadPFS := false
-	hasBadPK := false
-	hasMD5 := false
-
+	var (
+		failures   []string
+		allProtos  []string
+		allCiphers []string
+		isBad      bool = false
+		hasSSLv2   bool = false
+		hasBadPFS  bool = false
+		hasBadPK   bool = false
+		hasMD5     bool = false
+	)
 	for _, cs := range c.CipherSuite {
 
 		allCiphers = append(allCiphers, cs.Cipher)
@@ -161,12 +163,12 @@ func isBad(c connection.Stored) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, 1024, 160, false) {
+			if !hasGoodPFS(cs.PFS, old.DHParamSize, old.ECDHParamSize, false, false) {
 				hasBadPFS = true
 			}
 		}
 
-		if cs.PubKey < 2048 {
+		if cs.PubKey < old.RsaKeySize {
 			hasBadPK = true
 		}
 
@@ -179,56 +181,59 @@ func isBad(c connection.Stored) (bool, []string) {
 	if len(badCiphers) > 0 {
 		for _, c := range badCiphers {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", c))
-			status = true
+			isBad = true
 		}
 	}
 
 	if hasSSLv2 {
 		failures = append(failures, "disable SSLv2")
-		status = true
+		isBad = true
 	}
 
 	if hasBadPFS {
-		failures = append(failures, "don't use DHE smaller than 1024bits or ECC smaller than 160bits")
-		status = true
+		failures = append(failures,
+			fmt.Sprintf("don't use DHE smaller than %.0fbits or ECC smaller than %.0fbits",
+				old.DHParamSize, old.ECDHParamSize))
+		isBad = true
 	}
 
 	if hasBadPK {
-		failures = append(failures, "don't use a public key shorter than 2048bit")
-		status = true
+		failures = append(failures, fmt.Sprintf("don't use a public key shorter than %dbits", old.RsaKeySize))
+		isBad = true
 	}
 
 	if hasMD5 {
 		failures = append(failures, "don't use an MD5 signature")
-		status = true
+		isBad = true
 	}
 
-	return status, failures
+	return isBad, failures
 }
 
 func isOld(c connection.Stored, certsigalg string) (bool, []string) {
-
-	status := true
-	var allProtos []string
-	hasSHA1 := true
-	has3DES := false
-	hasSSLv3 := false
-	hasOCSP := true
-	hasPFS := true
-	var failures []string
-
+	var (
+		isOld       bool = true
+		allProtos   []string
+		hasSHA1     bool = true
+		certsigfail string
+		has3DES     bool = false
+		hasSSLv3    bool = false
+		hasOCSP     bool = true
+		hasPFS      bool = true
+		failures    []string
+	)
 	for _, cs := range c.CipherSuite {
 
 		if !contains(old.Ciphers, cs.Cipher) {
-			failures = append(failures, fmt.Sprintf("remove %s cipher", cs.Cipher))
-			status = false
+			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
+			isOld = false
 		}
 
 		if cs.Cipher == "DES-CBC3-SHA" {
 			has3DES = true
 		}
 
-		if contains(cs.Protocols, "SSLv3") {
+		if !hasSSLv3 && contains(cs.Protocols, "SSLv3") {
 			hasSSLv3 = true
 		}
 
@@ -239,20 +244,15 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, 1024, 256, true) {
+			if !hasGoodPFS(cs.PFS, old.DHParamSize, old.ECDHParamSize, true, false) {
 				hasPFS = false
 			}
 		}
 
 		if certsigalg != old.CertificateSignature {
-
-			fail := fmt.Sprintf("%s is not an old signature", cs.SigAlg)
-			if !contains(failures, fail) {
-				failures = append(failures, fail)
-			}
-
+			certsigfail = fmt.Sprintf("%s is not an old certificate signature, use %s", certsigalg, old.CertificateSignature)
 			hasSHA1 = false
-			status = false
+			isOld = false
 		}
 
 		if !cs.OCSPStapling {
@@ -263,21 +263,20 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	extraProto := extra(old.TLSVersions, allProtos)
 	for _, p := range extraProto {
 		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
-		status = false
+		isOld = false
 	}
 
 	missingProto := extra(allProtos, old.TLSVersions)
 	for _, p := range missingProto {
-		failures = append(failures, fmt.Sprintf("consider enabling %s", p))
+		failures = append(failures, fmt.Sprintf("add support for %s", p))
+		if p == "SSLv3" {
+			isOld = false
+		}
 	}
 
 	if !c.ServerSide {
-		failures = append(failures, "enforce ServerSide ordering")
-	}
-
-	if !hasSSLv3 {
-		failures = append(failures, "add SSLv3 support")
-		status = false
+		failures = append(failures, "enforce server side ordering")
+		isOld = false
 	}
 
 	if !hasOCSP {
@@ -285,39 +284,42 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if !hasSHA1 {
-		failures = append(failures, "it is recommended to use sha1")
-		status = false
+		failures = append(failures, certsigfail)
+		isOld = false
 	}
 
 	if !has3DES {
 		failures = append(failures, "add cipher DES-CBC3-SHA")
-		status = false
+		isOld = false
 	}
 
 	if !hasPFS {
-		failures = append(failures, "use DHE of at least 2048bits and ECC of at least 256bits")
-		status = false
+		failures = append(failures,
+			fmt.Sprintf("use DHE of %.0fbits and ECC of %.0fbits",
+				old.DHParamSize, old.ECDHParamSize))
+		isOld = false
 	}
 
-	return status, failures
+	return isOld, failures
 }
 
 func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
-
-	status := true
-	var allProtos []string
-	hasTLSv1 := false
-	hasAES := false
-	hasSHA256 := true
-	hasOCSP := true
-	hasPFS := true
-	var failures []string
-
+	var (
+		isIntermediate bool = true
+		allProtos      []string
+		hasTLSv1       bool = false
+		hasAES         bool = false
+		hasSHA256      bool = true
+		certsigfail    string
+		hasOCSP        bool = true
+		hasPFS         bool = true
+		failures       []string
+	)
 	for _, cs := range c.CipherSuite {
 
 		if !contains(intermediate.Ciphers, cs.Cipher) {
-			failures = append(failures, fmt.Sprintf("remove %s cipher", cs.Cipher))
-			status = false
+			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
+			isIntermediate = false
 		}
 
 		for _, proto := range cs.Protocols {
@@ -326,7 +328,7 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 			}
 		}
 
-		if contains(cs.Protocols, "TLSv1") {
+		if !hasTLSv1 && contains(cs.Protocols, "TLSv1") {
 			hasTLSv1 = true
 		}
 
@@ -335,17 +337,13 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, 2048, 256, false) {
+			if !hasGoodPFS(cs.PFS, intermediate.DHParamSize, intermediate.ECDHParamSize, false, false) {
 				hasPFS = false
 			}
 		}
 
 		if certsigalg != intermediate.CertificateSignature {
-
-			fail := fmt.Sprintf("%s is not an intermediate signature", cs.SigAlg)
-			if !contains(failures, fail) {
-				failures = append(failures, fail)
-			}
+			certsigfail = fmt.Sprintf("%s is not an intermediate certificate signature, use %s", certsigalg, intermediate.CertificateSignature)
 			hasSHA256 = false
 		}
 
@@ -357,21 +355,22 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 	extraProto := extra(intermediate.TLSVersions, allProtos)
 	for _, p := range extraProto {
 		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
-		status = false
+		isIntermediate = false
 	}
 
 	if !hasAES {
 		failures = append(failures, "add cipher AES128-SHA")
-		status = false
+		isIntermediate = false
 	}
 
 	if !hasTLSv1 {
 		failures = append(failures, "consider adding TLSv1")
-		status = false
+		isIntermediate = false
 	}
 
 	if !c.ServerSide {
-		failures = append(failures, "enforce ServerSide ordering")
+		failures = append(failures, "enforce server side ordering")
+		isIntermediate = false
 	}
 
 	if !hasOCSP {
@@ -379,30 +378,35 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if !hasSHA256 {
-		failures = append(failures, "it is recommended to use sha256")
+		failures = append(failures, certsigfail)
+		isIntermediate = false
 	}
 
 	if !hasPFS {
-		failures = append(failures, "use DHE of at least 2048bits and ECC of at least 256bits")
+		failures = append(failures,
+			fmt.Sprintf("use DHE of at least %.0fbits and ECC of at least %.0fbits",
+				intermediate.DHParamSize, intermediate.ECDHParamSize))
+		isIntermediate = false
 	}
 
-	return status, failures
+	return isIntermediate, failures
 }
 
 func isModern(c connection.Stored, certsigalg string) (bool, []string) {
-
-	status := true
-	var allProtos []string
-	hasSHA256 := true
-	hasOCSP := true
-	hasPFS := true
-	var failures []string
-
+	var (
+		isModern    bool = true
+		allProtos   []string
+		hasSHA256   bool = true
+		certsigfail string
+		hasOCSP     bool = true
+		hasPFS      bool = true
+		failures    []string
+	)
 	for _, cs := range c.CipherSuite {
 
 		if !contains(modern.Ciphers, cs.Cipher) {
-			failures = append(failures, fmt.Sprintf("remove %s cipher", cs.Cipher))
-			status = false
+			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
+			isModern = false
 		}
 
 		for _, proto := range cs.Protocols {
@@ -412,16 +416,13 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, 2048, 256, false) {
+			if !hasGoodPFS(cs.PFS, modern.DHParamSize, modern.ECDHParamSize, false, false) {
 				hasPFS = false
 			}
 		}
 
 		if certsigalg != modern.CertificateSignature {
-			fail := fmt.Sprintf("%s is not a modern signature", cs.SigAlg)
-			if !contains(failures, fail) {
-				failures = append(failures, fail)
-			}
+			certsigfail = fmt.Sprintf("%s is not an modern certificate signature, use %s", certsigalg, modern.CertificateSignature)
 			hasSHA256 = false
 		}
 
@@ -433,11 +434,12 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 	extraProto := extra(modern.TLSVersions, allProtos)
 	for _, p := range extraProto {
 		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
-		status = false
+		isModern = false
 	}
 
 	if !c.ServerSide {
-		failures = append(failures, "enforce ServerSide ordering")
+		failures = append(failures, "enforce server side ordering")
+		isModern = false
 	}
 
 	if !hasOCSP {
@@ -445,15 +447,17 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if !hasSHA256 {
-		failures = append(failures, "it is recommended to use sha256")
-		status = false
+		failures = append(failures, certsigfail)
+		isModern = false
 	}
 
 	if !hasPFS {
-		failures = append(failures, "use DHE of at least 2048bits and ECC of at least 256bits")
-		status = false
+		failures = append(failures,
+			fmt.Sprintf("use DHE of at least %.0fbits and ECC of at least %.0fbits",
+				modern.DHParamSize, modern.ECDHParamSize))
+		isModern = false
 	}
-	return status, failures
+	return isModern, failures
 }
 
 func isOrdered(c connection.Stored, conf []string, level string) (bool, []string) {
@@ -480,8 +484,7 @@ func isOrdered(c connection.Stored, conf []string, level string) (bool, []string
 	return status, failures
 }
 
-func hasGoodPFS(curPFS string, targetDH, targetECC int, mustMatch bool) bool {
-
+func hasGoodPFS(curPFS string, targetDH, targetECC float64, mustMatchDH, mustMatchECDH bool) bool {
 	pfs := strings.Split(curPFS, ",")
 	if len(pfs) < 2 {
 		return false
@@ -490,17 +493,17 @@ func hasGoodPFS(curPFS string, targetDH, targetECC int, mustMatch bool) bool {
 	if "ECDH" == pfs[0] {
 		bitsStr := strings.TrimRight(pfs[2], "bits")
 
-		bits, err := strconv.Atoi(bitsStr)
+		bits, err := strconv.ParseFloat(bitsStr, 64)
 		if err != nil {
 			return false
 		}
 
-		if !mustMatch {
-			if bits < targetECC {
+		if mustMatchECDH {
+			if bits != targetECC {
 				return false
 			}
 		} else {
-			if bits != targetECC {
+			if bits < targetECC {
 				return false
 			}
 		}
@@ -508,17 +511,17 @@ func hasGoodPFS(curPFS string, targetDH, targetECC int, mustMatch bool) bool {
 	} else if "DH" == pfs[0] {
 		bitsStr := strings.TrimRight(pfs[1], "bits")
 
-		bits, err := strconv.Atoi(bitsStr)
+		bits, err := strconv.ParseFloat(bitsStr, 64)
 		if err != nil {
 			return false
 		}
 
-		if !mustMatch {
-			if bits < targetDH {
+		if mustMatchDH {
+			if bits != targetDH {
 				return false
 			}
 		} else {
-			if bits != targetDH {
+			if bits < targetDH {
 				return false
 			}
 		}
@@ -528,23 +531,63 @@ func hasGoodPFS(curPFS string, targetDH, targetECC int, mustMatch bool) bool {
 	return true
 }
 
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
+// contains checks if an entry exists in a slice and returns
+// a booleans.
+func contains(slice []string, entry string) bool {
+	for _, element := range slice {
+		if element == entry {
 			return true
 		}
 	}
 	return false
 }
 
-func extra(s []string, e []string) []string {
-
-	var extra []string
-
-	for _, str := range e {
-		if !contains(s, str) {
-			extra = append(extra, str)
+// extra returns a slice of strings that are present in a source slice
+// but not in an expected slice. It is used to detect source entries that
+// should be there, using the expected entries.
+func extra(source []string, expected []string) (extra []string) {
+	for _, expect := range expected {
+		if !contains(source, expect) {
+			extra = append(extra, expect)
 		}
 	}
-	return extra
+	return
+}
+
+func (e eval) PrintAnalysis(r []byte) (results []string, err error) {
+	var (
+		eval           EvaluationResults
+		previousissues []string
+		prefix         string
+	)
+	err = json.Unmarshal(r, &eval)
+	if err != nil {
+		err = fmt.Errorf("Mozilla evaluation worker: failed to parse results: %v", err)
+		return
+	}
+	results = append(results, fmt.Sprintf("* Mozilla evaluation: %s", eval.Level))
+	for _, lvl := range []string{"bad", "old", "intermediate", "modern"} {
+		if _, ok := eval.Failures[lvl]; ok && len(eval.Failures[lvl]) > 0 {
+			for _, issue := range eval.Failures[lvl] {
+				for _, previousissue := range previousissues {
+					if issue == previousissue {
+						goto next
+					}
+				}
+				prefix = "for " + lvl + " level:"
+				if lvl == "bad" {
+					prefix = "bad configuration:"
+				}
+				results = append(results, fmt.Sprintf("  - %s %s", prefix, issue))
+				previousissues = append(previousissues, issue)
+			next:
+			}
+
+		}
+	}
+	if eval.Level != "bad" {
+		results = append(results,
+			fmt.Sprintf("  - oldest clients: %s", strings.Join(sstls.Configurations[eval.Level].OldestClients, ", ")))
+	}
+	return
 }

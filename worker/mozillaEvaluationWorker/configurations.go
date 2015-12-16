@@ -1,6 +1,76 @@
 package mozillaEvaluationWorker
 
-var oldC = `{
+var ServerSideTLSConfiguration = `{
+    "configurations": {
+        "modern": {
+            "ciphersuite": "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256",
+            "ciphers": [
+                "ECDHE-ECDSA-CHACHA20-POLY1305",
+                "ECDHE-RSA-CHACHA20-POLY1305",
+                "ECDHE-ECDSA-AES256-GCM-SHA384",
+                "ECDHE-RSA-AES256-GCM-SHA384",
+                "ECDHE-ECDSA-AES128-GCM-SHA256",
+                "ECDHE-RSA-AES128-GCM-SHA256",
+                "ECDHE-ECDSA-AES256-SHA384",
+                "ECDHE-RSA-AES256-SHA384",
+                "ECDHE-ECDSA-AES128-SHA256",
+                "ECDHE-RSA-AES128-SHA256"
+            ],
+            "tls_versions": ["TLSv1.2" ],
+            "tls_curves": [ "secp384r1", "secp521r1" ],
+            "certificate_type": "ecdsa",
+            "certificate_curve": "secp384r1",
+            "certificate_signature": "ecdsa-with-SHA256",
+            "rsa_key_size": 2048,
+            "dh_param_size": null,
+            "ecdh_param_size": 384,
+            "hsts": "max-age=15768000",
+            "oldest_clients": [ "Firefox 27", "Chrome 22", "IE 11", "Opera 14", "Safari 7", "Android 4.4", "Java 8", "Windows Vista"]
+        },
+        "intermediate": {
+            "ciphersuite": "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA",
+            "ciphers": [
+                "ECDHE-ECDSA-CHACHA20-POLY1305",
+                "ECDHE-RSA-CHACHA20-POLY1305",
+                "ECDHE-ECDSA-AES128-GCM-SHA256",
+                "ECDHE-RSA-AES128-GCM-SHA256",
+                "ECDHE-ECDSA-AES256-GCM-SHA384",
+                "ECDHE-RSA-AES256-GCM-SHA384",
+                "DHE-RSA-AES128-GCM-SHA256",
+                "ECDHE-ECDSA-AES128-SHA256",
+                "ECDHE-RSA-AES128-SHA256",
+                "ECDHE-ECDSA-AES128-SHA",
+                "ECDHE-RSA-AES256-SHA384",
+                "ECDHE-RSA-AES128-SHA",
+                "ECDHE-ECDSA-AES256-SHA384",
+                "ECDHE-ECDSA-AES256-SHA",
+                "ECDHE-RSA-AES256-SHA",
+                "DHE-RSA-AES128-SHA256",
+                "DHE-RSA-AES128-SHA",
+                "DHE-RSA-AES256-SHA256",
+                "DHE-RSA-AES256-SHA",
+                "ECDHE-ECDSA-DES-CBC3-SHA",
+                "ECDHE-RSA-DES-CBC3-SHA",
+                "AES128-GCM-SHA256",
+                "AES256-GCM-SHA384",
+                "AES128-SHA256",
+                "AES256-SHA256",
+                "AES128-SHA",
+                "AES256-SHA",
+                "DES-CBC3-SHA"
+            ],
+            "tls_versions": ["TLSv1.2", "TLSv1.1", "TLSv1" ],
+            "tls_curves": [ "secp256r1", "secp384r1", "secp521r1" ],
+            "certificate_type": "rsa",
+            "certificate_curve": null,
+            "certificate_signature": "sha256WithRSAEncryption",
+            "rsa_key_size": 2048,
+            "dh_param_size": 2048,
+            "ecdh_param_size": 256,
+            "hsts": "max-age=15768000",
+            "oldest_clients": [ "Firefox 1", "Chrome 1", "IE 7", "Opera 5", "Safari 1", "Windows XP IE8", "Android 2.3", "Java 7" ]
+        },
+        "old": {
             "ciphersuite": "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-RSA-DES-CBC3-SHA:ECDHE-ECDSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:DES-CBC3-SHA:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!RSAPSK:!aDH:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA",
             "ciphers": [
                 "ECDHE-ECDSA-CHACHA20-POLY1305",
@@ -72,74 +142,10 @@ var oldC = `{
             "certificate_signature": "sha1WithRSAEncryption",
             "rsa_key_size": 2048,
             "dh_param_size": 1024,
+            "ecdh_param_size": 160,
             "hsts": "max-age=15768000",
             "oldest_clients": [ "Firefox 1", "Chrome 1", "Windows XP IE 6", "Opera 4", "Safari 1", "Java 6" ]
-        }`
-
-var intermediateC = `{
-            "ciphersuite": "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA",
-            "ciphers": [
-                "ECDHE-ECDSA-CHACHA20-POLY1305",
-                "ECDHE-RSA-CHACHA20-POLY1305",
-                "ECDHE-ECDSA-AES128-GCM-SHA256",
-                "ECDHE-RSA-AES128-GCM-SHA256",
-                "ECDHE-ECDSA-AES256-GCM-SHA384",
-                "ECDHE-RSA-AES256-GCM-SHA384",
-                "DHE-RSA-AES128-GCM-SHA256",
-                "ECDHE-ECDSA-AES128-SHA256",
-                "ECDHE-RSA-AES128-SHA256",
-                "ECDHE-ECDSA-AES128-SHA",
-                "ECDHE-RSA-AES256-SHA384",
-                "ECDHE-RSA-AES128-SHA",
-                "ECDHE-ECDSA-AES256-SHA384",
-                "ECDHE-ECDSA-AES256-SHA",
-                "ECDHE-RSA-AES256-SHA",
-                "DHE-RSA-AES128-SHA256",
-                "DHE-RSA-AES128-SHA",
-                "DHE-RSA-AES256-SHA256",
-                "DHE-RSA-AES256-SHA",
-                "ECDHE-ECDSA-DES-CBC3-SHA",
-                "ECDHE-RSA-DES-CBC3-SHA",
-                "AES128-GCM-SHA256",
-                "AES256-GCM-SHA384",
-                "AES128-SHA256",
-                "AES256-SHA256",
-                "AES128-SHA",
-                "AES256-SHA",
-                "DES-CBC3-SHA"
-            ],
-            "tls_versions": ["TLSv1.2", "TLSv1.1", "TLSv1" ],
-            "tls_curves": [ "secp256r1", "secp384r1", "secp521r1" ],
-            "certificate_type": "rsa",
-            "certificate_curve": null,
-            "certificate_signature": "sha256WithRSAEncryption",
-            "rsa_key_size": 2048,
-            "dh_param_size": 2048,
-            "hsts": "max-age=15768000",
-            "oldest_clients": [ "Firefox 1", "Chrome 1", "IE 7", "Opera 5", "Safari 1", "Windows XP IE8", "Android 2.3", "Java 7" ]
-        }`
-
-var modernC = `{
-            "ciphersuite": "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384",
-            "ciphers": [
-                "ECDHE-ECDSA-CHACHA20-POLY1305",
-                "ECDHE-RSA-CHACHA20-POLY1305",
-                "ECDHE-ECDSA-AES128-GCM-SHA256",
-                "ECDHE-RSA-AES128-GCM-SHA256",
-                "ECDHE-ECDSA-AES256-GCM-SHA384",
-                "ECDHE-RSA-AES256-GCM-SHA384",
-                "ECDHE-ECDSA-AES128-SHA256",
-                "ECDHE-RSA-AES128-SHA256",
-                "ECDHE-RSA-AES256-SHA384",
-                "ECDHE-ECDSA-AES256-SHA384"
-            ],
-            "tls_versions": ["TLSv1.2", "TLSv1.1" ],
-            "tls_curves": [ "secp384r1", "secp521r1" ],
-            "certificate_type": "ecdsa",
-            "certificate_curve": "secp384r1",
-            "certificate_signature": "ecdsa-with-SHA256",
-            "rsa_key_size": 2048,
-            "dh_param_size": null,
-            "hsts": "max-age=15768000",
-            "oldest_clients": [ "Firefox 27", "Chrome 22", "IE 11", "Opera 14", "Safari 7", "Android 4.4", "Java 8", "Windows Vista"]
-        }`
+        }
+    },
+    "version": 4.0
+}`
