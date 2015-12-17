@@ -486,9 +486,15 @@ func (i Issuer) String() (str string) {
 		str += "C=" + strings.Join(i.Country, ", C=")
 	}
 	if len(i.Organisation) > 0 {
+		if str != "" {
+			str += ", "
+		}
 		str += "O=" + strings.Join(i.Organisation, ", O=")
 	}
 	if len(i.OrgUnit) > 0 {
+		if str != "" {
+			str += ", "
+		}
 		str += "OU=" + strings.Join(i.OrgUnit, ", OU=")
 	}
 	if str != "" {
@@ -505,9 +511,15 @@ func (s Subject) String() (str string) {
 		str += "C=" + strings.Join(s.Country, ", C=")
 	}
 	if len(s.Organisation) > 0 {
+		if str != "" {
+			str += ", "
+		}
 		str += "O=" + strings.Join(s.Organisation, ", O=")
 	}
 	if len(s.OrgUnit) > 0 {
+		if str != "" {
+			str += ", "
+		}
 		str += "OU=" + strings.Join(s.OrgUnit, ", OU=")
 	}
 	if str != "" {
