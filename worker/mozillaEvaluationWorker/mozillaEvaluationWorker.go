@@ -424,7 +424,7 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 
 		if cs.PFS != "None" {
-			if !hasGoodPFS(cs.PFS, modern.DHParamSize, modern.ECDHParamSize, false, false) {
+			if !hasGoodPFS(cs.PFS, modern.DHParamSize, modern.ECDHParamSize, true, false) {
 				hasPFS = false
 			}
 		}
@@ -461,8 +461,8 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 
 	if !hasPFS {
 		failures = append(failures,
-			fmt.Sprintf("use DHE of at least %.0fbits and ECC of at least %.0fbits",
-				modern.DHParamSize, modern.ECDHParamSize))
+			fmt.Sprintf("enable Perfect Forward Secrecy with a curve of at least %.0fbits, don't use DHE",
+				modern.ECDHParamSize))
 		isModern = false
 	}
 	return isModern, failures
