@@ -15,6 +15,17 @@ var workerName = "mozillaEvaluationWorker"
 var workerDesc = `The evaluation worker provided insight on the compliance level of the tls configuration of the audited target.
 For more info check https://wiki.mozilla.org/Security/Server_Side_TLS.`
 
+var sigAlgTranslation = map[string]string{
+	"SHA1WithRSA":     "sha1WithRSAEncryption",
+	"SHA256WithRSA":   "sha256WithRSAEncryption",
+	"SHA384WithRSA":   "sha384WithRSAEncryption",
+	"SHA512WithRSA":   "sha512WithRSAEncryption",
+	"ECDSAWithSHA1":   "ecdsa-with-SHA1",
+	"ECDSAWithSHA256": "ecdsa-with-SHA256",
+	"ECDSAWithSHA384": "ecdsa-with-SHA384",
+	"ECDSAWithSHA512": "ecdsa-with-SHA512",
+}
+
 var sstls ServerSideTLSJson
 var modern, intermediate, old Configuration
 
@@ -124,7 +135,7 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 		}
 	}
 
-	isBadLvl, results.Failures["bad"] = isBad(connInfo)
+	isBadLvl, results.Failures["bad"] = isBad(connInfo, certsigalg)
 	if isBadLvl {
 		results.Level = "bad"
 	}
@@ -137,7 +148,7 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 	return js, nil
 }
 
-func isBad(c connection.Stored) (bool, []string) {
+func isBad(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		failures   []string
 		allProtos  []string
@@ -146,7 +157,6 @@ func isBad(c connection.Stored) (bool, []string) {
 		hasSSLv2   bool = false
 		hasBadPFS  bool = false
 		hasBadPK   bool = false
-		hasMD5     bool = false
 	)
 	for _, cs := range c.CipherSuite {
 
@@ -172,9 +182,6 @@ func isBad(c connection.Stored) (bool, []string) {
 			hasBadPK = true
 		}
 
-		if cs.SigAlg == "md5WithRSAEncryption" {
-			hasMD5 = true
-		}
 	}
 
 	badCiphers := extra(old.Ciphers, allCiphers)
@@ -202,8 +209,13 @@ func isBad(c connection.Stored) (bool, []string) {
 		isBad = true
 	}
 
-	if hasMD5 {
-		failures = append(failures, "don't use an MD5 signature")
+	if certsigalg == "UnknownSignatureAlgorithm" {
+		failures = append(failures,
+			fmt.Sprintf("certificate signature could not be determined, use a standard algorithm", certsigalg))
+		isBad = true
+	} else if _, ok := sigAlgTranslation[certsigalg]; !ok {
+		failures = append(failures,
+			fmt.Sprintf("%s is a bad certificate signature", certsigalg))
 		isBad = true
 	}
 
@@ -214,7 +226,6 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		isOld       bool = true
 		allProtos   []string
-		hasSHA1     bool = true
 		certsigfail string
 		has3DES     bool = false
 		hasSSLv3    bool = false
@@ -249,15 +260,19 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 			}
 		}
 
-		if certsigalg != old.CertificateSignature {
-			certsigfail = fmt.Sprintf("%s is not an old certificate signature, use %s", certsigalg, old.CertificateSignature)
-			hasSHA1 = false
-			isOld = false
-		}
-
 		if !cs.OCSPStapling {
 			hasOCSP = false
 		}
+	}
+
+	if _, ok := sigAlgTranslation[certsigalg]; !ok {
+		failures = append(failures,
+			fmt.Sprintf("%s is not an old certificate signature, use %s", certsigalg, old.CertificateSignature))
+		isOld = false
+	} else if sigAlgTranslation[certsigalg] != old.CertificateSignature {
+		certsigfail = fmt.Sprintf("%s is not an old certificate signature, use %s", sigAlgTranslation[certsigalg], old.CertificateSignature)
+		failures = append(failures, certsigfail)
+		isOld = false
 	}
 
 	extraProto := extra(old.TLSVersions, allProtos)
@@ -283,11 +298,6 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 		failures = append(failures, "consider enabling OCSP stapling")
 	}
 
-	if !hasSHA1 {
-		failures = append(failures, certsigfail)
-		isOld = false
-	}
-
 	if !has3DES {
 		failures = append(failures, "add cipher DES-CBC3-SHA")
 		isOld = false
@@ -309,7 +319,6 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 		allProtos      []string
 		hasTLSv1       bool = false
 		hasAES         bool = false
-		hasSHA256      bool = true
 		certsigfail    string
 		hasOCSP        bool = true
 		hasPFS         bool = true
@@ -342,14 +351,19 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 			}
 		}
 
-		if certsigalg != intermediate.CertificateSignature {
-			certsigfail = fmt.Sprintf("%s is not an intermediate certificate signature, use %s", certsigalg, intermediate.CertificateSignature)
-			hasSHA256 = false
-		}
-
 		if !cs.OCSPStapling {
 			hasOCSP = false
 		}
+	}
+
+	if _, ok := sigAlgTranslation[certsigalg]; !ok {
+		certsigfail = fmt.Sprintf("%s is not an intermediate certificate signature, use %s", certsigalg, intermediate.CertificateSignature)
+		failures = append(failures, certsigfail)
+		isIntermediate = false
+	} else if sigAlgTranslation[certsigalg] != intermediate.CertificateSignature {
+		certsigfail = fmt.Sprintf("%s is not an intermediate certificate signature, use %s", sigAlgTranslation[certsigalg], intermediate.CertificateSignature)
+		failures = append(failures, certsigfail)
+		isIntermediate = false
 	}
 
 	extraProto := extra(intermediate.TLSVersions, allProtos)
@@ -377,11 +391,6 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 		failures = append(failures, "consider enabling OCSP stapling")
 	}
 
-	if !hasSHA256 {
-		failures = append(failures, certsigfail)
-		isIntermediate = false
-	}
-
 	if !hasPFS {
 		failures = append(failures,
 			fmt.Sprintf("use DHE of at least %.0fbits and ECC of at least %.0fbits",
@@ -396,7 +405,6 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		isModern    bool = true
 		allProtos   []string
-		hasSHA256   bool = true
 		certsigfail string
 		hasOCSP     bool = true
 		hasPFS      bool = true
@@ -421,14 +429,19 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 			}
 		}
 
-		if certsigalg != modern.CertificateSignature {
-			certsigfail = fmt.Sprintf("%s is not an modern certificate signature, use %s", certsigalg, modern.CertificateSignature)
-			hasSHA256 = false
-		}
-
 		if !cs.OCSPStapling {
 			hasOCSP = false
 		}
+	}
+
+	if _, ok := sigAlgTranslation[certsigalg]; !ok {
+		certsigfail = fmt.Sprintf("%s is not a modern certificate signature, use %s", certsigalg, modern.CertificateSignature)
+		failures = append(failures, certsigfail)
+		isModern = false
+	} else if sigAlgTranslation[certsigalg] != modern.CertificateSignature {
+		certsigfail = fmt.Sprintf("%s is not a modern certificate signature, use %s", sigAlgTranslation[certsigalg], modern.CertificateSignature)
+		failures = append(failures, certsigfail)
+		isModern = false
 	}
 
 	extraProto := extra(modern.TLSVersions, allProtos)
@@ -444,11 +457,6 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 
 	if !hasOCSP {
 		failures = append(failures, "consider enabling OCSP stapling")
-	}
-
-	if !hasSHA256 {
-		failures = append(failures, certsigfail)
-		isModern = false
 	}
 
 	if !hasPFS {
