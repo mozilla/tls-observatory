@@ -27,11 +27,11 @@ func main() {
 	limit := 100
 	batch := 0
 	for {
-		fmt.Println("Processing batch", batch*limit, "to", batch*limit+limit)
+		fmt.Printf("\nProcessing batch %d to %d: ", batch*limit, batch*limit+limit)
 		rows, err := db.Query(`SELECT id, raw_cert
 					FROM certificates
 					WHERE issuer IS NULL AND subject IS NULL AND domains IS NULL
-					LIMIT $1`, limit)
+					ORDER BY id ASC LIMIT $1`, limit)
 		if rows != nil {
 			defer rows.Close()
 		}
@@ -92,6 +92,7 @@ func main() {
 				}
 
 				domainstr = strings.Join(domains, ",")
+				fmt.Printf("%d,", id)
 			}
 
 			_, err = db.Exec(`UPDATE certificates SET issuer=$1, subject=$2, domains=$3 WHERE id=$4`,
