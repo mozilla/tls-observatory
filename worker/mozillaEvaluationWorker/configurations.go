@@ -3,12 +3,12 @@ package mozillaEvaluationWorker
 var ServerSideTLSConfiguration = `{
     "configurations": {
         "modern": {
-            "ciphersuite": "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256",
+            "ciphersuite": "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256",
             "ciphers": [
-                "ECDHE-ECDSA-CHACHA20-POLY1305",
-                "ECDHE-RSA-CHACHA20-POLY1305",
                 "ECDHE-ECDSA-AES256-GCM-SHA384",
                 "ECDHE-RSA-AES256-GCM-SHA384",
+                "ECDHE-ECDSA-CHACHA20-POLY1305",
+                "ECDHE-RSA-CHACHA20-POLY1305",
                 "ECDHE-ECDSA-AES128-GCM-SHA256",
                 "ECDHE-RSA-AES128-GCM-SHA256",
                 "ECDHE-ECDSA-AES256-SHA384",
@@ -20,7 +20,7 @@ var ServerSideTLSConfiguration = `{
             "tls_curves": [ "secp384r1", "secp521r1" ],
             "certificate_type": "ecdsa",
             "certificate_curve": "secp384r1",
-            "certificate_signature": "ecdsa-with-SHA256",
+            "certificate_signature": "ecdsa-with-SHA384",
             "rsa_key_size": 2048,
             "dh_param_size": null,
             "ecdh_param_size": 384,
