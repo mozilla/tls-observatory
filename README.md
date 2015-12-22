@@ -72,3 +72,20 @@ AND trust.trusted_mozilla='true'
 GROUP BY signature_algo
 ORDER BY count(*) DESC;
 ```
+
+### Show expiration dates of trusted SHA-1 certificates
+
+```sql
+SELECT  extract('year' FROM date_trunc('year', not_valid_after)) as expiration_year,
+        extract('month' FROM date_trunc('month', not_valid_after)) as expiration_month,
+        count(*)
+FROM    certificates
+    INNER JOIN trust ON (certificates.id=trust.cert_id)
+WHERE is_ca='false'
+    AND trust.trusted_mozilla='true'
+    AND signature_algo='SHA1WithRSA'
+GROUP BY date_trunc('year', not_valid_after),
+         date_trunc('month', not_valid_after)
+ORDER BY date_trunc('year', not_valid_after) ASC,
+         date_trunc('month', not_valid_after) ASC;
+```
