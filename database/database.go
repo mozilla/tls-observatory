@@ -156,7 +156,7 @@ func (db *DB) UpdateScanCompletionPercentage(id int64, p int) error {
 }
 
 func (db *DB) InsertWorkerAnalysis(scanid int64, jsonRes []byte, workerName string) error {
-	_, err := db.Exec("INSERT INTO analysis(scan_id,worker_name,	output) VALUES($1,$2,$3)", scanid, workerName, jsonRes)
+	_, err := db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", scanid, workerName, jsonRes)
 
 	return err
 }

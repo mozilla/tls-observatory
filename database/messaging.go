@@ -81,14 +81,16 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 					"error": err,
 				}).Error("Could not run zero completion update query")
 			}
-
-			_, err = db.Exec(fmt.Sprintf("select pg_notify('%s', ''||id ) from scans where ack=FALSE and timestamp < NOW() - INTERVAL '30 seconds' LIMIT 1000", listenerName))
+			_, err = db.Exec(fmt.Sprintf(`SELECT pg_notify('%s', ''||id )
+						      FROM scans
+						      WHERE ack=FALSE
+						      ORDER BY id ASC
+						      LIMIT 100`, listenerName))
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"error": err,
 				}).Error("Could not run unacknowledged scans periodic check.")
 			}
-
 			time.Sleep(5 * time.Minute)
 		}
 	}()
