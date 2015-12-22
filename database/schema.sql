@@ -58,7 +58,8 @@ CREATE TABLE scans  (
 	completion_perc				integer NOT NULL,
 	validation_error           	varchar NOT NULL,
 	conn_info                	jsonb NOT NULL,
-	ack 						bool NOT NULL
+	ack 						bool NOT NULL,
+	attempts			        integer NULL
 );
 
 CREATE TABLE analysis  (
