@@ -69,6 +69,12 @@ func TestLevels(t *testing.T) {
 func TestOrderings(t *testing.T) {
 	var tps = []testParams{
 		{
+			expectedLevel:    "bad",
+			expectedFailures: []string{`don't use a public key shorter than 2048bits`},
+			cipherscan:       `{"scanIP":"62.210.76.92","serverside":true,"ciphersuite":[{"cipher":"ECDHE-RSA-AES128-GCM-SHA256","protocols":["TLSv1.2"],"pubkey":512,"sigalg":"sha256WithRSAEncryption","ticket_hint":"300","ocsp_stapling":true,"pfs":"ECDH,P-384,384bits","curves":["secp384r1"]}]}`,
+			certSignature:    "MD5WithRSA",
+		},
+		{
 			expectedLevel:    "modern",
 			expectedFailures: []string{`considering fixing ciphers ordering`},
 			cipherscan:       `{"scanIP":"62.210.76.92","serverside":true,"ciphersuite":[{"cipher":"ECDHE-RSA-AES128-GCM-SHA256","protocols":["TLSv1.2"],"pubkey":2048,"sigalg":"sha256WithRSAEncryption","ticket_hint":"300","ocsp_stapling":true,"pfs":"ECDH,P-384,384bits","curves":["secp384r1"]},{"cipher":"ECDHE-RSA-AES256-GCM-SHA384","protocols":["TLSv1.2"],"pubkey":2048,"sigalg":"sha256WithRSAEncryption","ticket_hint":"300","ocsp_stapling":true,"pfs":"ECDH,P-384,384bits","curves":["secp384r1"]}]}`,

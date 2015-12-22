@@ -178,7 +178,7 @@ func isBad(c connection.Stored, certsigalg string) (bool, []string) {
 			}
 		}
 
-		if cs.PubKey < old.RsaKeySize {
+		if len(cs.SigAlg) > 5 && cs.SigAlg[0:5] != "ecdsa" && cs.PubKey < old.RsaKeySize {
 			hasBadPK = true
 		}
 
@@ -205,7 +205,7 @@ func isBad(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if hasBadPK {
-		failures = append(failures, fmt.Sprintf("don't use a public key shorter than %dbits", old.RsaKeySize))
+		failures = append(failures, fmt.Sprintf("don't use a public key shorter than %.0fbits", old.RsaKeySize))
 		isBad = true
 	}
 
