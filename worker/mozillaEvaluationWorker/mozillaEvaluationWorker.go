@@ -226,6 +226,7 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		isOld       bool = true
 		allProtos   []string
+		allCiphers  []string
 		certsigfail string
 		has3DES     bool = false
 		hasSSLv3    bool = false
@@ -234,6 +235,7 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 		failures    []string
 	)
 	for _, cs := range c.CipherSuite {
+		allCiphers = append(allCiphers, cs.Cipher)
 
 		if !contains(old.Ciphers, cs.Cipher) {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
@@ -273,6 +275,17 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 		certsigfail = fmt.Sprintf("%s is not an old certificate signature, use %s", sigAlgTranslation[certsigalg], old.CertificateSignature)
 		failures = append(failures, certsigfail)
 		isOld = false
+	}
+
+	extraCiphers := extra(old.Ciphers, allCiphers)
+	for _, c := range extraCiphers {
+		failures = append(failures, fmt.Sprintf("remove cipher %s", c))
+		isOld = false
+	}
+
+	missingCiphers := extra(allCiphers, old.Ciphers)
+	for _, c := range missingCiphers {
+		failures = append(failures, fmt.Sprintf("add cipher %s", c))
 	}
 
 	extraProto := extra(old.TLSVersions, allProtos)
@@ -317,14 +330,14 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		isIntermediate bool = true
 		allProtos      []string
-		hasTLSv1       bool = false
-		hasAES         bool = false
+		allCiphers     []string
 		certsigfail    string
 		hasOCSP        bool = true
 		hasPFS         bool = true
 		failures       []string
 	)
 	for _, cs := range c.CipherSuite {
+		allCiphers = append(allCiphers, cs.Cipher)
 
 		if !contains(intermediate.Ciphers, cs.Cipher) {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
@@ -335,14 +348,6 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 			if !contains(allProtos, proto) {
 				allProtos = append(allProtos, proto)
 			}
-		}
-
-		if !hasTLSv1 && contains(cs.Protocols, "TLSv1") {
-			hasTLSv1 = true
-		}
-
-		if cs.Cipher == "AES128-SHA" {
-			hasAES = true
 		}
 
 		if cs.PFS != "None" {
@@ -366,19 +371,26 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 		isIntermediate = false
 	}
 
+	extraCiphers := extra(intermediate.Ciphers, allCiphers)
+	for _, c := range extraCiphers {
+		failures = append(failures, fmt.Sprintf("remove cipher %s", c))
+		isIntermediate = false
+	}
+
+	missingCiphers := extra(allCiphers, intermediate.Ciphers)
+	for _, c := range missingCiphers {
+		failures = append(failures, fmt.Sprintf("considering adding cipher %s", c))
+	}
+
 	extraProto := extra(intermediate.TLSVersions, allProtos)
 	for _, p := range extraProto {
 		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
 		isIntermediate = false
 	}
 
-	if !hasAES {
-		failures = append(failures, "add cipher AES128-SHA")
-		isIntermediate = false
-	}
-
-	if !hasTLSv1 {
-		failures = append(failures, "consider adding TLSv1")
+	missingProto := extra(allProtos, intermediate.TLSVersions)
+	for _, p := range missingProto {
+		failures = append(failures, fmt.Sprintf("enable %s protocol", p))
 		isIntermediate = false
 	}
 
@@ -405,12 +417,14 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		isModern    bool = true
 		allProtos   []string
+		allCiphers  []string
 		certsigfail string
 		hasOCSP     bool = true
 		hasPFS      bool = true
 		failures    []string
 	)
 	for _, cs := range c.CipherSuite {
+		allCiphers = append(allCiphers, cs.Cipher)
 
 		if !contains(modern.Ciphers, cs.Cipher) {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
@@ -444,9 +458,26 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 		isModern = false
 	}
 
+	extraCiphers := extra(modern.Ciphers, allCiphers)
+	for _, c := range extraCiphers {
+		failures = append(failures, fmt.Sprintf("remove cipher %s", c))
+		isModern = false
+	}
+
+	missingCiphers := extra(allCiphers, modern.Ciphers)
+	for _, c := range missingCiphers {
+		failures = append(failures, fmt.Sprintf("considering adding cipher %s", c))
+	}
+
 	extraProto := extra(modern.TLSVersions, allProtos)
 	for _, p := range extraProto {
 		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
+		isModern = false
+	}
+
+	missingProto := extra(allProtos, modern.TLSVersions)
+	for _, p := range missingProto {
+		failures = append(failures, fmt.Sprintf("enable %s protocol", p))
 		isModern = false
 	}
 
@@ -550,13 +581,12 @@ func contains(slice []string, entry string) bool {
 	return false
 }
 
-// extra returns a slice of strings that are present in a source slice
-// but not in an expected slice. It is used to detect source entries that
-// should be there, using the expected entries.
-func extra(source []string, expected []string) (extra []string) {
-	for _, expect := range expected {
-		if !contains(source, expect) {
-			extra = append(extra, expect)
+// extra returns a slice of strings that are present in a slice s1 but not
+// in a slice s2.
+func extra(s1, s2 []string) (extra []string) {
+	for _, e := range s2 {
+		if !contains(s1, e) {
+			extra = append(extra, e)
 		}
 	}
 	return
