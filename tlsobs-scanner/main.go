@@ -112,12 +112,7 @@ func scan(scanID int64, cipherscan string) {
 	// Retrieve the certificate from the target
 	certID, trustID, err := handleCert(scan.Target)
 	if err != nil {
-		err, ok := err.(NoTLSCertsErr)
-		if ok {
-			//nil cert, does not implement TLS
-			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
-			return
-		}
+		db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 		log.WithFields(logrus.Fields{
 			"scan_id":     scanID,
 			"scan_Target": scan.Target,
