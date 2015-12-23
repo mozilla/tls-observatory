@@ -17,7 +17,7 @@ type Config struct {
 		PostgresPass   string
 		PostgresUseTLS bool
 		CipherscanPath string
-		GoRoutines     int // * cores = The Max number of spawned Goroutines
+		MaxProc        int
 	}
 	TrustStores struct {
 		UbuntuTS    string

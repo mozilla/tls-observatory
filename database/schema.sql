@@ -29,8 +29,8 @@ CREATE TABLE certificates  (
 	in_android_root_store       bool NULL,
 	is_revoked                 	bool NULL,
 	revoked_at                 	timestamp NULL,
-	domains 										varchar NULL,
-	raw_cert										varchar NOT NULL
+	domains 					varchar NULL,
+	raw_cert					varchar NOT NULL
 );
 
 CREATE TABLE trust (
@@ -58,7 +58,8 @@ CREATE TABLE scans  (
 	completion_perc				integer NOT NULL,
 	validation_error           	varchar NOT NULL,
 	conn_info                	jsonb NOT NULL,
-	ack 						bool NOT NULL
+	ack 						bool NOT NULL,
+	attempts			        integer NULL
 );
 
 CREATE TABLE analysis  (

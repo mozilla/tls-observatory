@@ -17,13 +17,13 @@ var ServerSideTLSConfiguration = `{
                 "ECDHE-RSA-AES128-SHA256"
             ],
             "tls_versions": ["TLSv1.2" ],
-            "tls_curves": [ "secp384r1", "secp521r1" ],
+            "tls_curves": [ "prime256v1", "secp384r1", "secp521r1" ],
             "certificate_type": "ecdsa",
-            "certificate_curve": "secp384r1",
-            "certificate_signature": "ecdsa-with-SHA384",
+            "certificate_curve": "prime256v1",
+            "certificate_signature": "ecdsa-with-SHA256",
             "rsa_key_size": 2048,
             "dh_param_size": null,
-            "ecdh_param_size": 384,
+            "ecdh_param_size": 256,
             "hsts": "max-age=15768000",
             "oldest_clients": [ "Firefox 27", "Chrome 22", "IE 11", "Opera 14", "Safari 7", "Android 4.4", "Java 8", "Windows Vista"]
         },

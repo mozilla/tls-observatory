@@ -68,22 +68,29 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 
 	}()
 
+	// Launch a goroutine that relaunches scans that have not yet been processed
 	go func() {
 		for {
-			_, err := db.Exec("update scans set ack=false where completion_perc=0 and timestamp < NOW() - INTERVAL '1 minute'")
+			// don't requeue scans more than 3 times
+			_, err := db.Exec(`UPDATE scans
+			  		   SET ack = false, attempts = attempts + 1, timestamp = NOW()
+				           WHERE completion_perc = 0 AND attempts < 3
+					   AND timestamp < NOW() - INTERVAL '10 minute'`)
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"error": err,
 				}).Error("Could not run zero completion update query")
 			}
-
-			_, err = db.Exec(fmt.Sprintf("select pg_notify('%s', ''||id ) from scans where ack=FALSE and timestamp < NOW() - INTERVAL '30 seconds' LIMIT 1000", listenerName))
+			_, err = db.Exec(fmt.Sprintf(`SELECT pg_notify('%s', ''||id )
+						      FROM scans
+						      WHERE ack=FALSE
+						      ORDER BY id ASC
+						      LIMIT 100`, listenerName))
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"error": err,
 				}).Error("Could not run unacknowledged scans periodic check.")
 			}
-
 			time.Sleep(5 * time.Minute)
 		}
 	}()

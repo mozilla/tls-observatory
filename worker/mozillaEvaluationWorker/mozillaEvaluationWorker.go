@@ -108,7 +108,6 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 
 		ord, ordres := isOrdered(connInfo, modern.Ciphers, "modern")
 		if !ord {
-			ordres = append(ordres, "considering fixing ciphers ordering")
 			results.Failures["modern"] = append(results.Failures["modern"], ordres...)
 		}
 	}
@@ -119,7 +118,6 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 
 		ord, ordres := isOrdered(connInfo, intermediate.Ciphers, "intermediate")
 		if !ord {
-			ordres = append(ordres, "considering fixing ciphers ordering")
 			results.Failures["intermediate"] = append(results.Failures["intermediate"], ordres...)
 		}
 	}
@@ -130,7 +128,6 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 
 		ord, ordres := isOrdered(connInfo, old.Ciphers, "old")
 		if !ord {
-			ordres = append(ordres, "considering fixing ciphers ordering")
 			results.Failures["old"] = append(results.Failures["old"], ordres...)
 		}
 	}
@@ -178,7 +175,7 @@ func isBad(c connection.Stored, certsigalg string) (bool, []string) {
 			}
 		}
 
-		if cs.PubKey < old.RsaKeySize {
+		if len(cs.SigAlg) > 5 && cs.SigAlg[0:5] != "ecdsa" && cs.PubKey < old.RsaKeySize {
 			hasBadPK = true
 		}
 
@@ -205,7 +202,7 @@ func isBad(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if hasBadPK {
-		failures = append(failures, fmt.Sprintf("don't use a public key shorter than %dbits", old.RsaKeySize))
+		failures = append(failures, fmt.Sprintf("don't use a public key shorter than %.0fbits", old.RsaKeySize))
 		isBad = true
 	}
 
@@ -226,6 +223,7 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		isOld       bool = true
 		allProtos   []string
+		allCiphers  []string
 		certsigfail string
 		has3DES     bool = false
 		hasSSLv3    bool = false
@@ -234,6 +232,7 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 		failures    []string
 	)
 	for _, cs := range c.CipherSuite {
+		allCiphers = append(allCiphers, cs.Cipher)
 
 		if !contains(old.Ciphers, cs.Cipher) {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
@@ -275,16 +274,27 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 		isOld = false
 	}
 
+	extraCiphers := extra(old.Ciphers, allCiphers)
+	if len(extraCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
+		isOld = false
+	}
+
+	missingCiphers := extra(allCiphers, old.Ciphers)
+	if len(missingCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
+	}
+
 	extraProto := extra(old.TLSVersions, allProtos)
-	for _, p := range extraProto {
-		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
+	if len(extraProto) > 0 {
+		failures = append(failures, fmt.Sprintf("remove protocols %s", strings.Join(extraProto, ", ")))
 		isOld = false
 	}
 
 	missingProto := extra(allProtos, old.TLSVersions)
-	for _, p := range missingProto {
-		failures = append(failures, fmt.Sprintf("add support for %s", p))
-		if p == "SSLv3" {
+	if len(missingProto) > 0 {
+		failures = append(failures, fmt.Sprintf("add protocols %s", strings.Join(missingProto, ", ")))
+		if !contains(missingProto, "SSLv3") {
 			isOld = false
 		}
 	}
@@ -299,7 +309,7 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if !has3DES {
-		failures = append(failures, "add cipher DES-CBC3-SHA")
+		failures = append(failures, "add cipher DES-CBC3-SHA for backward compatibility")
 		isOld = false
 	}
 
@@ -317,14 +327,14 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		isIntermediate bool = true
 		allProtos      []string
-		hasTLSv1       bool = false
-		hasAES         bool = false
+		allCiphers     []string
 		certsigfail    string
 		hasOCSP        bool = true
 		hasPFS         bool = true
 		failures       []string
 	)
 	for _, cs := range c.CipherSuite {
+		allCiphers = append(allCiphers, cs.Cipher)
 
 		if !contains(intermediate.Ciphers, cs.Cipher) {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
@@ -335,14 +345,6 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 			if !contains(allProtos, proto) {
 				allProtos = append(allProtos, proto)
 			}
-		}
-
-		if !hasTLSv1 && contains(cs.Protocols, "TLSv1") {
-			hasTLSv1 = true
-		}
-
-		if cs.Cipher == "AES128-SHA" {
-			hasAES = true
 		}
 
 		if cs.PFS != "None" {
@@ -366,20 +368,29 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 		isIntermediate = false
 	}
 
+	extraCiphers := extra(intermediate.Ciphers, allCiphers)
+	if len(extraCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
+		isIntermediate = false
+	}
+
+	missingCiphers := extra(allCiphers, intermediate.Ciphers)
+	if len(missingCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
+	}
+
 	extraProto := extra(intermediate.TLSVersions, allProtos)
-	for _, p := range extraProto {
-		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
+	if len(extraProto) > 0 {
+		failures = append(failures, fmt.Sprintf("remove protocols %s", strings.Join(extraProto, ", ")))
 		isIntermediate = false
 	}
 
-	if !hasAES {
-		failures = append(failures, "add cipher AES128-SHA")
-		isIntermediate = false
-	}
-
-	if !hasTLSv1 {
-		failures = append(failures, "consider adding TLSv1")
-		isIntermediate = false
+	missingProto := extra(allProtos, intermediate.TLSVersions)
+	if len(missingProto) > 0 {
+		failures = append(failures, fmt.Sprintf("add protocols %s", strings.Join(missingProto, ", ")))
+		if !contains(missingProto, "TLSv1") {
+			isIntermediate = false
+		}
 	}
 
 	if !c.ServerSide {
@@ -405,12 +416,14 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 	var (
 		isModern    bool = true
 		allProtos   []string
+		allCiphers  []string
 		certsigfail string
 		hasOCSP     bool = true
 		hasPFS      bool = true
 		failures    []string
 	)
 	for _, cs := range c.CipherSuite {
+		allCiphers = append(allCiphers, cs.Cipher)
 
 		if !contains(modern.Ciphers, cs.Cipher) {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
@@ -444,10 +457,29 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 		isModern = false
 	}
 
-	extraProto := extra(modern.TLSVersions, allProtos)
-	for _, p := range extraProto {
-		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
+	extraCiphers := extra(modern.Ciphers, allCiphers)
+	if len(extraCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
 		isModern = false
+	}
+
+	missingCiphers := extra(allCiphers, modern.Ciphers)
+	if len(missingCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
+	}
+
+	extraProto := extra(modern.TLSVersions, allProtos)
+	if len(extraProto) > 0 {
+		failures = append(failures, fmt.Sprintf("remove protocols %s", strings.Join(extraProto, ", ")))
+		isModern = false
+	}
+
+	missingProto := extra(allProtos, modern.TLSVersions)
+	if len(missingProto) > 0 {
+		failures = append(failures, fmt.Sprintf("add protocols %s", strings.Join(missingProto, ", ")))
+		if !contains(missingProto, "TLSv1.2") {
+			isModern = false
+		}
 	}
 
 	if !c.ServerSide {
@@ -550,13 +582,12 @@ func contains(slice []string, entry string) bool {
 	return false
 }
 
-// extra returns a slice of strings that are present in a source slice
-// but not in an expected slice. It is used to detect source entries that
-// should be there, using the expected entries.
-func extra(source []string, expected []string) (extra []string) {
-	for _, expect := range expected {
-		if !contains(source, expect) {
-			extra = append(extra, expect)
+// extra returns a slice of strings that are present in a slice s1 but not
+// in a slice s2.
+func extra(s1, s2 []string) (extra []string) {
+	for _, e := range s2 {
+		if !contains(s1, e) {
+			extra = append(extra, e)
 		}
 	}
 	return

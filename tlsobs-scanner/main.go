@@ -20,6 +20,8 @@ import (
 var db *pg.DB
 var log = logger.GetLogger()
 
+var activeScanners int = 0
+
 func main() {
 	var (
 		cfgFile, cipherscan string
@@ -49,8 +51,9 @@ func main() {
 		}).Error("Could not locate cipherscan executable. TLS connection capabilities will not be available.")
 	}
 
-	cores := runtime.NumCPU()
-	runtime.GOMAXPROCS(cores * conf.General.GoRoutines)
+	// increase the n
+	runtime.GOMAXPROCS(conf.General.MaxProc)
+
 	dbtls := "disable"
 	if conf.General.PostgresUseTLS {
 		dbtls = "verify-full"
@@ -67,18 +70,29 @@ func main() {
 			"error": err.Error(),
 		}).Fatal("Failed to connect to database")
 	}
-	db.SetMaxOpenConns(cores * conf.General.GoRoutines)
+	db.SetMaxOpenConns(conf.General.MaxProc)
 	db.SetMaxIdleConns(10)
 	incomingScans := db.RegisterScanListener(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
 	Setup(conf)
 
 	for scanID := range incomingScans {
+		// wait until we have an available scanner
+		for {
+			if activeScanners >= conf.General.MaxProc {
+				time.Sleep(time.Second)
+			} else {
+				break
+			}
+		}
 		go scan(scanID, cipherscan)
 	}
 }
 
 func scan(scanID int64, cipherscan string) {
-
+	activeScanners++
+	defer func() {
+		activeScanners--
+	}()
 	log.WithFields(logrus.Fields{
 		"scan_id": scanID,
 	}).Info("Received new scan")

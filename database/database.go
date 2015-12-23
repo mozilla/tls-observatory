@@ -28,7 +28,8 @@ type Scan struct {
 	Complperc        int               `json:"completion_perc"`
 	Conn_info        connection.Stored `json:"connection_info"`
 	AnalysisResults  []Analysis        `json:"analysis,omitempty"`
-	Ack              bool
+	Ack              bool              `json:"ack"`
+	Attempts         int               `json:"attempts"` //number of retries
 }
 
 type Analysis struct {
@@ -57,7 +58,11 @@ func (db *DB) NewScan(domain string, rplay int) (Scan, error) {
 
 	var id int64
 
-	err := db.QueryRow("INSERT INTO scans (timestamp,target,replay,has_tls,is_valid,completion_perc,validation_error,conn_info,ack) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id", timestamp, domain, rplay, false, false, 0, "", []byte("null"), false).Scan(&id)
+	err := db.QueryRow(`INSERT INTO scans
+			(timestamp, target, replay, has_tls, is_valid, completion_perc, validation_error, conn_info, ack, attempts)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			RETURNING id`,
+		timestamp, domain, rplay, false, false, 0, "", []byte("null"), false, 1).Scan(&id)
 
 	if err != nil {
 		return Scan{}, err
@@ -78,10 +83,12 @@ func (db *DB) GetScanByID(id int64) (Scan, error) {
 	var ci []byte
 
 	row := db.QueryRow(`SELECT timestamp, target, replay, has_tls, cert_id, trust_id,
-	is_valid, completion_perc, validation_error, conn_info, ack FROM scans WHERE id=$1`, id)
+				   is_valid, completion_perc, validation_error, conn_info, ack, attempts
+			    FROM scans
+			    WHERE id=$1`, id)
 
 	err := row.Scan(&s.Timestamp, &s.Target, &s.Replay, &s.Has_tls, &cID, &tID,
-		&isvalid, &s.Complperc, &s.Validation_error, &ci, &s.Ack)
+		&isvalid, &s.Complperc, &s.Validation_error, &ci, &s.Ack, &s.Attempts)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -149,7 +156,7 @@ func (db *DB) UpdateScanCompletionPercentage(id int64, p int) error {
 }
 
 func (db *DB) InsertWorkerAnalysis(scanid int64, jsonRes []byte, workerName string) error {
-	_, err := db.Exec("INSERT INTO analysis(scan_id,worker_name,	output) VALUES($1,$2,$3)", scanid, workerName, jsonRes)
+	_, err := db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)", scanid, workerName, jsonRes)
 
 	return err
 }
