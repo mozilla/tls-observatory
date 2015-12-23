@@ -97,6 +97,8 @@ func scan(scanID int64, cipherscan string) {
 		"scan_id": scanID,
 	}).Info("Received new scan")
 
+	db.Exec("UPDATE scans SET attempts = attempts + 1 WHERE id=$1", scanID)
+
 	scan, err := db.GetScanByID(scanID)
 	if err != nil {
 		log.WithFields(logrus.Fields{
