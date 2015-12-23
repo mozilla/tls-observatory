@@ -4,6 +4,7 @@ CREATE TABLE certificates  (
 	sha256_fingerprint          varchar NOT NULL,
 	serial_number              	varchar NULL,
 	version                    	integer NULL,
+	domains 					varchar NULL,
 	subject                    	jsonb NULL,
 	issuer                     	jsonb NULL,
 	is_ca                      	bool NULL,
@@ -29,7 +30,6 @@ CREATE TABLE certificates  (
 	in_android_root_store       bool NULL,
 	is_revoked                 	bool NULL,
 	revoked_at                 	timestamp NULL,
-	domains 					varchar NULL,
 	raw_cert					varchar NOT NULL
 );
 
@@ -45,6 +45,8 @@ CREATE TABLE trust (
     trusted_android             bool NULL,
     is_current                  bool NOT NULL
 );
+CREATE INDEX trust_cert_id_idx ON trust(cert_id);
+CREATE INDEX trust_is_current_idx ON trust(is_current);
 
 CREATE TABLE scans  (
 	id                         	serial primary key,
@@ -61,6 +63,8 @@ CREATE TABLE scans  (
 	ack 						bool NOT NULL,
 	attempts			        integer NULL
 );
+CREATE INDEX scans_completion_attempts_idx ON scans(completion_perc, attempts);
+CREATE INDEX scans_ack_idx ON scans(ack);
 
 CREATE TABLE analysis  (
 	id                         	serial primary key,
@@ -68,6 +72,7 @@ CREATE TABLE analysis  (
 	worker_name	           		varchar NOT NULL,
 	output						jsonb NULL
 );
+CREATE INDEX analysis_scan_id_idx ON analysis(scan_id);
 
 CREATE FUNCTION notify_trigger() RETURNS trigger AS $$
 DECLARE
