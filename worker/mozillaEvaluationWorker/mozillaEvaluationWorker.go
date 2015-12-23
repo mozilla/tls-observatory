@@ -108,7 +108,6 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 
 		ord, ordres := isOrdered(connInfo, modern.Ciphers, "modern")
 		if !ord {
-			ordres = append(ordres, "considering fixing ciphers ordering")
 			results.Failures["modern"] = append(results.Failures["modern"], ordres...)
 		}
 	}
@@ -119,7 +118,6 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 
 		ord, ordres := isOrdered(connInfo, intermediate.Ciphers, "intermediate")
 		if !ord {
-			ordres = append(ordres, "considering fixing ciphers ordering")
 			results.Failures["intermediate"] = append(results.Failures["intermediate"], ordres...)
 		}
 	}
@@ -130,7 +128,6 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 
 		ord, ordres := isOrdered(connInfo, old.Ciphers, "old")
 		if !ord {
-			ordres = append(ordres, "considering fixing ciphers ordering")
 			results.Failures["old"] = append(results.Failures["old"], ordres...)
 		}
 	}

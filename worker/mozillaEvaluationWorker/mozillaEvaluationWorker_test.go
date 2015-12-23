@@ -76,7 +76,7 @@ func TestOrderings(t *testing.T) {
 		},
 		{
 			expectedLevel:    "modern",
-			expectedFailures: []string{`considering fixing ciphers ordering`},
+			expectedFailures: []string{`fix ciphersuite ordering, use recommended modern ciphersuite`},
 			cipherscan:       `{"scanIP":"62.210.76.92","serverside":true,"ciphersuite":[{"cipher":"ECDHE-RSA-AES128-GCM-SHA256","protocols":["TLSv1.2"],"pubkey":2048,"sigalg":"sha256WithRSAEncryption","ticket_hint":"300","ocsp_stapling":true,"pfs":"ECDH,P-384,384bits","curves":["secp384r1"]},{"cipher":"ECDHE-RSA-AES256-GCM-SHA384","protocols":["TLSv1.2"],"pubkey":2048,"sigalg":"sha256WithRSAEncryption","ticket_hint":"300","ocsp_stapling":true,"pfs":"ECDH,P-384,384bits","curves":["secp384r1"]}]}`,
 			certSignature:    "ECDSAWithSHA256",
 		},
