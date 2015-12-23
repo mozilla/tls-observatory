@@ -85,13 +85,13 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 						      FROM scans
 						      WHERE ack=FALSE
 						      ORDER BY id ASC
-						      LIMIT 100`, listenerName))
+						      LIMIT 1000`, listenerName))
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"error": err,
 				}).Error("Could not run unacknowledged scans periodic check.")
 			}
-			time.Sleep(5 * time.Minute)
+			time.Sleep(3 * time.Minute)
 		}
 	}()
 
