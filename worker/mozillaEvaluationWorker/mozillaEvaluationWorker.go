@@ -278,26 +278,26 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	extraCiphers := extra(old.Ciphers, allCiphers)
-	for _, c := range extraCiphers {
-		failures = append(failures, fmt.Sprintf("remove cipher %s", c))
+	if len(extraCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
 		isOld = false
 	}
 
 	missingCiphers := extra(allCiphers, old.Ciphers)
-	for _, c := range missingCiphers {
-		failures = append(failures, fmt.Sprintf("add cipher %s", c))
+	if len(missingCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
 	}
 
 	extraProto := extra(old.TLSVersions, allProtos)
-	for _, p := range extraProto {
-		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
+	if len(extraProto) > 0 {
+		failures = append(failures, fmt.Sprintf("remove protocols %s", strings.Join(extraProto, ", ")))
 		isOld = false
 	}
 
 	missingProto := extra(allProtos, old.TLSVersions)
-	for _, p := range missingProto {
-		failures = append(failures, fmt.Sprintf("add support for %s", p))
-		if p == "SSLv3" {
+	if len(missingProto) > 0 {
+		failures = append(failures, fmt.Sprintf("add protocols %s", strings.Join(missingProto, ", ")))
+		if !contains(missingProto, "SSLv3") {
 			isOld = false
 		}
 	}
@@ -312,7 +312,7 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	if !has3DES {
-		failures = append(failures, "add cipher DES-CBC3-SHA")
+		failures = append(failures, "add cipher DES-CBC3-SHA for backward compatibility")
 		isOld = false
 	}
 
@@ -372,26 +372,28 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	extraCiphers := extra(intermediate.Ciphers, allCiphers)
-	for _, c := range extraCiphers {
-		failures = append(failures, fmt.Sprintf("remove cipher %s", c))
+	if len(extraCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
 		isIntermediate = false
 	}
 
 	missingCiphers := extra(allCiphers, intermediate.Ciphers)
-	for _, c := range missingCiphers {
-		failures = append(failures, fmt.Sprintf("considering adding cipher %s", c))
+	if len(missingCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
 	}
 
 	extraProto := extra(intermediate.TLSVersions, allProtos)
-	for _, p := range extraProto {
-		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
+	if len(extraProto) > 0 {
+		failures = append(failures, fmt.Sprintf("remove protocols %s", strings.Join(extraProto, ", ")))
 		isIntermediate = false
 	}
 
 	missingProto := extra(allProtos, intermediate.TLSVersions)
-	for _, p := range missingProto {
-		failures = append(failures, fmt.Sprintf("enable %s protocol", p))
-		isIntermediate = false
+	if len(missingProto) > 0 {
+		failures = append(failures, fmt.Sprintf("add protocols %s", strings.Join(missingProto, ", ")))
+		if !contains(missingProto, "TLSv1") {
+			isIntermediate = false
+		}
 	}
 
 	if !c.ServerSide {
@@ -459,26 +461,28 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 	}
 
 	extraCiphers := extra(modern.Ciphers, allCiphers)
-	for _, c := range extraCiphers {
-		failures = append(failures, fmt.Sprintf("remove cipher %s", c))
+	if len(extraCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
 		isModern = false
 	}
 
 	missingCiphers := extra(allCiphers, modern.Ciphers)
-	for _, c := range missingCiphers {
-		failures = append(failures, fmt.Sprintf("considering adding cipher %s", c))
+	if len(missingCiphers) > 0 {
+		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
 	}
 
 	extraProto := extra(modern.TLSVersions, allProtos)
-	for _, p := range extraProto {
-		failures = append(failures, fmt.Sprintf("disable %s protocol", p))
+	if len(extraProto) > 0 {
+		failures = append(failures, fmt.Sprintf("remove protocols %s", strings.Join(extraProto, ", ")))
 		isModern = false
 	}
 
 	missingProto := extra(allProtos, modern.TLSVersions)
-	for _, p := range missingProto {
-		failures = append(failures, fmt.Sprintf("enable %s protocol", p))
-		isModern = false
+	if len(missingProto) > 0 {
+		failures = append(failures, fmt.Sprintf("add protocols %s", strings.Join(missingProto, ", ")))
+		if !contains(missingProto, "TLSv1.2") {
+			isModern = false
+		}
 	}
 
 	if !c.ServerSide {
