@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/logger"
 	"github.com/mozilla/tls-observatory/worker"
@@ -34,6 +35,7 @@ var log = logger.GetLogger()
 func init() {
 	err := json.Unmarshal([]byte(ServerSideTLSConfiguration), &sstls)
 	if err != nil {
+		log.Error(err)
 		log.Error("Could not load Server Side TLS configuration. Evaluation Worker not available")
 		return
 	}
@@ -51,18 +53,18 @@ type ServerSideTLSJson struct {
 // Configuration represents configurations levels declared by the Mozilla server-side-tls
 // see https://wiki.mozilla.org/Security/Server_Side_TLS
 type Configuration struct {
-	Ciphersuite          string   `json:"ciphersuite"`
-	Ciphers              []string `json:"ciphers"`
-	TLSVersions          []string `json:"tls_versions"`
-	TLSCurves            []string `json:"tls_curves"`
-	CertificateType      string   `json:"certificate_type"`
-	CertificateCurve     string   `json:"certificate_curve"`
-	CertificateSignature string   `json:"certificate_signature"`
-	RsaKeySize           float64  `json:"rsa_key_size"`
-	DHParamSize          float64  `json:"dh_param_size"`
-	ECDHParamSize        float64  `json:"ecdh_param_size"`
-	Hsts                 string   `json:"hsts"`
-	OldestClients        []string `json:"oldest_clients"`
+	Ciphersuite           string   `json:"ciphersuite"`
+	Ciphers               []string `json:"ciphers"`
+	TLSVersions           []string `json:"tls_versions"`
+	TLSCurves             []string `json:"tls_curves"`
+	CertificateTypes      []string `json:"certificate_types"`
+	CertificateCurves     []string `json:"certificate_curves"`
+	CertificateSignatures []string `json:"certificate_signatures"`
+	RsaKeySize            float64  `json:"rsa_key_size"`
+	DHParamSize           float64  `json:"dh_param_size"`
+	ECDHParamSize         float64  `json:"ecdh_param_size"`
+	HstsMinAge            float64  `json:"hsts_min_age"`
+	OldestClients         []string `json:"oldest_clients"`
 }
 
 // EvaluationResults contains the results of the mozillaEvaluationWorker
@@ -79,7 +81,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
 	res := worker.Result{WorkerName: workerName}
 
-	b, err := Evaluate(in.Connection, in.Certificate.SignatureAlgorithm)
+	b, err := Evaluate(in.Connection, in.Certificate)
 	if err != nil {
 		res.Success = false
 		res.Errors = append(res.Errors, err.Error())
@@ -92,7 +94,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 }
 
 // Evaluate runs compliance checks of the provided json Stored connection and returns the results
-func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
+func Evaluate(connInfo connection.Stored, cert certificate.Certificate) ([]byte, error) {
 
 	var isOldLvl, isInterLvl, isModernLvl, isBadLvl bool
 
@@ -102,27 +104,7 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 	// assume the worst
 	results.Level = "bad"
 
-	isModernLvl, results.Failures["modern"] = isModern(connInfo, certsigalg)
-	if isModernLvl {
-		results.Level = "modern"
-
-		ord, ordres := isOrdered(connInfo, modern.Ciphers, "modern")
-		if !ord {
-			results.Failures["modern"] = append(results.Failures["modern"], ordres...)
-		}
-	}
-
-	isInterLvl, results.Failures["intermediate"] = isIntermediate(connInfo, certsigalg)
-	if isInterLvl {
-		results.Level = "intermediate"
-
-		ord, ordres := isOrdered(connInfo, intermediate.Ciphers, "intermediate")
-		if !ord {
-			results.Failures["intermediate"] = append(results.Failures["intermediate"], ordres...)
-		}
-	}
-
-	isOldLvl, results.Failures["old"] = isOld(connInfo, certsigalg)
+	isOldLvl, results.Failures["old"] = isOld(connInfo, cert)
 	if isOldLvl {
 		results.Level = "old"
 
@@ -132,7 +114,27 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 		}
 	}
 
-	isBadLvl, results.Failures["bad"] = isBad(connInfo, certsigalg)
+	isInterLvl, results.Failures["intermediate"] = isIntermediate(connInfo, cert)
+	if isInterLvl {
+		results.Level = "intermediate"
+
+		ord, ordres := isOrdered(connInfo, intermediate.Ciphers, "intermediate")
+		if !ord {
+			results.Failures["intermediate"] = append(results.Failures["intermediate"], ordres...)
+		}
+	}
+
+	isModernLvl, results.Failures["modern"] = isModern(connInfo, cert)
+	if isModernLvl {
+		results.Level = "modern"
+
+		ord, ordres := isOrdered(connInfo, modern.Ciphers, "modern")
+		if !ord {
+			results.Failures["modern"] = append(results.Failures["modern"], ordres...)
+		}
+	}
+
+	isBadLvl, results.Failures["bad"] = isBad(connInfo, cert)
 	if isBadLvl {
 		results.Level = "bad"
 	}
@@ -145,7 +147,7 @@ func Evaluate(connInfo connection.Stored, certsigalg string) ([]byte, error) {
 	return js, nil
 }
 
-func isBad(c connection.Stored, certsigalg string) (bool, []string) {
+func isBad(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 	var (
 		failures   []string
 		allProtos  []string
@@ -206,20 +208,20 @@ func isBad(c connection.Stored, certsigalg string) (bool, []string) {
 		isBad = true
 	}
 
-	if certsigalg == "UnknownSignatureAlgorithm" {
+	if cert.SignatureAlgorithm == "UnknownSignatureAlgorithm" {
 		failures = append(failures,
-			fmt.Sprintf("certificate signature could not be determined, use a standard algorithm", certsigalg))
+			fmt.Sprintf("certificate signature could not be determined, use a standard algorithm", cert.SignatureAlgorithm))
 		isBad = true
-	} else if _, ok := sigAlgTranslation[certsigalg]; !ok {
+	} else if _, ok := sigAlgTranslation[cert.SignatureAlgorithm]; !ok {
 		failures = append(failures,
-			fmt.Sprintf("%s is a bad certificate signature", certsigalg))
+			fmt.Sprintf("%s is a bad certificate signature", cert.SignatureAlgorithm))
 		isBad = true
 	}
 
 	return isBad, failures
 }
 
-func isOld(c connection.Stored, certsigalg string) (bool, []string) {
+func isOld(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 	var (
 		isOld       bool = true
 		allProtos   []string
@@ -264,12 +266,14 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 	}
 
-	if _, ok := sigAlgTranslation[certsigalg]; !ok {
+	if _, ok := sigAlgTranslation[cert.SignatureAlgorithm]; !ok {
 		failures = append(failures,
-			fmt.Sprintf("%s is not an old certificate signature, use %s", certsigalg, old.CertificateSignature))
+			fmt.Sprintf("%s is not an old certificate signature, use %s",
+				cert.SignatureAlgorithm, strings.Join(old.CertificateSignatures, " or ")))
 		isOld = false
-	} else if sigAlgTranslation[certsigalg] != old.CertificateSignature {
-		certsigfail = fmt.Sprintf("%s is not an old certificate signature, use %s", sigAlgTranslation[certsigalg], old.CertificateSignature)
+	} else if !contains(old.CertificateSignatures, sigAlgTranslation[cert.SignatureAlgorithm]) {
+		certsigfail = fmt.Sprintf("%s is not an old certificate signature, use %s",
+			sigAlgTranslation[cert.SignatureAlgorithm], strings.Join(old.CertificateSignatures, " or "))
 		failures = append(failures, certsigfail)
 		isOld = false
 	}
@@ -323,7 +327,7 @@ func isOld(c connection.Stored, certsigalg string) (bool, []string) {
 	return isOld, failures
 }
 
-func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
+func isIntermediate(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 	var (
 		isIntermediate bool = true
 		allProtos      []string
@@ -358,12 +362,14 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 	}
 
-	if _, ok := sigAlgTranslation[certsigalg]; !ok {
-		certsigfail = fmt.Sprintf("%s is not an intermediate certificate signature, use %s", certsigalg, intermediate.CertificateSignature)
+	if _, ok := sigAlgTranslation[cert.SignatureAlgorithm]; !ok {
+		certsigfail = fmt.Sprintf("%s is not an intermediate certificate signature, use %s",
+			cert.SignatureAlgorithm, strings.Join(intermediate.CertificateSignatures, " or "))
 		failures = append(failures, certsigfail)
 		isIntermediate = false
-	} else if sigAlgTranslation[certsigalg] != intermediate.CertificateSignature {
-		certsigfail = fmt.Sprintf("%s is not an intermediate certificate signature, use %s", sigAlgTranslation[certsigalg], intermediate.CertificateSignature)
+	} else if !contains(intermediate.CertificateSignatures, sigAlgTranslation[cert.SignatureAlgorithm]) {
+		certsigfail = fmt.Sprintf("%s is not an intermediate certificate signature, use %s",
+			sigAlgTranslation[cert.SignatureAlgorithm], strings.Join(intermediate.CertificateSignatures, " or "))
 		failures = append(failures, certsigfail)
 		isIntermediate = false
 	}
@@ -412,7 +418,7 @@ func isIntermediate(c connection.Stored, certsigalg string) (bool, []string) {
 	return isIntermediate, failures
 }
 
-func isModern(c connection.Stored, certsigalg string) (bool, []string) {
+func isModern(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 	var (
 		isModern    bool = true
 		allProtos   []string
@@ -447,12 +453,14 @@ func isModern(c connection.Stored, certsigalg string) (bool, []string) {
 		}
 	}
 
-	if _, ok := sigAlgTranslation[certsigalg]; !ok {
-		certsigfail = fmt.Sprintf("%s is not a modern certificate signature, use %s", certsigalg, modern.CertificateSignature)
+	if _, ok := sigAlgTranslation[cert.SignatureAlgorithm]; !ok {
+		certsigfail = fmt.Sprintf("%s is not a modern certificate signature, use %s",
+			cert.SignatureAlgorithm, strings.Join(modern.CertificateSignatures, " or "))
 		failures = append(failures, certsigfail)
 		isModern = false
-	} else if sigAlgTranslation[certsigalg] != modern.CertificateSignature {
-		certsigfail = fmt.Sprintf("%s is not a modern certificate signature, use %s", sigAlgTranslation[certsigalg], modern.CertificateSignature)
+	} else if !contains(modern.CertificateSignatures, sigAlgTranslation[cert.SignatureAlgorithm]) {
+		certsigfail = fmt.Sprintf("%s is not a modern certificate signature, use %s",
+			sigAlgTranslation[cert.SignatureAlgorithm], strings.Join(modern.CertificateSignatures, " or "))
 		failures = append(failures, certsigfail)
 		isModern = false
 	}
