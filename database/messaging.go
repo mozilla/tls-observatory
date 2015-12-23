@@ -74,7 +74,7 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 			// don't requeue scans more than 3 times
 			_, err := db.Exec(`UPDATE scans
 			  		   SET ack = false, timestamp = NOW()
-				           WHERE completion_perc = 0 AND attempts < 3
+				           WHERE completion_perc = 0 AND attempts < 3 AND ack = true
 					   AND timestamp < NOW() - INTERVAL '10 minute'`)
 			if err != nil {
 				log.WithFields(logrus.Fields{
