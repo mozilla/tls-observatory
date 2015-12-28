@@ -217,7 +217,7 @@ func (db *DB) UpdateCACertTruststore(id int64, tsName string) error {
 // In that case it returns -1 with no error.
 func (db *DB) GetCertIDBySHA1Fingerprint(sha1 string) (int64, error) {
 
-	query := fmt.Sprintf(`SELECT id FROM certificates WHERE sha1_fingerprint='%s'`, sha1)
+	query := fmt.Sprintf(`SELECT id FROM certificates WHERE sha1_fingerprint='%s' ORDER BY id ASC LIMIT 1`, sha1)
 
 	row := db.QueryRow(query)
 
@@ -242,7 +242,7 @@ func (db *DB) GetCertIDBySHA1Fingerprint(sha1 string) (int64, error) {
 // In that case it returns -1 with no error.
 func (db *DB) GetCertIDBySHA256Fingerprint(sha256 string) (int64, error) {
 
-	query := fmt.Sprintf(`SELECT id FROM certificates WHERE sha256_fingerprint='%s'`, sha256)
+	query := fmt.Sprintf(`SELECT id FROM certificates WHERE sha256_fingerprint='%s' ORDER BY id ASC LIMIT 1`, sha256)
 
 	row := db.QueryRow(query)
 
