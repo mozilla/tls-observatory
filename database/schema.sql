@@ -32,6 +32,7 @@ CREATE TABLE certificates  (
 	revoked_at                 	timestamp NULL,
 	raw_cert					varchar NOT NULL
 );
+CREATE INDEX certificates_sha256_fingerprint_idx ON certificates(sha256_fingerprint);
 
 CREATE TABLE trust (
     id                          serial primary key,
