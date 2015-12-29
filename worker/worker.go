@@ -56,3 +56,7 @@ type Worker interface {
 type HasAnalysisPrinter interface {
 	PrintAnalysis([]byte) ([]string, error)
 }
+
+type HasAssert interface {
+	Assert([]byte, []byte) (bool, []byte, error)
+}

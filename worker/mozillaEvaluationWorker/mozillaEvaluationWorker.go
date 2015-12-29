@@ -638,3 +638,23 @@ func (e eval) PrintAnalysis(r []byte) (results []string, err error) {
 	}
 	return
 }
+
+func (e eval) Assert(evresults, assertresults []byte) (pass bool, body []byte, err error) {
+	var evres, assertres EvaluationResults
+	err = json.Unmarshal(evresults, &evres)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(assertresults, &assertres)
+	if err != nil {
+		return
+	}
+	if evres.Level != assertres.Level {
+		body = []byte(fmt.Sprintf(`Assertion mozillaEvaluationWorker.level=%q failed because measured leved is %q`,
+			assertres.Level, evres.Level))
+		pass = false
+	} else {
+		pass = true
+	}
+	return
+}

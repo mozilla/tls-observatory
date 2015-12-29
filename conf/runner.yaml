@@ -1,0 +1,102 @@
+runs:
+    - targets:
+        - accounts.firefox.com
+        - addon.mozilla.org
+        - addons.mozilla.org
+        - api.accounts.firefox.com
+        - blocklist.addons.mozilla.org
+        - browserid.org
+        - builder.addons.mozilla.org
+        - controller-review.apk.firefox.com
+        - controller.apk.firefox.com
+        - diresworb.org
+        - find.firefox.com
+        - firefoxos.persona.org
+        - firefoxusercontent.com
+        - forum.addons.mozilla.org
+        - forums.addons.mozilla.org
+        - gmail.login.persona.org
+        - hello.firefox.com
+        - loads.services.mozilla.com
+        - location.services.mozilla.com
+        - login.anosrep.org
+        - login.mozilla.org
+        - login.persona.org
+        - marketplace-static.addons.mozilla.net
+        - marketplace.firefox.com
+        - mozillausercontent.com
+        - oauth.accounts.firefox.com
+        - persona.org
+        - profile.accounts.firefox.com
+        - push.hello.firefox.com
+        - push.services.mozilla.com
+        - push1.push.hello.firefox.com
+        - pyrepo.addons.mozilla.org
+        - readinglist.services.mozilla.com
+        - receiptcheck.marketplace.firefox.com
+        - scrypt.accounts.firefox.com
+        - search.services.mozilla.com
+        - services.addons.mozilla.org
+        - shavar.services.mozilla.com
+        - static.addons.mozilla.net
+        - static.login.persona.org
+        - static.marketplace.firefox.com
+        - tracking.services.mozilla.com
+        - updates.push.services.mozilla.com
+        - verifier.accounts.firefox.com
+        - verifier.login.persona.org
+        - versioncheck-bg.addons.mozilla.org
+        - versioncheck.addons.mozilla.org
+        - www.browserid.org
+        - www.persona.org
+        - yahoo.login.persona.org
+      assertions:
+        - certificate:
+            validity: 
+                notAfter: ">30d"
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "intermediate"}'
+      # daily at midnight
+      cron: "0 0 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloudsec@mozilla.com
+
+    - targets:
+        - download.mozilla.org
+        - download-installer.cdn.mozilla.net
+      assertions:
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "old"}'
+      # daily at midnight
+      cron: "0 0 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloudsec@mozilla.com
+
+    #- targets:
+    #    - mana.mozilla.org
+    #    - public.etherpad-mozilla.org
+    #    - irccloud.mozilla.com
+    #    - discourse.mozilla-community.org
+    #    - api.mig.mozilla.org
+    #  assertions:
+    #    - certificate:
+    #        validity: 
+    #            notAfter: ">30d"
+    #    - analysis:
+    #        analyzer: mozillaEvaluationWorker
+    #        result: '{"level": "intermediate"}'
+    #  cron: "* * * * *"
+    #  notifications:
+    #      email:
+    #          recipients:
+    #              - infosec@mozilla.com
+
+smtp:
+    relay: "gator1:25"
+    from: "cloudsec@mozilla.com"
