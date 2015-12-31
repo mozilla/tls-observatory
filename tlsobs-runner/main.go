@@ -12,6 +12,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -80,6 +82,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	getConfFromEnv()
+
 	err = yaml.Unmarshal(fd, &conf)
 	if err != nil {
 		log.Fatalf("error: %v", err)
@@ -229,5 +233,27 @@ func getCert(id int64) (cert certificate.Certificate, err error) {
 func debugprint(format string, a ...interface{}) {
 	if debug {
 		log.Printf("[debug] "+format, a...)
+	}
+}
+
+func getConfFromEnv() {
+	if os.Getenv("TLSOBS_RUNNER_SMTP_HOST") != "" {
+		conf.Smtp.Host = os.Getenv("TLSOBS_RUNNER_SMTP_HOST")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SMTP_PORT") != "" {
+		var err error
+		conf.Smtp.Port, err = strconv.Atoi(os.Getenv("TLSOBS_RUNNER_SMTP_PORT"))
+		if err != nil {
+			log.Printf("[error] failed to read smtp port from env variable: %v", err)
+		}
+	}
+	if os.Getenv("TLSOBS_RUNNER_SMTP_FROM") != "" {
+		conf.Smtp.From = os.Getenv("TLSOBS_RUNNER_SMTP_FROM")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_USER") != "" {
+		conf.Smtp.Auth.User = os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_USER")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS") != "" {
+		conf.Smtp.Auth.Pass = os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS")
 	}
 }
