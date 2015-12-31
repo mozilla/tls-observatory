@@ -57,8 +57,8 @@ runs:
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "intermediate"}'
-      # daily at midnight
-      cron: "0 0 * * *"
+      # daily at 6am
+      cron: "0 6 * * *"
       notifications:
           email:
               recipients:
@@ -67,12 +67,13 @@ runs:
     - targets:
         - download.mozilla.org
         - download-installer.cdn.mozilla.net
+        - crash-reports-xpsp2.mozilla.com
       assertions:
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "old"}'
-      # daily at midnight
-      cron: "0 0 * * *"
+      # every 15 minutes
+      cron: "*/15 * * * *"
       notifications:
           email:
               recipients:
