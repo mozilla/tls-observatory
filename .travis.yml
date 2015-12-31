@@ -10,8 +10,10 @@ env:
     - DOCKER_USERNAME=jvehent
     - secure: "LwcQZ/M+4M+HJf6b/bKcGdmuTcT4XeN5MVuBSy34ag79/Zz3UinwBpW3peOhFNizJUbMVzPJJ7FGMWeUouq6lCcjjQZAIBnPWx/bhP0z7vIO8t2+XqKV47D3HqPOokqEdeKHvzr4xvfKGMBy+VMCWeuFI7Z3BLCqtWSQYDjAMTg="
 script:
-    - make test && docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+    - make && docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
     - docker build -t jvehent/tls-observatory-api -f tools/Dockerfile-api .
     - docker push jvehent/tls-observatory-api:latest
     - docker build -t jvehent/tls-observatory-scanner -f tools/Dockerfile-scanner .
     - docker push jvehent/tls-observatory-scanner:latest
+    - docker build -t jvehent/tls-observatory-runner -f tools/Dockerfile-runner .
+    - docker push jvehent/tls-observatory-runner:latest
