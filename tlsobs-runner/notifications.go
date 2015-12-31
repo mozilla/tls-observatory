@@ -48,7 +48,10 @@ func sendMail(rcpt string, body []byte) (err error) {
 	var auth smtp.Auth
 	if conf.Smtp.Auth.User != "" && conf.Smtp.Auth.Pass != "" {
 		auth = smtp.PlainAuth("", conf.Smtp.Auth.User, conf.Smtp.Auth.Pass, conf.Smtp.Host)
+		debugprint("SMTP authenticated as %q", conf.Smtp.Auth.User)
 	}
+	debugprint("Publishing notification to %q from %q on server %s:%d",
+		rcpt, conf.Smtp.From, conf.Smtp.Host, conf.Smtp.Port)
 	err = smtp.SendMail(
 		fmt.Sprintf("%s:%d", conf.Smtp.Host, conf.Smtp.Port),
 		auth,

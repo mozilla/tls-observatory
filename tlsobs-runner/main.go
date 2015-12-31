@@ -82,12 +82,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	getConfFromEnv()
-
 	err = yaml.Unmarshal(fd, &conf)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
+	getConfFromEnv()
 	exit := make(chan bool)
 	for i, run := range conf.Runs {
 		go run.start(i)
