@@ -1,0 +1,159 @@
+runs:
+    - targets:
+        # absearch
+        - search.services.mozilla.com
+
+        # AMO
+        - addon.mozilla.org
+        - addons.mozilla.org
+        - blocklist.addons.mozilla.org
+        - builder.addons.mozilla.org
+        - controller-review.apk.firefox.com
+        - controller.apk.firefox.com
+        - services.addons.mozilla.org
+        - static.addons.mozilla.net
+        - versioncheck-bg.addons.mozilla.org
+        - versioncheck.addons.mozilla.org
+
+        # everything.me
+        - appsearch.prod.mozaws.net
+        - geodude.prod.mozaws.net
+
+        # Find my device
+        - find.firefox.com
+
+        # Fxa
+        - accounts.firefox.com
+        - api.accounts.firefox.com
+        - oauth.accounts.firefox.com
+        - profile.accounts.firefox.com
+        - verifier.accounts.firefox.com
+
+        # Hello
+        - hello.firefox.com
+        - loop.services.mozilla.com
+        - msisdn.services.mozilla.com
+
+        # Input
+        - input.mozilla.org
+
+        # Locations
+        - location.services.mozilla.com
+
+        # Marketplace
+        - marketplace.firefox.com
+        - receiptcheck.marketplace.firefox.com
+        - static.marketplace.firefox.com
+
+        # Metrics
+        - metrics.services.mozilla.com
+
+        # Misc
+        - firefoxusercontent.com
+        - mozillausercontent.com
+        - loads.services.mozilla.com
+
+        # Persona
+        - browserid.org
+        - firefoxos.persona.org
+        - persona.org
+        - static.login.persona.org
+        - verifier.login.persona.org
+        - www.browserid.org
+        - www.persona.org
+        - yahoo.login.persona.org
+        - gmail.login.persona.org
+        - login.anosrep.org
+        - login.mozilla.org
+        - login.persona.org
+        - diresworb.org
+
+        # Product Delivery
+        - download.mozilla.org
+        - download-installer.cdn.mozilla.net
+
+        # Push
+        - push.services.mozilla.com
+        - push1.push.hello.firefox.com
+        - updates.push.services.mozilla.com
+
+        # Sync
+        - token.services.mozilla.com
+        - sync-264-us-west-2.sync.services.mozilla.com
+
+        # Tiles
+        - tiles.cdn.mozilla.net
+        - tiles.services.mozilla.com
+
+        # TLS Observatory
+        - tls-observatory.services.mozilla.com
+
+        # Tracking protection
+        - shavar.services.mozilla.com
+        - tracking.services.mozilla.com
+
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">30d"
+      cron: "0 17 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloudops@mozilla.com
+
+    - targets:
+        - download.mozilla.org
+        - download-installer.cdn.mozilla.net
+        - crash-reports-xpsp2.mozilla.com
+      assertions:
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "old"}'
+      cron: "0 17 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloudsec@mozilla.com
+
+    - targets:
+        - jve.linuxwall.info
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">7d"
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "modern"}'
+      cron: "* * * * *"
+      notifications:
+          email:
+              recipients:
+                  - julien@linuxwall.info
+
+    #- targets:
+    #    - mana.mozilla.org
+    #    - public.etherpad-mozilla.org
+    #    - irccloud.mozilla.com
+    #    - discourse.mozilla-community.org
+    #    - api.mig.mozilla.org
+    #  assertions:
+    #    - certificate:
+    #        validity: 
+    #            notAfter: ">30d"
+    #    - analysis:
+    #        analyzer: mozillaEvaluationWorker
+    #        result: '{"level": "intermediate"}'
+    #  cron: "* * * * *"
+    #  notifications:
+    #      email:
+    #          recipients:
+    #              - infosec@mozilla.com
+
+smtp:
+    host: gator1
+    port: 25
+    from: julien@linuxwall.info
+    #auth:
+    #    user: someuser
+    #    pass: somepass

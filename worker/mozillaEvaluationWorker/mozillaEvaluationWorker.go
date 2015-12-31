@@ -601,7 +601,7 @@ func extra(s1, s2 []string) (extra []string) {
 	return
 }
 
-func (e eval) PrintAnalysis(r []byte) (results []string, err error) {
+func (e eval) AnalysisPrinter(r []byte) (results []string, err error) {
 	var (
 		eval           EvaluationResults
 		previousissues []string
@@ -635,6 +635,26 @@ func (e eval) PrintAnalysis(r []byte) (results []string, err error) {
 	if eval.Level != "bad" {
 		results = append(results,
 			fmt.Sprintf("  - oldest clients: %s", strings.Join(sstls.Configurations[eval.Level].OldestClients, ", ")))
+	}
+	return
+}
+
+func (e eval) Assertor(evresults, assertresults []byte) (pass bool, body []byte, err error) {
+	var evres, assertres EvaluationResults
+	err = json.Unmarshal(evresults, &evres)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(assertresults, &assertres)
+	if err != nil {
+		return
+	}
+	if evres.Level != assertres.Level {
+		body = []byte(fmt.Sprintf(`Assertion mozillaEvaluationWorker.level=%q failed because measured leved is %q`,
+			assertres.Level, evres.Level))
+		pass = false
+	} else {
+		pass = true
 	}
 	return
 }

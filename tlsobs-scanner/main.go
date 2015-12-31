@@ -27,7 +27,7 @@ func main() {
 		cfgFile, cipherscan string
 		debug               bool
 	)
-	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/scanner.cfg", "Input file csv format")
+	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/scanner.cfg", "Configuration file")
 	flag.StringVar(&cipherscan, "b", "/opt/cipherscan/cipherscan", "Cipherscan binary location")
 	flag.BoolVar(&debug, "debug", false, "Set debug logging")
 	flag.Parse()

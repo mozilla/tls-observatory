@@ -174,7 +174,7 @@ func printAnalysis(ars []database.Analysis) {
 			continue
 		}
 		runner := worker.AvailableWorkers[a.Analyzer].Runner
-		results, err := runner.(worker.HasAnalysisPrinter).PrintAnalysis([]byte(a.Result))
+		results, err := runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result))
 		if err != nil {
 			fmt.Println(err)
 			continue
