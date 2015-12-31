@@ -22,7 +22,7 @@ func processNotifications(notifchan chan Notification, done chan bool) {
 	emailntfs := make(map[string][]byte)
 	ircntfs := make(map[string][]byte)
 	for n := range notifchan {
-		log.Printf("[info] received notification for target %s with body: %s", n.Target, n.Body)
+		log.Printf("[info] received notification for target %q with body: %s", n.Target, n.Body)
 		for _, rcpt := range n.Conf.Email.Recipients {
 			var body []byte
 			if _, ok := emailntfs[rcpt]; ok {
@@ -39,7 +39,10 @@ func processNotifications(notifchan chan Notification, done chan bool) {
 		}
 	}
 	for rcpt, body := range emailntfs {
-		sendMail(rcpt, body)
+		err := sendMail(rcpt, body)
+		if err != nil {
+			log.Printf("[error] failed to send email notification to %q: %v", rcpt, err)
+		}
 	}
 	done <- true
 }

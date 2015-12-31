@@ -6,6 +6,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -76,17 +77,7 @@ func main() {
 	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/runner.yaml", "YAML configuration file")
 	flag.BoolVar(&debug, "debug", false, "Set debug logging")
 	flag.Parse()
-
-	// load the local configuration file
-	fd, err := ioutil.ReadFile(cfgFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = yaml.Unmarshal(fd, &conf)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-	getConfFromEnv()
+	getConf()
 	exit := make(chan bool)
 	for i, run := range conf.Runs {
 		go run.start(i)
@@ -111,7 +102,7 @@ func (r Run) start(id int) {
 		go processNotifications(notifchan, done)
 		var wg sync.WaitGroup
 		for _, target := range r.Targets {
-			debugprint("scanning target %s", target)
+			log.Printf("[info] run %d starting scan of target %q", id, target)
 			id, err := r.scan(target)
 			debugprint("got scan id %s", id)
 			if err != nil {
@@ -235,7 +226,30 @@ func debugprint(format string, a ...interface{}) {
 	}
 }
 
-func getConfFromEnv() {
+// getConf first read the configuration from a local YAML file then overrides it
+// with the content of the TLSOBS_RUNNER_CONF var (which much contain a full yaml file
+// encoded in base64), and then overrides the SMTP settings with various SMTP env var
+func getConf() {
+	// load the local configuration file
+	fd, err := ioutil.ReadFile(cfgFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = yaml.Unmarshal(fd, &conf)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	if os.Getenv("TLSOBS_RUNNER_CONF") != "" {
+		b64conf := os.Getenv("TLSOBS_RUNNER_CONF")
+		yamlconf, err := base64.StdEncoding.DecodeString(b64conf)
+		if err != nil {
+			log.Printf("[error] failed to read yaml configuration from env variable: %v", err)
+		}
+		err = yaml.Unmarshal(yamlconf, &conf)
+		if err != nil {
+			log.Printf("[error] failed to parse yaml configuration from env variable: %v", err)
+		}
+	}
 	if os.Getenv("TLSOBS_RUNNER_SMTP_HOST") != "" {
 		conf.Smtp.Host = os.Getenv("TLSOBS_RUNNER_SMTP_HOST")
 	}

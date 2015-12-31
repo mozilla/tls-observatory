@@ -109,7 +109,7 @@ func (r Run) AssertAnalysis(a Assertion, results database.Scan, cert certificate
 			continue
 		}
 		if _, ok := worker.AvailableWorkers[analyzer]; !ok {
-			log.Printf("[error] analyzer %q not found\n", analyzer)
+			log.Printf("[error] analyzer %q not found", analyzer)
 			return
 		}
 		runner := worker.AvailableWorkers[analyzer].Runner

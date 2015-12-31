@@ -37,6 +37,22 @@ applications versions: one for the api, and one for the scanner. Use the JSON
 templates provided in `tools/tls-observatory-api-elasticbeanstalk.json` and
 `tools/tls-observatory-scanner-elasticbeanstalk.json`. 
 
+## Configuration
+
+### tlsobs-runner
+Runs regular tests against target sites and sends notifications.
+
+See `conf/runnel.yaml` for an example of configuration. The configuration can
+also be provided by environment variables:
+
+* TLSOBS_RUNNER_CONF can contain a full version of the runnel.yaml file encoded
+  in base64. It overrides the local conf file if set.
+
+* TLSOBS_RUNNER_SMTP_HOST, TLSOBS_RUNNER_SMTP_PORT, TLSOBS_RUNNER_SMTP_FROM,
+  TLSOBS_RUNNER_SMTP_AUTH_USER and TLSOBS_RUNNER_SMTP_AUTH_PASS can be set to
+  define specific SMTP settings that override both local conf and
+  TLSOBS_RUNNER_CONF.
+
 ##Authors##
 
  * Dimitris Bachtis
