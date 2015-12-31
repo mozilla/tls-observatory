@@ -45,50 +45,21 @@ func processNotifications(notifchan chan Notification, done chan bool) {
 }
 
 func sendMail(rcpt string, body []byte) (err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			err = fmt.Errorf("sendMail-> %v", e)
-		}
-	}()
-	// Connect to the remote SMTP server.
-	c, err := smtp.Dial(conf.Smtp.Relay)
-	if err != nil {
-		panic(err)
+	var auth smtp.Auth
+	if conf.Smtp.Auth.User != "" && conf.Smtp.Auth.Pass != "" {
+		auth = smtp.PlainAuth("", conf.Smtp.Auth.User, conf.Smtp.Auth.Pass, conf.Smtp.Host)
 	}
-
-	// Set the sender and recipient first
-	err = c.Mail(conf.Smtp.From)
-	if err != nil {
-		panic(err)
-	}
-	err = c.Rcpt(rcpt)
-	if err != nil {
-		panic(err)
-	}
-	// Send the email body.
-	wc, err := c.Data()
-	if err != nil {
-		panic(err)
-	}
-	_, err = fmt.Fprintf(wc, `From: %s
+	err = smtp.SendMail(
+		fmt.Sprintf("%s:%d", conf.Smtp.Host, conf.Smtp.Port),
+		auth,
+		conf.Smtp.From,
+		[]string{rcpt},
+		[]byte(fmt.Sprintf(`From: %s
 To: %s
 Subject: TLS Observatory runner results
 Date: %s
 
-%s
-`, conf.Smtp.From, rcpt, time.Now().Format("Mon, 2 Jan 2006 15:04:05 -0700"), body)
-	if err != nil {
-		panic(err)
-	}
-	err = wc.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	// Send the QUIT command and close the connection.
-	err = c.Quit()
-	if err != nil {
-		panic(err)
-	}
+%s`, conf.Smtp.From, rcpt, time.Now().Format("Mon, 2 Jan 2006 15:04:05 -0700"), body)),
+	)
 	return
 }

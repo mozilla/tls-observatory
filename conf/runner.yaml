@@ -98,5 +98,9 @@ runs:
     #              - infosec@mozilla.com
 
 smtp:
-    relay: "gator1:25"
-    from: "cloudsec@mozilla.com"
+    host: gator1
+    port: 25
+    from: julien@linuxwall.info
+    #auth:
+    #    user: someuser
+    #    pass: somepass

@@ -25,8 +25,12 @@ import (
 type Configuration struct {
 	Runs []Run
 	Smtp struct {
-		Relay string
-		From  string
+		Host string
+		Port int
+		From string
+		Auth struct {
+			User, Pass string
+		}
 	}
 }
 type Run struct {
