@@ -113,7 +113,7 @@ func (r Run) AssertAnalysis(a Assertion, results database.Scan, cert certificate
 			return
 		}
 		runner := worker.AvailableWorkers[analyzer].Runner
-		pass, body, err := runner.(worker.HasAssert).Assert(ran.Result, []byte(a.Analysis.Result))
+		pass, body, err := runner.(worker.HasAssertor).Assertor(ran.Result, []byte(a.Analysis.Result))
 		if err != nil {
 			log.Printf("[error] analyzer %q failed with error %v", analyzer, err)
 			return

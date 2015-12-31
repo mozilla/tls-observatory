@@ -601,7 +601,7 @@ func extra(s1, s2 []string) (extra []string) {
 	return
 }
 
-func (e eval) PrintAnalysis(r []byte) (results []string, err error) {
+func (e eval) AnalysisPrinter(r []byte) (results []string, err error) {
 	var (
 		eval           EvaluationResults
 		previousissues []string
@@ -639,7 +639,7 @@ func (e eval) PrintAnalysis(r []byte) (results []string, err error) {
 	return
 }
 
-func (e eval) Assert(evresults, assertresults []byte) (pass bool, body []byte, err error) {
+func (e eval) Assertor(evresults, assertresults []byte) (pass bool, body []byte, err error) {
 	var evres, assertres EvaluationResults
 	err = json.Unmarshal(evresults, &evres)
 	if err != nil {
