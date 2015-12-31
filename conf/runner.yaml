@@ -57,8 +57,7 @@ runs:
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "intermediate"}'
-      # daily at 6am
-      cron: "0 6 * * *"
+      cron: "0 12 * * *"
       notifications:
           email:
               recipients:
@@ -72,8 +71,7 @@ runs:
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "old"}'
-      # every 15 minutes
-      cron: "*/15 * * * *"
+      cron: "0 12 * * *"
       notifications:
           email:
               recipients:
