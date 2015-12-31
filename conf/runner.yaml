@@ -96,7 +96,7 @@ runs:
         - certificate:
             validity: 
                 notafter: ">30d"
-      cron: "0 17 * * *"
+      cron: "0 18 * * *"
       notifications:
           email:
               recipients:
@@ -110,7 +110,7 @@ runs:
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "old"}'
-      cron: "0 17 * * *"
+      cron: "0 19 * * *"
       notifications:
           email:
               recipients:
@@ -125,7 +125,7 @@ runs:
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "modern"}'
-      cron: "* * * * *"
+      cron: "0 0 * * *"
       notifications:
           email:
               recipients:
