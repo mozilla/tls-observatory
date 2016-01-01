@@ -105,3 +105,19 @@ GROUP BY date_trunc('year', not_valid_after),
 ORDER BY date_trunc('year', not_valid_after) ASC,
          date_trunc('month', not_valid_after) ASC;
 ```
+
+### List issuer, subject and SAN of Mozilla|Firefox certs not issued by Digicert
+
+```sql
+SELECT  id,
+        issuer->'o'->>0 AS Issuer,
+        subject->>'cn' AS Subject,
+        san AS SubjectAltName
+FROM  certificates,
+      jsonb_array_elements_text(x509_subjectAltName) as san
+WHERE jsonb_typeof(x509_subjectAltName) != 'null'
+      AND ( subject#>>'{cn}' ~ '\.(firefox|mozilla)\.'
+            OR san ~ '\.(firefox|mozilla)\.')
+      AND cast(issuer#>>'{o}' AS text) NOT LIKE '%DigiCert Inc%'
+ORDER BY id ASC;
+```
