@@ -1,134 +1,103 @@
-// this short program iterate over the certificates index
-// to extract unique domains and IPs from recorded certificates
-// and write them into two files in /tmp/
-
-// Julien Vehent - Feb. 2015
 package main
 
 import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"strings"
 	"time"
 
-	elastigo "github.com/mattbaird/elastigo/lib"
-	"github.com/streadway/amqp"
+	"github.com/mozilla/tls-observatory/database"
 )
 
-// limit the structs to just the amount of data we need: domain names and CA status
-type StoredCertificate struct {
-	Subject          certSubject    `json:"subject"`
-	X509v3Extensions certExtensions `json:"x509v3Extensions"`
-	CA               bool           `json:"ca"`
-}
-type certSubject struct {
-	CommonName string `json:"cn"`
-}
-type certExtensions struct {
-	SubjectAlternativeName []string `json:"subjectAlternativeName"`
+type scan struct {
+	ID string `json:"scan_id"`
 }
 
 func main() {
-	var (
-		esaddr, mqaddr, window string
-		es                     *elastigo.Conn
-		from, to               time.Time
-	)
-	flag.StringVar(&esaddr, "e", "localhost:9200", "Address of the ElasticSearch database")
-	flag.StringVar(&mqaddr, "m", "amqp://guest:guest@localhost:5672/", "Address of the RabbitMQ broker")
-	flag.StringVar(&window, "w", "360h", "Time window to cover, in hours (360h = 15 days)")
+	var observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
 	flag.Parse()
-
-	es = elastigo.NewConn()
-	es.Domain = esaddr
-
-	mqconn, err := amqp.Dial(mqaddr)
+	db, err := database.RegisterConnection(
+		os.Getenv("TLSOBS_POSTGRESDB"),
+		os.Getenv("TLSOBS_POSTGRESUSER"),
+		os.Getenv("TLSOBS_POSTGRESPASS"),
+		os.Getenv("TLSOBS_POSTGRES"),
+		"require")
+	defer db.Close()
 	if err != nil {
 		panic(err)
 	}
-	defer mqconn.Close()
-
-	mqch, err := mqconn.Channel()
-	if err != nil {
-		panic(err)
-	}
-	defer mqch.Close()
-
-	dctr := 0
-	domains := make(map[string]int)
-
-	// start the search at now - window, iterate over all certs by chunks of 5 minutes,
-	// and build a list of unique domains
-	dur, err := time.ParseDuration(window)
-	if err != nil {
-		panic(err)
-	}
-	to = time.Now().Add(-dur)
+	// batch side: do 100 certs at a time
+	limit := 100
+	batch := 0
+	var donedomains []string
 	for {
-		// advance the window by 5 minutes
-		from = to
-		to = from.Add(5 * time.Minute)
-		if from.After(time.Now()) {
-			break
+		fmt.Printf("\nProcessing batch %d to %d\n", batch*limit, batch*limit+limit)
+		rows, err := db.Query(`	SELECT domains
+					FROM certificates INNER JOIN trust ON (trust.cert_id=certificates.id)
+					WHERE is_ca='false' AND trusted_mozilla='true'
+					ORDER BY certificates.id ASC LIMIT $1 OFFSET $2`, limit, batch*limit)
+		if rows != nil {
+			defer rows.Close()
 		}
-		// ES query date is in format 2015-02-12T07:45:22
-		filter := fmt.Sprintf(`{
-			"from" : 0, "size" : 100000,
-			"query": {
-				"range": {
-					"lastSeenTimestamp": {
-						"from": "%s",
-						"to": "%s"
-					}
-				}
-			}
-		}`, from.Format("2006-01-02T15:04:05"), to.Format("2006-01-02T15:04:05"))
-		res, err := es.Search("observer", "certificate", nil, filter)
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("Error while retrieving certs: '%v'", err))
 		}
-		fmt.Println(len(res.Hits.Hits), "records found for time window [", from.String(), ",", to.String(), "]")
-		for _, storedCert := range res.Hits.Hits {
-			cert := new(StoredCertificate)
-			err = json.Unmarshal(*storedCert.Source, cert)
+		i := 0
+		for rows.Next() {
+			i++
+			var domains string
+			err = rows.Scan(&domains)
 			if err != nil {
-				panic(err)
-			}
-			// skip certificate authorities
-			if cert.CA {
+				fmt.Println("error while retrieving domains:", err)
 				continue
 			}
-			// build a list of domains from the certs SAN records and its subject.CN
-			// then scan the ones that haven't been scanned yet
-			dlist := cert.X509v3Extensions.SubjectAlternativeName
-			dlist = append(dlist, cert.Subject.CommonName)
-			for _, d := range dlist {
-				// if a wildcard cert is found, replace it with a scan
-				// of the domain itself, and another one of its www host
-				if len(d) > 2 && d[0:2] == "*." {
-					d = d[2:]
-					dlist = append(dlist, "www."+d)
+			for _, domain := range strings.Split(domains, ",") {
+				domain = strings.TrimSpace(domain)
+				if domain == "" {
+					continue
 				}
-				if _, ok := domains[d]; !ok {
-					err = mqch.Publish(
-						"amq.direct", // exchange
-						"scan_ready", // routing key
-						false,        // mandatory
-						false,
-						amqp.Publishing{
-							DeliveryMode: amqp.Persistent,
-							ContentType:  "text/plain",
-							Body:         []byte(d),
-						})
-					if err != nil {
-						panic(err)
-					}
-					dctr++
-					domains[d] = dctr
-					fmt.Println("send domain", d, "to scan_ready")
+				if domain[0] == '*' {
+					domain = "www" + domain[1:]
 				}
+				if contains(donedomains, domain) {
+					continue
+				}
+				resp, err := http.Post(*observatory+"/api/v1/scan?target="+domain, "application/json", nil)
+				if err != nil {
+					panic(err)
+				}
+				defer resp.Body.Close()
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					panic(err)
+				}
+				var scan scan
+				err = json.Unmarshal(body, &scan)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Printf("Started scan %s on %s - %s/api/v1/results?id=%s\n", scan.ID, domain, *observatory, scan.ID)
+				donedomains = append(donedomains, domain)
+				time.Sleep(500 * time.Millisecond)
 			}
 		}
+		if i == 0 {
+			fmt.Println("done!")
+			break
+		}
+		batch++
 	}
-	fmt.Println("Done.", dctr, "domains sent to scanning queue.")
+}
+
+func contains(list []string, test string) bool {
+	for _, item := range list {
+		if item == test {
+			return true
+		}
+	}
+	return false
 }
