@@ -100,7 +100,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - cloudops@mozilla.com
+                  - cloud-ops@mozilla.com
 
     - targets:
         - download.mozilla.org
