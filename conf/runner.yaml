@@ -1,4 +1,5 @@
 runs:
+    # Cloud Services
     - targets:
         # absearch
         - search.services.mozilla.com
@@ -102,6 +103,7 @@ runs:
               recipients:
                   - cloud-ops@mozilla.com
 
+    # Cloud Services product delivery, must remain on the old config for XPSP2
     - targets:
         - download.mozilla.org
         - download-installer.cdn.mozilla.net
@@ -116,8 +118,12 @@ runs:
               recipients:
                   - cloudsec@mozilla.com
 
+    # Julien's stuff
     - targets:
         - jve.linuxwall.info
+        - vehent.org
+        - uptoke.net
+        - mig.ninja
       assertions:
         - certificate:
             validity: 
@@ -131,24 +137,22 @@ runs:
               recipients:
                   - julien@linuxwall.info
 
-    #- targets:
-    #    - mana.mozilla.org
-    #    - public.etherpad-mozilla.org
-    #    - irccloud.mozilla.com
-    #    - discourse.mozilla-community.org
-    #    - api.mig.mozilla.org
-    #  assertions:
-    #    - certificate:
-    #        validity: 
-    #            notAfter: ">30d"
-    #    - analysis:
-    #        analyzer: mozillaEvaluationWorker
-    #        result: '{"level": "intermediate"}'
-    #  cron: "* * * * *"
-    #  notifications:
-    #      email:
-    #          recipients:
-    #              - infosec@mozilla.com
+    # Enterprise information security stuff
+    - targets:
+        # MIG's public API
+        - api.mig.mozilla.org
+      assertions:
+        - certificate:
+            validity: 
+                notAfter: ">15d"
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "modern"}'
+      cron: "13 13 * * *"
+      notifications:
+          email:
+              recipients:
+                  - infosec+tlsobs@mozilla.com
 
 smtp:
     host: gator1
