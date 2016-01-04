@@ -136,6 +136,24 @@ runs:
           email:
               recipients:
                   - julien@linuxwall.info
+                  
+  # kang's stuff
+    - targets:
+        - insecure.ws
+        - random.tzib.net
+        - lesroutesduchocolat.fr
+    assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "modern"}'
+      cron: "0 0 * * *"
+      notifications:
+          email:
+              recipients:
+                  - hostmaster@insecure.ws
 
     # Enterprise information security stuff
     - targets:
