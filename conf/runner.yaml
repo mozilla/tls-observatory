@@ -16,6 +16,11 @@ runs:
         - versioncheck-bg.addons.mozilla.org
         - versioncheck.addons.mozilla.org
 
+        # Crash report (socorro)
+        - crash-stats.mozilla.com
+        - crash-reports-xpsp2.mozilla.com
+        - crash-reports.mozilla.com
+
         # everything.me
         - appsearch.prod.mozaws.net
         - geodude.prod.mozaws.net
