@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
@@ -44,9 +45,47 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	db := val.(*pg.DB)
 
 	domain := r.FormValue("target")
-
 	if validateDomain(domain) {
 
+		rescan := false
+		if r.FormValue("rescan") == "true" {
+			rescan = true
+		}
+
+		previd, prevtime, err := db.GetLastScanTimeForTarget(domain)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"domain": domain,
+				"error":  err.Error(),
+			}).Error("Could not get last scan for target")
+			err = errors.New("Could not get last scan for target")
+			return
+		}
+
+		if previd != -1 { // check if previous scan exists
+			if time.Now().UTC().Sub(prevtime).Hours() <= 24 {
+				if !rescan {
+					// no rescan requested so return previous scan in any case
+					// this includes the rate limiting with no rescan case
+					resp := fmt.Sprintf(`{"scan_id":"%d"}`, previd)
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					fmt.Fprint(w, resp)
+					return
+				}
+
+				// forced rescan has been requested
+				if time.Now().UTC().Sub(prevtime).Minutes() <= 3 { // rate limit scan requests for same target
+					if rescan {
+						w.WriteHeader(429) // 429 http status code is not exported ( https://codereview.appspot.com/7678043/ )
+						fmt.Fprint(w, "")
+						return
+					}
+				}
+			}
+		}
+
+		//initiating a new scan
 		scan, err := db.NewScan(domain, -1) //no replay
 		if err != nil {
 			log.WithFields(logrus.Fields{
@@ -63,6 +102,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, resp)
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "")
 	}
 }
 
