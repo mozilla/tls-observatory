@@ -15,6 +15,8 @@ import (
 	"github.com/mozilla/tls-observatory/logger"
 )
 
+// ScanHandler handles the /scans endpoint of the api
+// It initiates new scans and returns created scans ids to be used against other endpoints.
 func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	var (
 		status int
@@ -106,6 +108,8 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ResultHandler handles the results endpoint of the api.
+// It has a scan id as input and returns its results ( if available )
 func ResultHandler(w http.ResponseWriter, r *http.Request) {
 
 	var (
@@ -185,6 +189,8 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(jsScan))
 }
 
+// CertificateHandler handles the /certificate endpoint of the api.
+// It queries the database for the provided cert ids and returns results in JSON.
 func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var (
