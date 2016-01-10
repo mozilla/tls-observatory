@@ -15,6 +15,8 @@ import (
 	"github.com/mozilla/tls-observatory/logger"
 )
 
+var scanRefreshRate float64
+
 // ScanHandler handles the /scans endpoint of the api
 // It initiates new scans and returns created scans ids to be used against other endpoints.
 func ScanHandler(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +67,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if previd != -1 { // check if previous scan exists
-			if time.Now().UTC().Sub(prevtime).Hours() <= 24 {
+			if time.Now().UTC().Sub(prevtime).Hours() <= scanRefreshRate {
 				if !rescan {
 					// no rescan requested so return previous scan in any case
 					// this includes the rate limiting with no rescan case

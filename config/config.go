@@ -10,14 +10,15 @@ import (
 
 type Config struct {
 	General struct {
-		Enable         bool
-		Postgres       string
-		PostgresDB     string
-		PostgresUser   string
-		PostgresPass   string
-		PostgresUseTLS bool
-		CipherscanPath string
-		MaxProc        int
+		Enable          bool
+		Postgres        string
+		PostgresDB      string
+		PostgresUser    string
+		PostgresPass    string
+		PostgresUseTLS  bool
+		CipherscanPath  string
+		ScanRefreshRate int
+		MaxProc         int
 	}
 	TrustStores struct {
 		UbuntuTS    string
