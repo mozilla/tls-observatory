@@ -121,3 +121,12 @@ WHERE jsonb_typeof(x509_subjectAltName) != 'null'
       AND cast(issuer#>>'{o}' AS text) NOT LIKE '%DigiCert Inc%'
 ORDER BY id ASC;
 ```
+
+### Find count of targets that support the SEED-SHA ciphersuite
+
+```sql
+SELECT COUNT(DISTINCT(target))
+FROM scans, jsonb_array_elements(conn_info->'ciphersuite') as ciphersuites
+WHERE jsonb_typeof(conn_info) != 'null'
+AND ciphersuites->>'cipher'='SEED-SHA';
+```
