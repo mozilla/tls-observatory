@@ -66,6 +66,8 @@ CREATE TABLE scans  (
 );
 CREATE INDEX scans_completion_attempts_idx ON scans(completion_perc, attempts);
 CREATE INDEX scans_ack_idx ON scans(ack);
+CREATE INDEX scans_target_idx ON scans(target);
+CREATE INDEX scans_timestamp_idx ON scans(timestamp);
 
 CREATE TABLE analysis  (
 	id                         	serial primary key,
