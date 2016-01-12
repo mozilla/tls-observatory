@@ -66,8 +66,10 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		now := time.Now().UTC()
+
 		if previd != -1 { // check if previous scan exists
-			if time.Now().UTC().Sub(prevtime).Hours() <= scanRefreshRate {
+			if now.Sub(prevtime).Hours() <= scanRefreshRate {
 				if !rescan {
 					// no rescan requested so return previous scan in any case
 					// this includes the rate limiting with no rescan case
@@ -79,10 +81,11 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// forced rescan has been requested
-				if time.Now().UTC().Sub(prevtime).Minutes() <= 3 { // rate limit scan requests for same target
+				if now.Sub(prevtime).Minutes() <= 3 { // rate limit scan requests for same target
 					if rescan {
 						w.WriteHeader(429) // 429 http status code is not exported ( https://codereview.appspot.com/7678043/ )
-						fmt.Fprint(w, "")
+						w.Header().Set("Content-Type", "text/html")
+						fmt.Fprint(w, fmt.Sprintf("Last scan for target %s initiated %s ago.\nPlease try again in %s.\n", domain, now.Sub(prevtime), 3*time.Minute-now.Sub(prevtime)))
 						return
 					}
 				}
