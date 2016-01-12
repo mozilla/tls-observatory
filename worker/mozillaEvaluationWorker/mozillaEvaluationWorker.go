@@ -236,11 +236,6 @@ func isOld(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 	for _, cs := range c.CipherSuite {
 		allCiphers = append(allCiphers, cs.Cipher)
 
-		if !contains(old.Ciphers, cs.Cipher) {
-			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
-			isOld = false
-		}
-
 		if cs.Cipher == "DES-CBC3-SHA" {
 			has3DES = true
 		}
@@ -280,7 +275,7 @@ func isOld(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 
 	extraCiphers := extra(old.Ciphers, allCiphers)
 	if len(extraCiphers) > 0 {
-		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
+		failures = append(failures, fmt.Sprintf("remove ciphersuites %s", strings.Join(extraCiphers, ", ")))
 		isOld = false
 	}
 
@@ -340,11 +335,6 @@ func isIntermediate(c connection.Stored, cert certificate.Certificate) (bool, []
 	for _, cs := range c.CipherSuite {
 		allCiphers = append(allCiphers, cs.Cipher)
 
-		if !contains(intermediate.Ciphers, cs.Cipher) {
-			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
-			isIntermediate = false
-		}
-
 		for _, proto := range cs.Protocols {
 			if !contains(allProtos, proto) {
 				allProtos = append(allProtos, proto)
@@ -376,7 +366,7 @@ func isIntermediate(c connection.Stored, cert certificate.Certificate) (bool, []
 
 	extraCiphers := extra(intermediate.Ciphers, allCiphers)
 	if len(extraCiphers) > 0 {
-		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
+		failures = append(failures, fmt.Sprintf("remove ciphersuites %s", strings.Join(extraCiphers, ", ")))
 		isIntermediate = false
 	}
 
@@ -431,11 +421,6 @@ func isModern(c connection.Stored, cert certificate.Certificate) (bool, []string
 	for _, cs := range c.CipherSuite {
 		allCiphers = append(allCiphers, cs.Cipher)
 
-		if !contains(modern.Ciphers, cs.Cipher) {
-			failures = append(failures, fmt.Sprintf("remove cipher %s", cs.Cipher))
-			isModern = false
-		}
-
 		for _, proto := range cs.Protocols {
 			if !contains(allProtos, proto) {
 				allProtos = append(allProtos, proto)
@@ -467,7 +452,7 @@ func isModern(c connection.Stored, cert certificate.Certificate) (bool, []string
 
 	extraCiphers := extra(modern.Ciphers, allCiphers)
 	if len(extraCiphers) > 0 {
-		failures = append(failures, fmt.Sprintf("remove ciphers %s", strings.Join(extraCiphers, ", ")))
+		failures = append(failures, fmt.Sprintf("remove ciphersuites %s", strings.Join(extraCiphers, ", ")))
 		isModern = false
 	}
 
