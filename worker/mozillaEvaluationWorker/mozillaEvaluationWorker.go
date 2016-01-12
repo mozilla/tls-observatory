@@ -53,8 +53,8 @@ type ServerSideTLSJson struct {
 // Configuration represents configurations levels declared by the Mozilla server-side-tls
 // see https://wiki.mozilla.org/Security/Server_Side_TLS
 type Configuration struct {
-	Ciphersuite           string   `json:"ciphersuite"`
-	Ciphers               []string `json:"ciphers"`
+	OpenSSLCiphersuites   string   `json:"openssl_ciphersuites"`
+	Ciphersuites          []string `json:"ciphersuites"`
 	TLSVersions           []string `json:"tls_versions"`
 	TLSCurves             []string `json:"tls_curves"`
 	CertificateTypes      []string `json:"certificate_types"`
@@ -108,7 +108,7 @@ func Evaluate(connInfo connection.Stored, cert certificate.Certificate) ([]byte,
 	if isOldLvl {
 		results.Level = "old"
 
-		ord, ordres := isOrdered(connInfo, old.Ciphers, "old")
+		ord, ordres := isOrdered(connInfo, old.Ciphersuites, "old")
 		if !ord {
 			results.Failures["old"] = append(results.Failures["old"], ordres...)
 		}
@@ -118,7 +118,7 @@ func Evaluate(connInfo connection.Stored, cert certificate.Certificate) ([]byte,
 	if isInterLvl {
 		results.Level = "intermediate"
 
-		ord, ordres := isOrdered(connInfo, intermediate.Ciphers, "intermediate")
+		ord, ordres := isOrdered(connInfo, intermediate.Ciphersuites, "intermediate")
 		if !ord {
 			results.Failures["intermediate"] = append(results.Failures["intermediate"], ordres...)
 		}
@@ -128,7 +128,7 @@ func Evaluate(connInfo connection.Stored, cert certificate.Certificate) ([]byte,
 	if isModernLvl {
 		results.Level = "modern"
 
-		ord, ordres := isOrdered(connInfo, modern.Ciphers, "modern")
+		ord, ordres := isOrdered(connInfo, modern.Ciphersuites, "modern")
 		if !ord {
 			results.Failures["modern"] = append(results.Failures["modern"], ordres...)
 		}
@@ -183,7 +183,7 @@ func isBad(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 
 	}
 
-	badCiphers := extra(old.Ciphers, allCiphers)
+	badCiphers := extra(old.Ciphersuites, allCiphers)
 	if len(badCiphers) > 0 {
 		for _, c := range badCiphers {
 			failures = append(failures, fmt.Sprintf("remove cipher %s", c))
@@ -273,13 +273,13 @@ func isOld(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 		isOld = false
 	}
 
-	extraCiphers := extra(old.Ciphers, allCiphers)
+	extraCiphers := extra(old.Ciphersuites, allCiphers)
 	if len(extraCiphers) > 0 {
 		failures = append(failures, fmt.Sprintf("remove ciphersuites %s", strings.Join(extraCiphers, ", ")))
 		isOld = false
 	}
 
-	missingCiphers := extra(allCiphers, old.Ciphers)
+	missingCiphers := extra(allCiphers, old.Ciphersuites)
 	if len(missingCiphers) > 0 {
 		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
 	}
@@ -364,13 +364,13 @@ func isIntermediate(c connection.Stored, cert certificate.Certificate) (bool, []
 		isIntermediate = false
 	}
 
-	extraCiphers := extra(intermediate.Ciphers, allCiphers)
+	extraCiphers := extra(intermediate.Ciphersuites, allCiphers)
 	if len(extraCiphers) > 0 {
 		failures = append(failures, fmt.Sprintf("remove ciphersuites %s", strings.Join(extraCiphers, ", ")))
 		isIntermediate = false
 	}
 
-	missingCiphers := extra(allCiphers, intermediate.Ciphers)
+	missingCiphers := extra(allCiphers, intermediate.Ciphersuites)
 	if len(missingCiphers) > 0 {
 		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
 	}
@@ -450,13 +450,13 @@ func isModern(c connection.Stored, cert certificate.Certificate) (bool, []string
 		isModern = false
 	}
 
-	extraCiphers := extra(modern.Ciphers, allCiphers)
+	extraCiphers := extra(modern.Ciphersuites, allCiphers)
 	if len(extraCiphers) > 0 {
 		failures = append(failures, fmt.Sprintf("remove ciphersuites %s", strings.Join(extraCiphers, ", ")))
 		isModern = false
 	}
 
-	missingCiphers := extra(allCiphers, modern.Ciphers)
+	missingCiphers := extra(allCiphers, modern.Ciphersuites)
 	if len(missingCiphers) > 0 {
 		failures = append(failures, fmt.Sprintf("consider adding ciphers %s", strings.Join(missingCiphers, ", ")))
 	}
