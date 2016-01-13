@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -77,7 +78,7 @@ func main() {
 	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/runner.yaml", "YAML configuration file")
 	flag.BoolVar(&debug, "debug", false, "Set debug logging")
 	flag.Parse()
-	getConf()
+	conf = getConf(cfgFile)
 	exit := make(chan bool)
 	for i, run := range conf.Runs {
 		go run.start(i)
@@ -179,7 +180,7 @@ func (r Run) evaluate(id string, notifchan chan Notification, wg *sync.WaitGroup
 			debugprint("scan id %s completed", id)
 			break
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 	debugprint("getting certificate id %d", results.Cert_id)
 	if !results.Has_tls && results.Cert_id < 1 {
@@ -229,44 +230,47 @@ func debugprint(format string, a ...interface{}) {
 // getConf first read the configuration from a local YAML file then overrides it
 // with the content of the TLSOBS_RUNNER_CONF var (which much contain a full yaml file
 // encoded in base64), and then overrides the SMTP settings with various SMTP env var
-func getConf() {
+func getConf(cfg string) (c Configuration) {
 	// load the local configuration file
-	fd, err := ioutil.ReadFile(cfgFile)
+	fd, err := ioutil.ReadFile(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = yaml.Unmarshal(fd, &conf)
+	err = yaml.Unmarshal(fd, &c)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-	if os.Getenv("TLSOBS_RUNNER_CONF") != "" {
-		b64conf := os.Getenv("TLSOBS_RUNNER_CONF")
-		yamlconf, err := base64.StdEncoding.DecodeString(b64conf)
-		if err != nil {
-			log.Printf("[error] failed to read yaml configuration from env variable: %v", err)
-		}
-		err = yaml.Unmarshal(yamlconf, &conf)
-		if err != nil {
-			log.Printf("[error] failed to parse yaml configuration from env variable: %v", err)
+	// iterate over notifications in targets and unbase64 the values
+	for i, run := range c.Runs {
+		for j, rcpt := range run.Notifications.Email.Recipients {
+			if len(rcpt) < 5 || rcpt[0:4] != "b64:" {
+				continue
+			}
+			data, err := base64.StdEncoding.DecodeString(rcpt[4:])
+			if err != nil {
+				log.Fatalf("error while decoding b64 recipient: %v", err)
+			}
+			c.Runs[i].Notifications.Email.Recipients[j] = fmt.Sprintf("%s", bytes.TrimRight(data, "\n"))
 		}
 	}
 	if os.Getenv("TLSOBS_RUNNER_SMTP_HOST") != "" {
-		conf.Smtp.Host = os.Getenv("TLSOBS_RUNNER_SMTP_HOST")
+		c.Smtp.Host = os.Getenv("TLSOBS_RUNNER_SMTP_HOST")
 	}
 	if os.Getenv("TLSOBS_RUNNER_SMTP_PORT") != "" {
 		var err error
-		conf.Smtp.Port, err = strconv.Atoi(os.Getenv("TLSOBS_RUNNER_SMTP_PORT"))
+		c.Smtp.Port, err = strconv.Atoi(os.Getenv("TLSOBS_RUNNER_SMTP_PORT"))
 		if err != nil {
 			log.Printf("[error] failed to read smtp port from env variable: %v", err)
 		}
 	}
 	if os.Getenv("TLSOBS_RUNNER_SMTP_FROM") != "" {
-		conf.Smtp.From = os.Getenv("TLSOBS_RUNNER_SMTP_FROM")
+		c.Smtp.From = os.Getenv("TLSOBS_RUNNER_SMTP_FROM")
 	}
 	if os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_USER") != "" {
-		conf.Smtp.Auth.User = os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_USER")
+		c.Smtp.Auth.User = os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_USER")
 	}
 	if os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS") != "" {
-		conf.Smtp.Auth.Pass = os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS")
+		c.Smtp.Auth.Pass = os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS")
 	}
+	return c
 }
