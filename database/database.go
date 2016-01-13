@@ -54,7 +54,7 @@ func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, 
 
 func (db *DB) NewScan(domain string, rplay int) (Scan, error) {
 
-	timestamp := time.Now()
+	timestamp := time.Now().UTC()
 
 	var id int64
 
@@ -69,6 +69,32 @@ func (db *DB) NewScan(domain string, rplay int) (Scan, error) {
 	}
 
 	return Scan{ID: id, Timestamp: timestamp, Replay: rplay}, nil
+}
+
+// GetLastScanTimeForTarget searches the database for the latest scan for a specific target.
+// It returns both the scan timestamp and the id of the scan to enable the api to
+// respond to clients with just one db query.
+func (db *DB) GetLastScanTimeForTarget(target string) (int64, time.Time, error) {
+
+	var (
+		id int64
+		t  time.Time
+	)
+
+	row := db.QueryRow(`SELECT id, timestamp
+			    FROM scans
+			    WHERE target=$1 ORDER BY timestamp DESC LIMIT 1`, target)
+
+	err := row.Scan(&id, &t)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return -1, time.Now(), nil
+		} else {
+			return -1, time.Now(), err
+		}
+	}
+	return id, t, nil
 }
 
 func (db *DB) GetScanByID(id int64) (Scan, error) {

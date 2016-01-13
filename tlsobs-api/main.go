@@ -53,6 +53,8 @@ func main() {
 	db.SetMaxOpenConns(runtime.NumCPU() * 10)
 	db.SetMaxIdleConns(2)
 
+	scanRefreshRate = float64(conf.General.ScanRefreshRate)
+
 	// wait for clients
 	err = http.ListenAndServe(":8083", Adapt(router, AddDB(db)))
 
