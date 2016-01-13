@@ -79,5 +79,6 @@ go_vendor_dependencies:
 
 test:
 	$(GO) test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
+	$(GO) test github.com/mozilla/tls-observatory/tlsobs-runner
 
 .PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs

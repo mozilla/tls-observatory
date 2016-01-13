@@ -101,12 +101,301 @@ runs:
       assertions:
         - certificate:
             validity: 
-                notafter: ">30d"
-      cron: "0 18 * * *"
+                notafter: ">35d"
+      cron: "0 18 2 * *"
       notifications:
           email:
               recipients:
                   - cloud-ops@mozilla.com
+
+    # absearch paging
+    - targets:
+        - search.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # AMO paging
+    - targets:
+        - addon.mozilla.org
+        - addons.mozilla.org
+        - blocklist.addons.mozilla.org
+        - builder.addons.mozilla.org
+        - controller-review.apk.firefox.com
+        - controller.apk.firefox.com
+        - services.addons.mozilla.org
+        - static.addons.mozilla.net
+        - versioncheck-bg.addons.mozilla.org
+        - versioncheck.addons.mozilla.org
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:bWFya2V0cGxhY2VAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Crash report paging
+    - targets:
+        - crash-stats.mozilla.com
+        - crash-reports-xpsp2.mozilla.com
+        - crash-reports.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloud-ops@mozilla.com
+                  - jschneider@mozilla.com
+
+    # everything.me paging
+    - targets:
+        - appsearch.prod.mozaws.net
+        - geodude.prod.mozaws.net
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:bG9jYXRpb25AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Find my device paging
+    - targets:
+        - find.firefox.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:Zm1kQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
+
+    # Fxa paging
+    - targets:
+        - accounts.firefox.com
+        - api.accounts.firefox.com
+        - oauth.accounts.firefox.com
+        - profile.accounts.firefox.com
+        - verifier.accounts.firefox.com
+        - firefoxusercontent.com
+        - mozillausercontent.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:ZnhhQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
+
+    # Hello paging
+    - targets:
+        - hello.firefox.com
+        - loop.services.mozilla.com
+        - msisdn.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:aGVsbG9AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Input paging
+    - targets:
+        - input.mozilla.org
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Locations paging
+    - targets:
+        - location.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:bG9jYXRpb25AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Marketplace paging
+    - targets:
+        - marketplace.firefox.com
+        - receiptcheck.marketplace.firefox.com
+        - static.marketplace.firefox.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:bWFya2V0cGxhY2VAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Metrics paging
+    - targets:
+        - metrics.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Loads paging
+    - targets:
+        - loads.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloud-ops@mozilla.com
+
+    # Persona paging
+    - targets:
+        - browserid.org
+        - firefoxos.persona.org
+        - persona.org
+        - static.login.persona.org
+        - verifier.login.persona.org
+        - www.browserid.org
+        - www.persona.org
+        - yahoo.login.persona.org
+        - gmail.login.persona.org
+        - login.anosrep.org
+        - login.mozilla.org
+        - login.persona.org
+        - diresworb.org
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:cGVyc29uYUBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
+    # Product Delivery paging
+    - targets:
+        - download.mozilla.org
+        - download-installer.cdn.mozilla.net
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:cHJvZHVjdC1kZWxpdmVyeUBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
+    # Push paging
+    - targets:
+        - push.services.mozilla.com
+        - push1.push.hello.firefox.com
+        - updates.push.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:c2ltcGxlcHVzaEBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
+    # Sync paging
+    - targets:
+        - token.services.mozilla.com
+        - sync-264-us-west-2.sync.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:c3luY0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
+
+    # Tiles paging
+    - targets:
+        - tiles.cdn.mozilla.net
+        - tiles.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:dGlsZXNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # TLS Observatory paging
+    - targets:
+        - tls-observatory.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloudsec@mozilla.com
+
+    # Tracking protection paging
+    - targets:
+        - shavar.services.mozilla.com
+        - tracking.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "0 18 2 * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:c2hhdmFyQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
     # Cloud Services product delivery, must remain on the old config for XPSP2
     - targets:
@@ -142,12 +431,12 @@ runs:
               recipients:
                   - julien@linuxwall.info
                   
-  # kang's stuff
+    # kang's stuff
     - targets:
         - insecure.ws
         - random.tzib.net
         - lesroutesduchocolat.fr
-    assertions:
+      assertions:
         - certificate:
             validity:
                 notafter: ">14d"
@@ -167,7 +456,7 @@ runs:
       assertions:
         - certificate:
             validity: 
-                notAfter: ">15d"
+                notafter: ">15d"
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "modern"}'
