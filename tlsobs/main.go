@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -32,6 +33,7 @@ func main() {
 	var (
 		err     error
 		scan    scan
+		rescanP string
 		results database.Scan
 		resp    *http.Response
 		body    []byte
@@ -42,6 +44,7 @@ func main() {
 	}
 	var observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
 	var scanid = flag.String("scanid", "0", "View results from a previous scan instead of starting a new one")
+	var rescan = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
 	flag.Parse()
 	if *scanid != "0" {
 		goto getresults
@@ -51,7 +54,10 @@ func main() {
 		usage()
 		os.Exit(1)
 	}
-	resp, err = http.Post(*observatory+"/api/v1/scan?target="+flag.Arg(0), "application/json", nil)
+	if *rescan {
+		rescanP = "&rescan=true"
+	}
+	resp, err = http.Post(*observatory+"/api/v1/scan?target="+flag.Arg(0)+rescanP, "application/json", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -59,6 +65,9 @@ func main() {
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Scan failed. HTTP %d: %s", resp.StatusCode, body)
 	}
 	err = json.Unmarshal(body, &scan)
 	if err != nil {
