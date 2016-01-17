@@ -1,5 +1,12 @@
 # Mozilla TLS Observatory
 
+## Want to scan your sites?
+
+```bash
+$ go get -u github.com/mozilla/tls-observatory/tlsobs
+$ $GOPATH/bin/tlsobs mysite.example.net
+```
+
 ## Clone this repository
 
 ```bash
