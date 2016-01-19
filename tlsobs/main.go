@@ -74,7 +74,7 @@ func main() {
 		panic(err)
 	}
 	*scanid = scan.ID
-	fmt.Printf("Started scan %s - %s/api/v1/results?id=%s\n", *scanid, *observatory, *scanid)
+	fmt.Printf("Scanning %s (id %s)\n", flag.Arg(0), *scanid)
 getresults:
 	has_cert := false
 	for {
@@ -90,6 +90,12 @@ getresults:
 		err = json.Unmarshal(body, &results)
 		if err != nil {
 			panic(err)
+		}
+		if results.Complperc == 100 && !has_cert {
+			// completion is already 100% and we have not yet retrieved the cert,
+			// that means the results were cached. Display a message saying so.
+			fmt.Printf("Retrieving cached results from %s ago. To run a new scan, use '-r'.\n",
+				time.Now().Sub(results.Timestamp).String())
 		}
 		if results.Cert_id > 0 && !has_cert {
 			printCert(results.Cert_id, *observatory)
