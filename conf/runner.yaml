@@ -466,6 +466,32 @@ runs:
               recipients:
                   - infosec+tlsobs@mozilla.com
 
+    # TaskCluster stuff
+    - targets:
+        - auth.taskcluster.net
+        - aws-provisioner.taskcluster.net
+        - events.taskcluster.net
+        - hooks.taskcluster.net
+        - index.taskcluster.net
+        - purge-cache.taskcluster.net
+        - queue.taskcluster.net
+        - scheduler.taskcluster.net
+        - secrets.taskcluster.net
+        - taskcluster-github.herokuapp.com
+        - tools.taskcluster.net
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "intermediate"}'
+      cron: "0 0 * * *"
+      notifications:
+          email:
+              recipients:
+                  - jclaudius@mozilla.com
+
 smtp:
     host: gator1
     port: 25
