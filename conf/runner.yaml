@@ -453,13 +453,12 @@ runs:
     - targets:
         # MIG's public API
         - api.mig.mozilla.org
+        # Server Side TLS Configurations
+        - statics.tls.security.mozilla.org
       assertions:
         - certificate:
             validity: 
                 notafter: ">15d"
-        - analysis:
-            analyzer: mozillaEvaluationWorker
-            result: '{"level": "modern"}'
       cron: "13 13 * * *"
       notifications:
           email:
