@@ -3,6 +3,7 @@ package mozillaEvaluationWorker
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -27,24 +28,55 @@ var sigAlgTranslation = map[string]string{
 	"ECDSAWithSHA512": "ecdsa-with-SHA512",
 }
 
+var sstlsURL = "https://statics.tls.security.mozilla.org/server-side-tls-conf-4.0.json"
+
 var sstls ServerSideTLSJson
 var modern, intermediate, old Configuration
 
 var log = logger.GetLogger()
 
 func init() {
-	err := json.Unmarshal([]byte(ServerSideTLSConfiguration), &sstls)
+
+	err := getConffromURL(sstlsURL)
+
 	if err != nil {
+
 		log.Error(err)
-		log.Error("Could not load Server Side TLS configuration. Evaluation Worker not available")
-		return
+		log.Error("Could not get tls confs from url - fallback to locally saved configurations")
+
+		// Try to continue with the locally hosted TLS configurations
+		err = json.Unmarshal([]byte(ServerSideTLSConfiguration), &sstls)
+		if err != nil {
+			log.Error(err)
+			log.Error("Could not load Server Side TLS configuration. Evaluation Worker not available")
+			return
+		}
 	}
+
 	modern = sstls.Configurations["modern"]
 	intermediate = sstls.Configurations["intermediate"]
 	old = sstls.Configurations["old"]
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
 }
 
+// getConffromURL retrieves the json containing the TLS configurations from the specified URL.
+func getConffromURL(url string) error {
+
+	r, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	err = json.NewDecoder(r.Body).Decode(&sstls)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ServerSideTLSJson contains all the available configurations and the version of the current document.
 type ServerSideTLSJson struct {
 	Configurations map[string]Configuration `json:"configurations"`
 	Version        float64                  `json:"version"`
