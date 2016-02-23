@@ -28,7 +28,7 @@ var sigAlgTranslation = map[string]string{
 	"ECDSAWithSHA512": "ecdsa-with-SHA512",
 }
 
-var sstlsURL = "https://statics.tls.security.mozilla.org/server-side-tls-conf-4.0.json"
+var sstlsURL = "https://statics.tls.security.mozilla.org/server-side-tls-conf.json"
 
 var sstls ServerSideTLSJson
 var modern, intermediate, old Configuration

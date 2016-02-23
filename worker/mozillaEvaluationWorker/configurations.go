@@ -1,6 +1,7 @@
 package mozillaEvaluationWorker
 
-//saved TLS configurations
+// saved TLS configurations, used as backup if
+// online version is not available
 var ServerSideTLSConfiguration = `{
     "configurations": {
         "modern": {
