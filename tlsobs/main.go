@@ -37,6 +37,7 @@ func main() {
 		results database.Scan
 		resp    *http.Response
 		body    []byte
+		target  string
 	)
 	flag.Usage = func() {
 		usage()
@@ -54,10 +55,11 @@ func main() {
 		usage()
 		os.Exit(1)
 	}
+	target = flag.Arg(0)
 	if *rescan {
 		rescanP = "&rescan=true"
 	}
-	resp, err = http.Post(*observatory+"/api/v1/scan?target="+flag.Arg(0)+rescanP, "application/json", nil)
+	resp, err = http.Post(*observatory+"/api/v1/scan?target="+target+rescanP, "application/json", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -87,6 +89,11 @@ getresults:
 		if err != nil {
 			panic(err)
 		}
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf("[error] received status code %d, expected %d.\n%s",
+				resp.StatusCode, http.StatusOK, body)
+			os.Exit(123)
+		}
 		err = json.Unmarshal(body, &results)
 		if err != nil {
 			panic(err)
@@ -110,8 +117,12 @@ getresults:
 		time.Sleep(1 * time.Second)
 	}
 	fmt.Printf("\n")
-	printConnection(results.Conn_info)
-	printAnalysis(results.AnalysisResults)
+	if !results.Has_tls {
+		fmt.Printf("%s does not support SSL/TLS\n", target)
+	} else {
+		printConnection(results.Conn_info)
+		printAnalysis(results.AnalysisResults)
+	}
 }
 
 func printCert(id int64, observatory string) {
