@@ -40,9 +40,6 @@ runs:
         - loop.services.mozilla.com
         - msisdn.services.mozilla.com
 
-        # Input
-        - input.mozilla.org
-
         # Locations
         - location.services.mozilla.com
 
@@ -102,7 +99,8 @@ runs:
         - certificate:
             validity: 
                 notafter: ">35d"
-      cron: "0 18 2 * *"
+      # every tuesday at 6pm
+      cron: "0 18 * * 2"
       notifications:
           email:
               recipients:
@@ -219,19 +217,6 @@ runs:
           email:
               recipients:
                   - b64:aGVsbG9AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
-
-    # Input paging
-    - targets:
-        - input.mozilla.org
-      assertions:
-        - certificate:
-            validity: 
-                notafter: ">14d"
-      cron: "30 18 * * *"
-      notifications:
-          email:
-              recipients:
-                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
 
     # Locations paging
     - targets:
@@ -416,8 +401,8 @@ runs:
     - targets:
         - jve.linuxwall.info
         - vehent.org
-        - uptoke.net
         - mig.ninja
+        - ulfr.io
       assertions:
         - certificate:
             validity: 
@@ -455,6 +440,7 @@ runs:
         - api.mig.mozilla.org
         # Server Side TLS Configurations
         - statics.tls.security.mozilla.org
+        - http-observatory.security.mozilla.org
       assertions:
         - certificate:
             validity: 
