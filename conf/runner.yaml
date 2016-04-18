@@ -376,7 +376,7 @@ runs:
         - certificate:
             validity: 
                 notafter: ">14d"
-      cron: "0 18 2 * *"
+      cron: "0 18 * * *"
       notifications:
           email:
               recipients:
