@@ -16,6 +16,9 @@ runs:
         - versioncheck-bg.addons.mozilla.org
         - versioncheck.addons.mozilla.org
 
+        # Balrog
+        - aus3.mozilla.org
+
         # Crash report (socorro)
         - crash-stats.mozilla.com
         - crash-reports-xpsp2.mozilla.com
@@ -149,6 +152,20 @@ runs:
           email:
               recipients:
                   - b64:bWFya2V0cGxhY2VAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Balrog paging
+    - targets:
+        - aus3.mozilla.org
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:YmFscm9nLXRsc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
 
     # Crash report paging
     - targets:
@@ -404,7 +421,7 @@ runs:
         - certificate:
             validity: 
                 notafter: ">14d"
-      cron: "0 18 2 * *"
+      cron: "0 18 * * *"
       notifications:
           email:
               recipients:
