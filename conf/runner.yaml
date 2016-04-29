@@ -38,7 +38,6 @@ runs:
         # Hello
         - hello.firefox.com
         - loop.services.mozilla.com
-        - msisdn.services.mozilla.com
 
         # Locations
         - location.services.mozilla.com
@@ -49,12 +48,17 @@ runs:
         - static.marketplace.firefox.com
 
         # Metrics
+        - incoming.telemetry.mozilla.org
+        - telemetry-experiment.cdn.mozilla.net
         - metrics.services.mozilla.com
+        - analysis.telemetry.mozilla.org
+        - sql.telemetry.mozilla.org
+        - pipeline-dwl.prod.mozaws.net
 
         # Misc
         - firefoxusercontent.com
         - mozillausercontent.com
-        - loads.services.mozilla.com
+        - status.services.mozilla.com
 
         # Persona
         - browserid.org
@@ -94,6 +98,11 @@ runs:
         # Tracking protection
         - shavar.services.mozilla.com
         - tracking.services.mozilla.com
+
+        # Test Pilot
+        - testpilot.firefox.com
+        - embedly-proxy.services.mozilla.com
+        - universalsearch.testpilot.firefox.com
 
       assertions:
         - certificate:
@@ -207,7 +216,6 @@ runs:
     - targets:
         - hello.firefox.com
         - loop.services.mozilla.com
-        - msisdn.services.mozilla.com
       assertions:
         - certificate:
             validity: 
@@ -248,7 +256,12 @@ runs:
 
     # Metrics paging
     - targets:
+        - incoming.telemetry.mozilla.org
+        - telemetry-experiment.cdn.mozilla.net
         - metrics.services.mozilla.com
+        - analysis.telemetry.mozilla.org
+        - sql.telemetry.mozilla.org
+        - pipeline-dwl.prod.mozaws.net
       assertions:
         - certificate:
             validity: 
@@ -259,9 +272,9 @@ runs:
               recipients:
                   - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
 
-    # Loads paging
+    # Misc paging
     - targets:
-        - loads.services.mozilla.com
+        - status.services.mozilla.com
       assertions:
         - certificate:
             validity: 
@@ -354,6 +367,21 @@ runs:
           email:
               recipients:
                   - b64:dGlsZXNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # TestPilot paging
+    - targets:
+        - testpilot.firefox.com
+        - embedly-proxy.services.mozilla.com
+        - universalsearch.testpilot.firefox.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:dGVzdHBpbG90QG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
     # TLS Observatory paging
     - targets:
