@@ -510,6 +510,7 @@ runs:
         - taskcluster-github.herokuapp.com
         - github.taskcluster.net
         - tools.taskcluster.net
+        - docs.taskcluster.net
       assertions:
         - certificate:
             validity:
