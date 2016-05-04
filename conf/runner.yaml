@@ -525,7 +525,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - jclaudius@mozilla.com
+		  - b64:dGFza2NsdXN0ZXItbm90aWZpY2F0aW9ucyt0bHNvYnNAbW96aWxsYS5jb20=
 
 smtp:
     host: gator1
