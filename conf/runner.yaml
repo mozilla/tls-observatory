@@ -526,7 +526,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - jclaudius@mozilla.com
+                  - taskcluster-notifications+tlsobs@mozilla.com
 
 smtp:
     host: gator1
