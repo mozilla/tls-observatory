@@ -513,7 +513,6 @@ runs:
         - docs.taskcluster.net
         - grafana.taskcluster.net
         - login.taskcluster.net
-        - stats.taskcluster.net
         - cors-proxy.taskcluster.net
       assertions:
         - certificate:
