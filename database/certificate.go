@@ -48,6 +48,11 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 		return -1, err
 	}
 
+	key, err := json.Marshal(cert.Key)
+	if err != nil {
+		return -1, err
+	}
+
 	domainstr := ""
 
 	if !cert.CA {
@@ -69,22 +74,49 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 		domainstr = strings.Join(domains, ",")
 	}
 
-	err = db.QueryRow(`INSERT INTO certificates(  sha1_fingerprint, sha256_fingerprint,
-	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
-	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
-	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
-	signature_algo, domains, raw_cert ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-	$12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id`,
-		cert.Hashes.SHA1, cert.Hashes.SHA256, issuer, subject,
-		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, time.Now(),
-		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
-		cert.X509v3Extensions.SubjectKeyId, keyusage,
-		subaltname, cert.SignatureAlgorithm, domainstr, cert.Raw).Scan(&id)
-
+	err = db.QueryRow(`INSERT INTO certificates(
+					sha1_fingerprint, sha256_fingerprint,
+					issuer,
+					subject,
+					version,
+					is_ca,
+					not_valid_before, not_valid_after,
+					first_seen, last_seen,
+					key_alg, key,
+					x509_basicConstraints,
+					x509_crlDistributionPoints,
+					x509_extendedKeyUsage,
+					x509_authorityKeyIdentifier,
+					x509_subjectKeyIdentifier,
+					x509_keyUsage,
+					x509_subjectAltName,
+					signature_algo,
+					domains,
+					raw_cert
+					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+					$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id`,
+		cert.Hashes.SHA1, cert.Hashes.SHA256,
+		issuer,
+		subject,
+		cert.Version,
+		cert.CA,
+		cert.Validity.NotBefore, cert.Validity.NotAfter,
+		time.Now(), time.Now(),
+		cert.Key.Alg, key,
+		cert.X509v3BasicConstraints,
+		crl_dist_points,
+		extkeyusage,
+		cert.X509v3Extensions.AuthorityKeyId,
+		cert.X509v3Extensions.SubjectKeyId,
+		keyusage,
+		subaltname,
+		cert.SignatureAlgorithm,
+		domainstr,
+		cert.Raw,
+	).Scan(&id)
 	if err != nil {
 		return -1, err
 	}
-
 	return id, nil
 }
 
@@ -130,6 +162,11 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 		return -1, err
 	}
 
+	key, err := json.Marshal(cert.Key)
+	if err != nil {
+		return -1, err
+	}
+
 	tsVariable := ""
 	switch tsName {
 	case certificate.Ubuntu_TS_name:
@@ -146,24 +183,49 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 		return -1, errors.New(fmt.Sprintf("Cannot insert to DB, %s does not represent a valid truststore name.", tsName))
 	}
 
-	queryStr := fmt.Sprintf(`INSERT INTO certificates(  sha1_fingerprint, sha256_fingerprint,
-	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
-	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
-	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
-	signature_algo, raw_cert, %s ) VALUES ( $1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-	$12, $13, $14, $15, $16, $17, $18, $19, $20 ) RETURNING id`, tsVariable)
+	queryStr := fmt.Sprintf(`INSERT INTO certificates(
+				sha1_fingerprint, sha256_fingerprint,
+				issuer,
+				subject,
+				version,
+				is_ca,
+				not_valid_before, not_valid_after,
+				first_seen, last_seen,
+				key_alg, key,
+				x509_basicConstraints,
+				x509_crlDistributionPoints,
+				x509_extendedKeyUsage,
+				x509_authorityKeyIdentifier,
+				x509_subjectKeyIdentifier, 
+				x509_keyUsage, 
+				x509_subjectAltName,
+				signature_algo, 
+				raw_cert, %s ) VALUES ( $1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+				$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22 ) RETURNING id`,
+		tsVariable)
 
 	err = db.QueryRow(queryStr,
-		cert.Hashes.SHA1, cert.Hashes.SHA256, issuer, subject,
-		cert.Version, cert.CA, cert.Validity.NotBefore, cert.Validity.NotAfter, time.Now(),
-		time.Now(), cert.X509v3BasicConstraints, crl_dist_points, extkeyusage, cert.X509v3Extensions.AuthorityKeyId,
-		cert.X509v3Extensions.SubjectKeyId, keyusage,
-		subaltname, cert.SignatureAlgorithm, cert.Raw, true).Scan(&id)
-
+		cert.Hashes.SHA1, cert.Hashes.SHA256,
+		issuer,
+		subject,
+		cert.Version,
+		cert.CA,
+		cert.Validity.NotBefore, cert.Validity.NotAfter,
+		time.Now(), time.Now(),
+		cert.Key.Alg, key,
+		cert.X509v3BasicConstraints,
+		crl_dist_points,
+		extkeyusage,
+		cert.X509v3Extensions.AuthorityKeyId,
+		cert.X509v3Extensions.SubjectKeyId,
+		keyusage,
+		subaltname,
+		cert.SignatureAlgorithm,
+		cert.Raw,
+		true).Scan(&id)
 	if err != nil {
 		return -1, err
 	}
-
 	return id, nil
 }
 
@@ -351,7 +413,7 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 
 	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
-	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
+	issuer, subject, version, is_ca, not_valid_before, not_valid_after, key,
 	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
 	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
 	signature_algo, raw_cert
@@ -360,37 +422,32 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 
 	cert := &certificate.Certificate{}
 
-	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject []byte
+	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
 
 	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &issuer, &subject,
-		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
+		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
-
 	if err != nil {
 		return nil, err
 	}
 
 	err = json.Unmarshal(crl_dist_points, &cert.X509v3Extensions.CRLDistributionPoints)
-
 	if err != nil {
 		return nil, err
 	}
 
 	err = json.Unmarshal(extkeyusage, &cert.X509v3Extensions.ExtendedKeyUsage)
-
 	if err != nil {
 		return nil, err
 	}
 
 	err = json.Unmarshal(keyusage, &cert.X509v3Extensions.KeyUsage)
-
 	if err != nil {
 		return nil, err
 	}
 
 	err = json.Unmarshal(subaltname, &cert.X509v3Extensions.SubjectAlternativeName)
-
 	if err != nil {
 		return nil, err
 	}
@@ -401,6 +458,11 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 	}
 
 	err = json.Unmarshal(subject, &cert.Subject)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(key, &cert.Key)
 	if err != nil {
 		return nil, err
 	}

@@ -12,6 +12,8 @@ CREATE TABLE certificates  (
 	not_valid_after            	timestamp NULL,
 	first_seen					timestamp NULL,
 	last_seen					timestamp NULL,
+    key_alg                     varchar NULL,
+    key                         jsonb NULL,
 	x509_basicConstraints      	varchar NULL,
 	x509_crlDistributionPoints 	jsonb NULL,
 	x509_extendedKeyUsage      	jsonb NULL,
@@ -89,12 +91,15 @@ CREATE TRIGGER watched_table_trigger AFTER INSERT ON scans
 FOR EACH ROW EXECUTE PROCEDURE notify_trigger();
 
 CREATE ROLE tlsobsapi;
+ALTER ROLE tlsobsapi WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';
 GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsapi;
 GRANT INSERT ON scans TO tlsobsapi;
 GRANT USAGE ON scans_id_seq TO tlsobsapi;
 
 CREATE ROLE tlsobsscanner;
+ALTER ROLE tlsobsscanner WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';
 GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT INSERT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT UPDATE ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT USAGE ON analysis_id_seq, certificates_id_seq, scans_id_seq, trust_id_seq TO tlsobsscanner;
+

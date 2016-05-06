@@ -187,7 +187,6 @@ func isBad(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 		isBad      bool = false
 		hasSSLv2   bool = false
 		hasBadPFS  bool = false
-		hasBadPK   bool = false
 	)
 	for _, cs := range c.CipherSuite {
 
@@ -208,11 +207,6 @@ func isBad(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 				hasBadPFS = true
 			}
 		}
-
-		if len(cs.SigAlg) > 5 && cs.SigAlg[0:5] != "ecdsa" && cs.PubKey < old.RsaKeySize {
-			hasBadPK = true
-		}
-
 	}
 
 	badCiphers := extra(old.Ciphersuites, allCiphers)
@@ -235,11 +229,6 @@ func isBad(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 		isBad = true
 	}
 
-	if hasBadPK {
-		failures = append(failures, fmt.Sprintf("don't use a public key shorter than %.0fbits", old.RsaKeySize))
-		isBad = true
-	}
-
 	if cert.SignatureAlgorithm == "UnknownSignatureAlgorithm" {
 		failures = append(failures,
 			fmt.Sprintf("certificate signature could not be determined, use a standard algorithm", cert.SignatureAlgorithm))
@@ -250,6 +239,10 @@ func isBad(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 		isBad = true
 	}
 
+	if (cert.Key.Alg == "RSA" && cert.Key.Size < 2048) || (cert.Key.Alg == "ECDSA" && cert.Key.Size < 256) {
+		failures = append(failures, "don't use a key smaller than 2048bits (RSA) or 256bits (ECDSA)")
+		isBad = true
+	}
 	return isBad, failures
 }
 
@@ -261,6 +254,7 @@ func isOld(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 		certsigfail string
 		has3DES     bool = false
 		hasSSLv3    bool = false
+		hasCertType bool = false
 		hasOCSP     bool = true
 		hasPFS      bool = true
 		failures    []string
@@ -351,6 +345,25 @@ func isOld(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 		isOld = false
 	}
 
+	for _, ct := range old.CertificateTypes {
+		if strings.ToUpper(cert.Key.Alg) == strings.ToUpper(ct) {
+			hasCertType = true
+		}
+	}
+	if !hasCertType {
+		failures = append(failures,
+			fmt.Sprintf("use a certificate of the type %s, not %s",
+				strings.Join(old.CertificateTypes, ", "), cert.Key.Alg))
+		isOld = false
+	}
+
+	if cert.Key.Alg == "RSA" && cert.Key.Size != old.RsaKeySize {
+		failures = append(failures,
+			fmt.Sprintf("use a key size of %.0fbits", old.RsaKeySize))
+		isOld = false
+
+	}
+
 	return isOld, failures
 }
 
@@ -360,6 +373,7 @@ func isIntermediate(c connection.Stored, cert certificate.Certificate) (bool, []
 		allProtos      []string
 		allCiphers     []string
 		certsigfail    string
+		hasCertType    bool = false
 		hasOCSP        bool = true
 		hasPFS         bool = true
 		failures       []string
@@ -437,6 +451,33 @@ func isIntermediate(c connection.Stored, cert certificate.Certificate) (bool, []
 		isIntermediate = false
 	}
 
+	for _, ct := range intermediate.CertificateTypes {
+		if strings.ToUpper(cert.Key.Alg) == strings.ToUpper(ct) {
+			hasCertType = true
+		}
+	}
+	if !hasCertType {
+		failures = append(failures,
+			fmt.Sprintf("use a certificate of type %s, not %s",
+				strings.Join(intermediate.CertificateTypes, ", "), cert.Key.Alg))
+		isIntermediate = false
+	}
+
+	switch cert.Key.Alg {
+	case "RSA":
+		if cert.Key.Size < intermediate.RsaKeySize {
+			failures = append(failures,
+				fmt.Sprintf("use a key size of at least %.0fbits", intermediate.RsaKeySize))
+			isIntermediate = false
+		}
+	case "ECDSA":
+		if cert.Key.Size < intermediate.ECDHParamSize {
+			failures = append(failures,
+				fmt.Sprintf("use a key size of at least %.0fbits", intermediate.ECDHParamSize))
+			isIntermediate = false
+		}
+	}
+
 	return isIntermediate, failures
 }
 
@@ -446,6 +487,7 @@ func isModern(c connection.Stored, cert certificate.Certificate) (bool, []string
 		allProtos   []string
 		allCiphers  []string
 		certsigfail string
+		hasCertType bool = false
 		hasOCSP     bool = true
 		hasPFS      bool = true
 		failures    []string
@@ -522,6 +564,24 @@ func isModern(c connection.Stored, cert certificate.Certificate) (bool, []string
 				modern.ECDHParamSize))
 		isModern = false
 	}
+	for _, ct := range modern.CertificateTypes {
+		if strings.ToUpper(cert.Key.Alg) == strings.ToUpper(ct) {
+			hasCertType = true
+		}
+	}
+	if !hasCertType {
+		failures = append(failures,
+			fmt.Sprintf("use a certificate of type %s, not %s",
+				strings.Join(modern.CertificateTypes, ", "), cert.Key.Alg))
+		isModern = false
+	}
+
+	if cert.Key.Alg == "ECDSA" && cert.Key.Size < modern.ECDHParamSize {
+		failures = append(failures,
+			fmt.Sprintf("use a key size of at least %.0fbits", modern.ECDHParamSize))
+		isModern = false
+	}
+
 	return isModern, failures
 }
 

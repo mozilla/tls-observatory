@@ -173,7 +173,6 @@ func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 
 		var cert *x509.Certificate
 		cert, err = x509.ParseCertificate(certRaw)
-
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"domain":  chain.Domain,
@@ -355,6 +354,7 @@ func storeCertificates(m map[string]certificate.Certificate) (int64, error) {
 			}).Error("Could not get cert id from db")
 		}
 
+		// certificate does not yet exist in DB
 		if certID == -1 {
 			certID, err = db.InsertCertificatetoDB(&c)
 			if err != nil {
