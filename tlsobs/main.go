@@ -26,11 +26,11 @@ func usage() {
 }
 
 type scan struct {
-	ID string `json:"scan_id"`
+	ID int `json:"scan_id"`
 }
 
 var observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
-var scanid = flag.String("scanid", "0", "View results from a previous scan instead of starting a new one")
+var scanid = flag.Int("scanid", 0, "View results from a previous scan instead of starting a new one")
 var rescan = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
 var printRaw = flag.Bool("raw", false, "Print raw JSON coming from the API")
 
@@ -49,7 +49,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
-	if *scanid != "0" {
+	if *scanid > 0 {
 		goto getresults
 	}
 	if len(flag.Args()) != 1 {
@@ -78,11 +78,11 @@ func main() {
 		panic(err)
 	}
 	*scanid = scan.ID
-	fmt.Printf("Scanning %s (id %s)\n", flag.Arg(0), *scanid)
+	fmt.Printf("Scanning %s (id %d)\n", flag.Arg(0), *scanid)
 getresults:
 	has_cert := false
 	for {
-		resp, err = http.Get(*observatory + "/api/v1/results?id=" + *scanid)
+		resp, err = http.Get(fmt.Sprintf("%s/api/v1/results?id=%d", *observatory, *scanid))
 		if err != nil {
 			panic(err)
 		}
