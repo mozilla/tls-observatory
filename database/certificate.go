@@ -75,7 +75,7 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 	}
 
 	err = db.QueryRow(`INSERT INTO certificates(
-					sha1_fingerprint, sha256_fingerprint,
+					sha1_fingerprint, sha256_fingerprint, pkp_sha256,
 					issuer,
 					subject,
 					version,
@@ -93,9 +93,9 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 					signature_algo,
 					domains,
 					raw_cert
-					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-					$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) RETURNING id`,
-		cert.Hashes.SHA1, cert.Hashes.SHA256,
+					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,	$12, $13,
+					$14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING id`,
+		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Hashes.PKPSHA256,
 		issuer,
 		subject,
 		cert.Version,
@@ -125,7 +125,6 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 // It does a "dumb" translation from trust store name to mapped certificate table variables.
 // It returns the database ID of the inserted certificate ( -1 if an error occures ) and an error, if it occures.
 func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName string) (int64, error) {
-
 	var id int64
 
 	crl_dist_points, err := json.Marshal(cert.X509v3Extensions.CRLDistributionPoints)
@@ -184,7 +183,7 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 	}
 
 	queryStr := fmt.Sprintf(`INSERT INTO certificates(
-				sha1_fingerprint, sha256_fingerprint,
+				sha1_fingerprint, sha256_fingerprint, pkp_sha256,
 				issuer,
 				subject,
 				version,
@@ -201,11 +200,11 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 				x509_subjectAltName,
 				signature_algo, 
 				raw_cert, %s ) VALUES ( $1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-				$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22 ) RETURNING id`,
+				$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23 ) RETURNING id`,
 		tsVariable)
 
 	err = db.QueryRow(queryStr,
-		cert.Hashes.SHA1, cert.Hashes.SHA256,
+		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Hashes.PKPSHA256,
 		issuer,
 		subject,
 		cert.Version,

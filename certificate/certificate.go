@@ -51,9 +51,10 @@ type Issuer struct {
 }
 
 type Hashes struct {
-	MD5    string `json:"md5,omitempty"`
-	SHA1   string `json:"sha1,omitempty"`
-	SHA256 string `json:"sha256,omitempty"`
+	MD5       string `json:"md5,omitempty"`
+	SHA1      string `json:"sha1,omitempty"`
+	SHA256    string `json:"sha256,omitempty"`
+	PKPSHA256 string `json:"pin-sha256,omitempty"`
 }
 
 type Validity struct {
@@ -169,6 +170,22 @@ var PublicKeyAlgorithm = [...]string{
 	"RSA",
 	"DSA",
 	"ECDSA",
+}
+
+func PKPSHA256Hash(cert *x509.Certificate) string {
+	h := sha256.New()
+	switch pub := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		der, _ := x509.MarshalPKIXPublicKey(pub)
+		h.Write(der)
+	case *dsa.PublicKey:
+		der, _ := x509.MarshalPKIXPublicKey(pub)
+		h.Write(der)
+	case *ecdsa.PublicKey:
+		der, _ := x509.MarshalPKIXPublicKey(pub)
+		h.Write(der)
+	}
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
 func SHA256Hash(data []byte) string {
@@ -454,6 +471,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Hashes.MD5 = MD5Hash(cert.Raw)
 	stored.Hashes.SHA1 = SHA1Hash(cert.Raw)
 	stored.Hashes.SHA256 = SHA256Hash(cert.Raw)
+	stored.Hashes.PKPSHA256 = PKPSHA256Hash(cert)
 
 	stored.Raw = base64.StdEncoding.EncodeToString(cert.Raw)
 
