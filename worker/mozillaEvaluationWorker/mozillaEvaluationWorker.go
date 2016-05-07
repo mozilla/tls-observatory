@@ -133,8 +133,8 @@ func Evaluate(connInfo connection.Stored, cert certificate.Certificate) ([]byte,
 	results := EvaluationResults{}
 	results.Failures = make(map[string][]string)
 
-	// assume the worst
-	results.Level = "bad"
+	// assume non-compliance
+	results.Level = "non compliant"
 
 	isOldLvl, results.Failures["old"] = isOld(connInfo, cert)
 	if isOldLvl {
