@@ -151,8 +151,8 @@ func Setup(c config.Config) {
 func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 
 	var intermediates []*x509.Certificate
-	var leafCert *x509.Certificate
-	leafCert = nil
+	var endEntity *x509.Certificate
+	endEntity = nil
 
 	for chaincertno, data := range chain.Certs { //create certificate chain from chain struct
 
@@ -177,57 +177,59 @@ func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 			}).Warning("Could not parse raw cert")
 		}
 
-		if !cert.IsCA {
-			if leafCert != nil {
-				log.WithFields(logrus.Fields{
-					"domain":           chain.Domain,
-					"cert no":          chaincertno,
-					"cert fingerprint": certificate.SHA256Hash(cert.Raw),
-				}).Warning("Second non CA cert in chain received from server. Just add it to intermediates.")
-				if cert.Version < 3 {
-					log.WithFields(logrus.Fields{
-						"domain":           chain.Domain,
-						"cert no":          chaincertno,
-						"cert fingerprint": certificate.SHA256Hash(cert.Raw),
-					}).Debug("Probably an old root CA cert")
-					intermediates = append(intermediates, cert)
-				}
-			} else {
-				leafCert = cert
-			}
-		} else {
+		// if certificate is an authority,
+		// append it to the list of intermediate certs and go to the next one
+		if cert.IsCA {
+			intermediates = append(intermediates, cert)
+			continue
+		}
+		// if we don't yet have an end entity in this chain
+		// set the current cert as the end entity
+		if endEntity == nil {
+			endEntity = cert
+			continue
+		}
+		// here we have a cert that's an end entity when we already
+		// found one in the chain. It's possible that it's an old
+		// V2 cert that's actually an intermediate by doesn't have the
+		// CA flag set
+		log.WithFields(logrus.Fields{
+			"domain":           chain.Domain,
+			"cert no":          chaincertno,
+			"cert fingerprint": certificate.SHA256Hash(cert.Raw),
+		}).Warning("Second End Entity cert found in chain received from server. Adding it to intermediates.")
+		if cert.Version < 3 {
+			log.WithFields(logrus.Fields{
+				"domain":           chain.Domain,
+				"cert no":          chaincertno,
+				"cert fingerprint": certificate.SHA256Hash(cert.Raw),
+			}).Debug("Probably an old root CA cert")
 			intermediates = append(intermediates, cert)
 		}
 	}
 
-	if leafCert == nil {
+	if endEntity == nil {
 		log.WithFields(logrus.Fields{
 			"domain": chain.Domain,
-		}).Warning("Didi not receive server/ leaf certificate")
+		}).Warning("the certificate chain did not contain an end entity certificate")
 	}
 
 	var certmap = make(map[string]certificate.Certificate)
 
-	//validate against each truststore
-	for _, curTS := range trustStores {
-
-		if leafCert != nil {
-
-			if isChainValid(leafCert, intermediates, &curTS, chain.Domain, chain.IP, certmap) {
-				continue
-			}
+	// Test the end entity cert with its chain against each of the truststore
+	for _, truststore := range trustStores {
+		if endEntity != nil && isChainValid(endEntity, intermediates, &truststore, chain.Domain, chain.IP, certmap) {
+			// If we have an end entity cert and its chain of trust is valid, our work
+			// here is done, move to the next truststore
+			continue
 		}
 
 		// to end up here either there was no leaf certificate retrieved
 		// or it was retrieved but it was not valid so we must check the remainder of the chain
 		for i, cert := range intermediates {
-
 			inter := append(intermediates[:i], intermediates[i+1:]...)
-
-			isChainValid(cert, inter, &curTS, chain.Domain, chain.IP, certmap)
-			//should we break if/when this validates?
+			isChainValid(cert, inter, &truststore, chain.Domain, chain.IP, certmap)
 		}
-
 	}
 
 	log.WithFields(logrus.Fields{
@@ -240,9 +242,7 @@ func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 	leafID := int64(-1)
 
 	if trustID != -1 {
-
 		leafID, err = db.GetCertIDFromTrust(trustID)
-
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"domain":   chain.Domain,
@@ -258,84 +258,89 @@ func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 //isChainValid creates the valid certificate chains by combining the chain retrieved with the provided truststore.
 //It return true if it finds at least on validation chain or false if no valid chain of trust can be created.
 //It also updates the certificate map which gets pushed at the end of each iteration.
-func isChainValid(serverCert *x509.Certificate, intermediates []*x509.Certificate, curTS *certificate.TrustStore, domain, IP string, certmap map[string]certificate.Certificate) bool {
-
-	valInfo := &certificate.ValidationInfo{}
-
-	valInfo.IsValid = true
-
-	inter := x509.NewCertPool()
-	for _, in := range intermediates {
-		inter.AddCert(in)
+func isChainValid(endEntity *x509.Certificate, intermediates []*x509.Certificate, truststore *certificate.TrustStore, domain, IP string, certmap map[string]certificate.Certificate) bool {
+	valInfo := &certificate.ValidationInfo{
+		IsValid: true,
 	}
 
+	// build a CA verification pool from the list of cacerts
+	interPool := x509.NewCertPool()
+	for _, entity := range intermediates {
+		interPool.AddCert(entity)
+	}
+
+	// get a list of domains this certificate is supposedly valid for
+	// if the end entity is a CA, use its common name
 	dnsName := domain
-
-	if serverCert.IsCA {
-		dnsName = serverCert.Subject.CommonName
+	if endEntity.IsCA {
+		dnsName = endEntity.Subject.CommonName
 	}
 
+	// configure the verification logic to use the current trustore
 	opts := x509.VerifyOptions{
 		DNSName:       dnsName,
-		Intermediates: inter,
-		Roots:         curTS.Certs,
+		Intermediates: interPool,
+		Roots:         truststore.Certs,
 	}
 
-	chains, err := serverCert.Verify(opts)
+	// Verify attempts to build all the path between the end entity and the
+	// root in the truststore that validate the certificate
+	// If no valid path is found, err is not nil and the certificate is not trusted
+	chains, err := endEntity.Verify(opts)
 
 	if err == nil {
-
-		for i, ch := range chains {
+		// the end entity is trusted, we need to go through each
+		// chain of trust and store them in database
+		for i, chain := range chains {
 			log.WithFields(logrus.Fields{
-				"trust chain no":  i,
-				"number of certs": len(ch),
+				"trust chain no": i,
+				"path len":       len(chain),
 			}).Debug("domain: " + domain)
-			for _, cert := range ch {
-
+			// loop through each certificate in the chain and
+			for _, cert := range chain {
 				parentSignature := ""
-				c := getFirstParent(cert, ch)
-
-				if c != nil {
-					parentSignature = certificate.SHA256Hash(c.Raw)
+				parentCert := getFirstParent(cert, chain)
+				if parentCert != nil {
+					parentSignature = certificate.SHA256Hash(parentCert.Raw)
 				} else {
 					log.Println("could not retrieve parent for " + dnsName)
 				}
-
-				updateCert(cert, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
+				updateCert(cert, parentSignature, domain, IP, truststore.Name, valInfo, certmap)
 			}
 		}
 		return true
-	} else {
-		if len(chains) > 0 {
-			log.WithFields(logrus.Fields{
-				"domain": domain,
-			}).Warning("Got validation error but chains are populated")
-		}
-
-		valInfo.ValidationError = err.Error()
-		valInfo.IsValid = false
-
-		parentSignature := ""
-		c := getFirstParent(serverCert, intermediates)
-
-		if c != nil {
-			parentSignature = certificate.SHA256Hash(c.Raw)
-		} else {
-			log.WithFields(logrus.Fields{
-				"domain":     domain,
-				"servercert": certificate.SHA256Hash(serverCert.Raw),
-			}).Info("Could not get parent")
-		}
-
-		updateCert(serverCert, parentSignature, domain, IP, curTS.Name, valInfo, certmap)
-
-		return false
 	}
+
+	// the certificate is not trusted.
+	// we store the cert in DB with its validation error
+	if len(chains) > 0 {
+		log.WithFields(logrus.Fields{
+			"domain": domain,
+		}).Warning("Got validation error but chains are populated")
+	}
+
+	valInfo.ValidationError = err.Error()
+	valInfo.IsValid = false
+
+	parentSignature := ""
+	c := getFirstParent(endEntity, intermediates)
+
+	if c != nil {
+		parentSignature = certificate.SHA256Hash(c.Raw)
+	} else {
+		log.WithFields(logrus.Fields{
+			"domain":     domain,
+			"servercert": certificate.SHA256Hash(endEntity.Raw),
+		}).Info("Could not get parent")
+	}
+
+	updateCert(endEntity, parentSignature, domain, IP, truststore.Name, valInfo, certmap)
+
+	return false
 
 }
 
 func storeCertificates(m map[string]certificate.Certificate) (int64, error) {
-
 	var leafTrust int64
 	leafTrust = -1
 	for _, c := range m {
@@ -487,7 +492,6 @@ func getFirstParent(cert *x509.Certificate, certs []*x509.Certificate) *x509.Cer
 //updateCert takes the input certificate and updates the map holding all the certificates to be pushed.
 //If the certificates has already been inserted it updates the existing record else it creates it.
 func updateCert(cert *x509.Certificate, parentSignature string, domain, ip, TSName string, valInfo *certificate.ValidationInfo, certmap map[string]certificate.Certificate) {
-
 	id := certificate.SHA256Hash(cert.Raw)
 
 	if storedCert, ok := certmap[id]; !ok {
