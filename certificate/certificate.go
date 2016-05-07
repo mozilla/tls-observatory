@@ -22,6 +22,7 @@ const Apple_TS_name = "Apple"
 const Android_TS_name = "Android"
 
 type Certificate struct {
+	ID                     float64                   `json:"id"`
 	ScanTarget             string                    `json:"scanTarget,omitempty"`
 	IPs                    []string                  `json:"ips,omitempty"`
 	Version                float64                   `json:"version,omitempty"`
@@ -44,6 +45,7 @@ type Certificate struct {
 }
 
 type Issuer struct {
+	ID           float64  `json:"id,omitempty"`
 	Country      []string `json:"c,omitempty"`
 	Organisation []string `json:"o,omitempty"`
 	OrgUnit      []string `json:"ou,omitempty"`

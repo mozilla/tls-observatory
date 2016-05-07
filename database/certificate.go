@@ -195,10 +195,10 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 				x509_crlDistributionPoints,
 				x509_extendedKeyUsage,
 				x509_authorityKeyIdentifier,
-				x509_subjectKeyIdentifier, 
-				x509_keyUsage, 
+				x509_subjectKeyIdentifier,
+				x509_keyUsage,
 				x509_subjectAltName,
-				signature_algo, 
+				signature_algo,
 				raw_cert, %s ) VALUES ( $1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
 				$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23 ) RETURNING id`,
 		tsVariable)
@@ -349,24 +349,41 @@ func (db *DB) GetCertIDFromTrust(trustID int64) (int64, error) {
 // GetCertBySHA1Fingerprint fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
 func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, error) {
-
-	row := db.QueryRow(`SELECT id, sha1_fingerprint, sha256_fingerprint,
-	issuer, subject, version, is_ca, not_valid_before, not_valid_after,
-	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
-	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
-	signature_algo, raw_cert
-	FROM certificates
-	WHERE sha1_fingerprint=$1`, sha1)
+	row := db.QueryRow(`SELECT
+			id,
+			sha1_fingerprint,
+			sha256_fingerprint,
+			pkp_sha256,
+			issuer,
+			subject,
+			version,
+			is_ca,
+			not_valid_before,
+			not_valid_after,
+			first_seen,
+			last_seen,
+			key,
+			x509_basicConstraints,
+			x509_crlDistributionPoints,
+			x509_extendedKeyUsage,
+			x509_authorityKeyIdentifier,
+			x509_subjectKeyIdentifier,
+			x509_keyUsage,
+			x509_subjectAltName,
+			signature_algo,
+			raw_cert
+		FROM certificates
+		WHERE sha1_fingerprint=$1`, sha1)
 
 	cert := &certificate.Certificate{}
 
 	var certID int64
 
-	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject []byte
+	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
 
-	err := row.Scan(&certID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &issuer, &subject,
+	err := row.Scan(&certID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.PKPSHA256, &issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
-		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
+		&cert.LastSeenTimestamp, &key, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
 	if err != nil {
 		return nil, err
@@ -402,7 +419,12 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 		return nil, err
 	}
 
-	cert.ValidationInfo, err = db.GetValidationMapForCert(certID)
+	err = json.Unmarshal(key, &cert.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	cert.ValidationInfo, cert.Issuer.ID, err = db.GetValidationMapForCert(certID)
 
 	return cert, err
 }
@@ -410,20 +432,35 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 // GetCertByID fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
 func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
-
-	row := db.QueryRow(`SELECT sha1_fingerprint, sha256_fingerprint,
-	issuer, subject, version, is_ca, not_valid_before, not_valid_after, key,
-	first_seen, last_seen, x509_basicConstraints, x509_crlDistributionPoints, x509_extendedKeyUsage,
-	x509_authorityKeyIdentifier, x509_subjectKeyIdentifier, x509_keyUsage, x509_subjectAltName,
-	signature_algo, raw_cert
-		FROM certificates
-		WHERE id=$1`, certID)
+	row := db.QueryRow(`SELECT
+			sha1_fingerprint,
+			sha256_fingerprint,
+			pkp_sha256,
+			issuer,
+			subject,
+			version,
+			is_ca,
+			not_valid_before,
+			not_valid_after,
+			key,
+			first_seen,
+			last_seen,
+			x509_basicConstraints,
+			x509_crlDistributionPoints,
+			x509_extendedKeyUsage,
+			x509_authorityKeyIdentifier,
+			x509_subjectKeyIdentifier,
+			x509_keyUsage,
+			x509_subjectAltName,
+			signature_algo,
+			raw_cert
+		FROM certificates WHERE id=$1`, certID)
 
 	cert := &certificate.Certificate{}
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
 
-	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &issuer, &subject,
+	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.PKPSHA256, &issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
@@ -466,7 +503,7 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 		return nil, err
 	}
 
-	cert.ValidationInfo, err = db.GetValidationMapForCert(certID)
+	cert.ValidationInfo, cert.Issuer.ID, err = db.GetValidationMapForCert(certID)
 
 	return cert, err
 
@@ -536,22 +573,16 @@ func (db *DB) UpdateTrust(trustID int64, cert certificate.Certificate) (int64, e
 }
 
 func (db *DB) GetCurrentTrustID(certID, issuerID int64) (int64, error) {
-
 	var trustID int64
-
 	row := db.QueryRow("SELECT id FROM trust WHERE cert_id=$1 AND issuer_id=$2 AND is_current=TRUE", certID, issuerID)
-
 	err := row.Scan(&trustID)
-
 	if err != nil {
-
 		if err == sql.ErrNoRows {
 			return -1, nil
 		} else {
 			return -1, err
 		}
 	}
-
 	return trustID, nil
 }
 
@@ -575,24 +606,33 @@ func (db *DB) GetCurrentTrustIDForCert(certID int64) (int64, error) {
 	return trustID, nil
 }
 
-func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.ValidationInfo, error) {
-
-	var ubuntu, mozilla, microsoft, apple, android bool
+func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.ValidationInfo, float64, error) {
+	var (
+		ubuntu, mozilla, microsoft, apple, android bool
+		issuerId                                   float64
+	)
 	m := make(map[string]certificate.ValidationInfo)
-	row := db.QueryRow("SELECT trusted_ubuntu,trusted_mozilla,trusted_microsoft,trusted_apple,trusted_android FROM trust WHERE cert_id=$1 AND is_current=TRUE", certID)
+	row := db.QueryRow(`SELECT
+			trusted_ubuntu,
+			trusted_mozilla,
+			trusted_microsoft,
+			trusted_apple,
+			trusted_android,
+			issuer_id
+		FROM trust
+		WHERE cert_id=$1 AND is_current=TRUE`,
+		certID)
 
-	err := row.Scan(&ubuntu, &mozilla, &microsoft, &apple, &android)
-
+	err := row.Scan(&ubuntu, &mozilla, &microsoft, &apple, &android, &issuerId)
 	if err != nil {
-
 		if err == sql.ErrNoRows {
-			return m, nil
+			return m, 0, nil
 		} else {
-			return m, err
+			return m, 0, err
 		}
 	}
 
-	return certificate.GetValidityMap(ubuntu, mozilla, microsoft, apple, android), nil
+	return certificate.GetValidityMap(ubuntu, mozilla, microsoft, apple, android), issuerId, nil
 }
 
 // IsTrustValid returns the validity of the trust relationship for the given id.
