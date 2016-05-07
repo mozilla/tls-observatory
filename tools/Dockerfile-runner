@@ -1,7 +1,6 @@
-FROM golang:1.5
+FROM golang:1.6
 MAINTAINER Julien Vehent
 ENV PROJECT=github.com/mozilla/tls-observatory
-ENV GO15VENDOREXPERIMENT=1
 
 ADD . /go/src/$PROJECT
 
