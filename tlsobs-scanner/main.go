@@ -20,8 +20,6 @@ import (
 var db *pg.DB
 var log = logger.GetLogger()
 
-var activeScanners int = 0
-
 func main() {
 	var (
 		cfgFile, cipherscan string
@@ -72,9 +70,15 @@ func main() {
 	}
 	db.SetMaxOpenConns(conf.General.MaxProc)
 	db.SetMaxIdleConns(10)
-	incomingScans := db.RegisterScanListener(conf.General.PostgresDB, conf.General.PostgresUser, conf.General.PostgresPass, conf.General.Postgres, "disable")
+	incomingScans := db.RegisterScanListener(
+		conf.General.PostgresDB,
+		conf.General.PostgresUser,
+		conf.General.PostgresPass,
+		conf.General.Postgres,
+		"disable")
 	Setup(conf)
 
+	activeScanners := 0
 	for scanID := range incomingScans {
 		// wait until we have an available scanner
 		for {
@@ -84,15 +88,15 @@ func main() {
 				break
 			}
 		}
-		go scan(scanID, cipherscan)
+		go func() {
+			activeScanners++
+			scan(scanID, cipherscan)
+			activeScanners--
+		}()
 	}
 }
 
 func scan(scanID int64, cipherscan string) {
-	activeScanners++
-	defer func() {
-		activeScanners--
-	}()
 	log.WithFields(logrus.Fields{
 		"scan_id": scanID,
 	}).Info("Received new scan")

@@ -106,9 +106,7 @@ func Setup(c config.Config) {
 			var id int64
 			id = -1
 			id, err = db.GetCertIDBySHA256Fingerprint(certificate.SHA256Hash(cert.Raw))
-
 			if err != nil {
-
 				log.WithFields(logrus.Fields{
 					"tsname":      tsName,
 					"certificate": certificate.SHA256Hash(cert.Raw),
@@ -117,14 +115,12 @@ func Setup(c config.Config) {
 			}
 
 			if id == -1 {
-
 				vinfo := &certificate.ValidationInfo{}
 				vinfo.IsValid = true
 				vinfo.ValidationError = ""
 
 				st := certificate.CertToStored(cert, parentSignature, "", "", tsName, vinfo)
 				id, err = db.InsertCACertificatetoDB(&st, tsName)
-
 				if err != nil {
 					log.WithFields(logrus.Fields{
 						"tsname":      tsName,
@@ -173,7 +169,6 @@ func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 
 		var cert *x509.Certificate
 		cert, err = x509.ParseCertificate(certRaw)
-
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"domain":  chain.Domain,
@@ -355,6 +350,7 @@ func storeCertificates(m map[string]certificate.Certificate) (int64, error) {
 			}).Error("Could not get cert id from db")
 		}
 
+		// certificate does not yet exist in DB
 		if certID == -1 {
 			certID, err = db.InsertCertificatetoDB(&c)
 			if err != nil {

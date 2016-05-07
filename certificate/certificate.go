@@ -29,7 +29,7 @@ type Certificate struct {
 	Issuer                 Issuer                    `json:"issuer,omitempty"`
 	Validity               Validity                  `json:"validity,omitempty"`
 	Subject                Subject                   `json:"subject,omitempty"`
-	SubjectPublicKeyInfo   SubjectPublicKeyInfo      `json:"subjectPublicKeyInfo,omitempty"`
+	Key                    SubjectPublicKeyInfo      `json:"key,omitempty"`
 	X509v3Extensions       Extensions                `json:"x509v3Extensions,omitempty"`
 	X509v3BasicConstraints string                    `json:"x509v3BasicConstraints,omitempty"`
 	CA                     bool                      `json:"ca,omitempty"`
@@ -51,9 +51,10 @@ type Issuer struct {
 }
 
 type Hashes struct {
-	MD5    string `json:"md5,omitempty"`
-	SHA1   string `json:"sha1,omitempty"`
-	SHA256 string `json:"sha256,omitempty"`
+	MD5       string `json:"md5,omitempty"`
+	SHA1      string `json:"sha1,omitempty"`
+	SHA256    string `json:"sha256,omitempty"`
+	PKPSHA256 string `json:"pin-sha256,omitempty"`
 }
 
 type Validity struct {
@@ -69,16 +70,15 @@ type Subject struct {
 }
 
 type SubjectPublicKeyInfo struct {
-	PublicKeyAlgorithm string  `json:"publicKeyAlgorithm,omitempty"`
-	RSAModulusSize     float64 `json:"rsaModulusSize,omitempty"`
-	RSAExponent        float64 `json:"rsaExponent,omitempty"`
-	DSA_P              string  `json:"DSA_P,omitempty"`
-	DSA_Q              string  `json:"DSA_Q,omitempty"`
-	DSA_G              string  `json:"DSA_G,omitempty"`
-	DSA_Y              string  `json:"DSA_Y,omitempty"`
-	ECDSACurveType     string  `json:"ecdsaCurveType,omitempty"`
-	ECDSA_X            float64 `json:"ECDSA_X,omitempty"`
-	ECDSA_Y            float64 `json:"ECDSA_Y,omitempty"`
+	Alg      string  `json:"alg,omitempty"`
+	Size     float64 `json:"size,omitempty"`
+	Exponent float64 `json:"exponent,omitempty"`
+	X        string  `json:"x,omitempty"`
+	Y        string  `json:"y,omitempty"`
+	P        string  `json:"p,omitempty"`
+	Q        string  `json:"q,omitempty"`
+	G        string  `json:"g,omitempty"`
+	Curve    string  `json:"curve,omitempty"`
 }
 
 //Currently exporting extensions that are already decoded into the x509 Certificate structure
@@ -170,6 +170,22 @@ var PublicKeyAlgorithm = [...]string{
 	"RSA",
 	"DSA",
 	"ECDSA",
+}
+
+func PKPSHA256Hash(cert *x509.Certificate) string {
+	h := sha256.New()
+	switch pub := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		der, _ := x509.MarshalPKIXPublicKey(pub)
+		h.Write(der)
+	case *dsa.PublicKey:
+		der, _ := x509.MarshalPKIXPublicKey(pub)
+		h.Write(der)
+	case *ecdsa.PublicKey:
+		der, _ := x509.MarshalPKIXPublicKey(pub)
+		h.Write(der)
+	}
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
 func SHA256Hash(data []byte) string {
@@ -338,21 +354,21 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 }
 
 func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
-
-	var pubInfo = SubjectPublicKeyInfo{}
-
-	pubInfo.PublicKeyAlgorithm = PublicKeyAlgorithm[cert.PublicKeyAlgorithm]
+	pubInfo := SubjectPublicKeyInfo{
+		Alg: PublicKeyAlgorithm[cert.PublicKeyAlgorithm],
+	}
 
 	switch pub := cert.PublicKey.(type) {
 	case *rsa.PublicKey:
-		pubInfo.RSAModulusSize = float64(pub.N.BitLen())
-		pubInfo.RSAExponent = float64(pub.E)
+		pubInfo.Size = float64(pub.N.BitLen())
+		pubInfo.Exponent = float64(pub.E)
 
 	case *dsa.PublicKey:
+		pubInfo.Size = float64(pub.Y.BitLen())
 		textInt, err := pub.G.MarshalText()
 
 		if err == nil {
-			pubInfo.DSA_G = string(textInt)
+			pubInfo.G = string(textInt)
 		} else {
 			return pubInfo, err
 		}
@@ -360,7 +376,7 @@ func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
 		textInt, err = pub.P.MarshalText()
 
 		if err == nil {
-			pubInfo.DSA_P = string(textInt)
+			pubInfo.P = string(textInt)
 		} else {
 			return pubInfo, err
 		}
@@ -368,7 +384,7 @@ func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
 		textInt, err = pub.Q.MarshalText()
 
 		if err == nil {
-			pubInfo.DSA_Q = string(textInt)
+			pubInfo.Q = string(textInt)
 		} else {
 			return pubInfo, err
 		}
@@ -376,16 +392,16 @@ func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
 		textInt, err = pub.Y.MarshalText()
 
 		if err == nil {
-			pubInfo.DSA_Y = string(textInt)
+			pubInfo.Y = string(textInt)
 		} else {
 			return pubInfo, err
 		}
 
 	case *ecdsa.PublicKey:
-
-		pubInfo.ECDSACurveType = strconv.Itoa(pub.Curve.Params().BitSize)
-		pubInfo.ECDSA_Y = float64(pub.Y.BitLen())
-		pubInfo.ECDSA_X = float64(pub.X.BitLen())
+		pubInfo.Size = float64(pub.Curve.Params().BitSize)
+		pubInfo.Curve = pub.Curve.Params().Name
+		pubInfo.Y = pub.Y.String()
+		pubInfo.X = pub.X.String()
 	}
 
 	return pubInfo, nil
@@ -401,7 +417,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 
 	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
 
-	stored.SubjectPublicKeyInfo, _ = getPublicKeyInfo(cert)
+	stored.Key, _ = getPublicKeyInfo(cert)
 
 	stored.Issuer.Country = cert.Issuer.Country
 	stored.Issuer.Organisation = cert.Issuer.Organization
@@ -455,6 +471,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Hashes.MD5 = MD5Hash(cert.Raw)
 	stored.Hashes.SHA1 = SHA1Hash(cert.Raw)
 	stored.Hashes.SHA256 = SHA256Hash(cert.Raw)
+	stored.Hashes.PKPSHA256 = PKPSHA256Hash(cert)
 
 	stored.Raw = base64.StdEncoding.EncodeToString(cert.Raw)
 

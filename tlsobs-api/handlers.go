@@ -103,7 +103,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp := fmt.Sprintf(`{"scan_id":"%d"}`, scan.ID)
+		resp := fmt.Sprintf(`{"scan_id":%d}`, scan.ID)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, resp)

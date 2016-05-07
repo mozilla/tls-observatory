@@ -26,8 +26,13 @@ func usage() {
 }
 
 type scan struct {
-	ID string `json:"scan_id"`
+	ID int `json:"scan_id"`
 }
+
+var observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
+var scanid = flag.Int("scanid", 0, "View results from a previous scan instead of starting a new one")
+var rescan = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
+var printRaw = flag.Bool("raw", false, "Print raw JSON coming from the API")
 
 func main() {
 	var (
@@ -43,11 +48,8 @@ func main() {
 		usage()
 		flag.PrintDefaults()
 	}
-	var observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
-	var scanid = flag.String("scanid", "0", "View results from a previous scan instead of starting a new one")
-	var rescan = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
 	flag.Parse()
-	if *scanid != "0" {
+	if *scanid > 0 {
 		goto getresults
 	}
 	if len(flag.Args()) != 1 {
@@ -76,16 +78,16 @@ func main() {
 		panic(err)
 	}
 	*scanid = scan.ID
-	fmt.Printf("Scanning %s (id %s)\n", flag.Arg(0), *scanid)
+	fmt.Printf("Scanning %s (id %d)\n", flag.Arg(0), *scanid)
 getresults:
 	has_cert := false
 	for {
-		resp, err = http.Get(*observatory + "/api/v1/results?id=" + *scanid)
+		resp, err = http.Get(fmt.Sprintf("%s/api/v1/results?id=%d", *observatory, *scanid))
 		if err != nil {
 			panic(err)
 		}
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			panic(err)
 		}
@@ -105,7 +107,7 @@ getresults:
 				time.Now().Sub(results.Timestamp).String())
 		}
 		if results.Cert_id > 0 && !has_cert {
-			printCert(results.Cert_id, *observatory)
+			printCert(results.Cert_id)
 			has_cert = true
 		}
 		if results.Complperc == 100 {
@@ -120,18 +122,21 @@ getresults:
 	if !results.Has_tls {
 		fmt.Printf("%s does not support SSL/TLS\n", target)
 	} else {
+		if *printRaw {
+			fmt.Printf("%s\n", body)
+		}
 		printConnection(results.Conn_info)
 		printAnalysis(results.AnalysisResults)
 	}
 }
 
-func printCert(id int64, observatory string) {
+func printCert(id int64) {
 	var (
 		cert certificate.Certificate
 		san  string
 	)
 	fmt.Println("\n--- Certificate ---")
-	resp, err := http.Get(fmt.Sprintf("%s/api/v1/certificate?id=%d", observatory, id))
+	resp, err := http.Get(fmt.Sprintf("%s/api/v1/certificate?id=%d", *observatory, id))
 	if err != nil {
 		panic(err)
 	}
@@ -139,6 +144,9 @@ func printCert(id int64, observatory string) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
+	}
+	if *printRaw {
+		fmt.Printf("%s\n", body)
 	}
 	err = json.Unmarshal(body, &cert)
 	if err != nil {
@@ -159,9 +167,11 @@ CA       %t
 SHA1     %s
 SHA256   %s
 SigAlg   %s
+Key      %s %.0fbits %s
 %s`, cert.Subject.String(), san, cert.Issuer.String(),
 		cert.Validity.NotBefore.Format(time.RFC3339), cert.Validity.NotAfter.Format(time.RFC3339),
-		cert.CA, cert.Hashes.SHA1, cert.Hashes.SHA256, cert.SignatureAlgorithm, cert.Anomalies)
+		cert.CA, cert.Hashes.SHA1, cert.Hashes.SHA256, cert.SignatureAlgorithm,
+		cert.Key.Alg, cert.Key.Size, cert.Key.Curve, cert.Anomalies)
 }
 
 func printConnection(c connection.Stored) {
