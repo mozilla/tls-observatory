@@ -30,9 +30,10 @@ type scan struct {
 }
 
 var observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
-var scanid = flag.Int64("scanid", 0, "View results from a previous scan instead of starting a new one")
+var scanid = flag.Int64("scanid", 0, "View results from a previous scan instead of starting a new one. eg `1234`")
 var rescan = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
 var printRaw = flag.Bool("raw", false, "Print raw JSON coming from the API")
+var targetLevel = flag.String("targetLevel", "modern", "Evaluate target against a given configuration level. eg `old`, intermediate, modern or all.")
 
 func main() {
 	var (
@@ -218,12 +219,21 @@ func printAnalysis(ars []database.Analysis) {
 	}
 	fmt.Println("\n--- Analyzers ---")
 	for _, a := range ars {
+		var (
+			results []string
+			err     error
+		)
 		if _, ok := worker.AvailableWorkers[a.Analyzer]; !ok {
 			fmt.Fprintf(os.Stderr, "analyzer %q not found\n", a.Analyzer)
 			continue
 		}
 		runner := worker.AvailableWorkers[a.Analyzer].Runner
-		results, err := runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result))
+		switch a.Analyzer {
+		case "mozillaEvaluationWorker":
+			results, err = runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result), *targetLevel)
+		default:
+			results, err = runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result), nil)
+		}
 		if err != nil {
 			fmt.Println(err)
 			continue

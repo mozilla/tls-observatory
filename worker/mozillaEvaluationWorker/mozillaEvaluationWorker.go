@@ -678,7 +678,7 @@ func extra(s1, s2 []string) (extra []string) {
 	return
 }
 
-func (e eval) AnalysisPrinter(r []byte) (results []string, err error) {
+func (e eval) AnalysisPrinter(r []byte, targetLevel interface{}) (results []string, err error) {
 	var (
 		eval           EvaluationResults
 		previousissues []string
@@ -690,7 +690,11 @@ func (e eval) AnalysisPrinter(r []byte) (results []string, err error) {
 		return
 	}
 	results = append(results, fmt.Sprintf("* Mozilla evaluation: %s", eval.Level))
-	for _, lvl := range []string{"bad", "old", "intermediate", "modern"} {
+	levels := []string{"bad", "old", "intermediate", "modern"}
+	if targetLevel.(string) == "old" || targetLevel.(string) == "intermediate" || targetLevel.(string) == "modern" {
+		levels = []string{"bad", targetLevel.(string)}
+	}
+	for _, lvl := range levels {
 		if _, ok := eval.Failures[lvl]; ok && len(eval.Failures[lvl]) > 0 {
 			for _, issue := range eval.Failures[lvl] {
 				for _, previousissue := range previousissues {
