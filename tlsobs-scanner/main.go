@@ -219,7 +219,7 @@ func scan(scanID int64, cipherscan string) {
 			log.WithFields(logrus.Fields{
 				"scan_id": scanID,
 			}).Error("Analysis workers timed out after 30 seconds")
-			return
+			goto updatecompletion
 		case res := <-resChan:
 			endedWorkers += endedWorkers
 			completion = ((endedWorkers/totalWorkers)*60 + completion)
@@ -260,6 +260,7 @@ func scan(scanID int64, cipherscan string) {
 			}).Info("Results from worker stored in database")
 		}
 	}
+updatecompletion:
 	err = db.UpdateScanCompletionPercentage(scanID, 100)
 	if err != nil {
 		log.WithFields(logrus.Fields{
