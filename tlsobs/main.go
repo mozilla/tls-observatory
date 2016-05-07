@@ -75,7 +75,7 @@ func main() {
 	}
 	err = json.Unmarshal(body, &scan)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Scan initiation failed: %s", body)
 	}
 	*scanid = scan.ID
 	fmt.Printf("Scanning %s (id %d)\n", flag.Arg(0), *scanid)
@@ -144,6 +144,9 @@ func printCert(id int64) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Failed to access certificate. HTTP %d: %s", resp.StatusCode, body)
 	}
 	if *printRaw {
 		fmt.Printf("%s\n", body)

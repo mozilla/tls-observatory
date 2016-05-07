@@ -17,6 +17,10 @@ import (
 
 var scanRefreshRate float64
 
+type scanResponse struct {
+	ID float64 `json:"scan_id"`
+}
+
 // ScanHandler handles the /scans endpoint of the api
 // It initiates new scans and returns created scans ids to be used against other endpoints.
 func ScanHandler(w http.ResponseWriter, r *http.Request) {
@@ -49,68 +53,75 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	db := val.(*pg.DB)
 
 	domain := r.FormValue("target")
-	if validateDomain(domain) {
-
-		rescan := false
-		if r.FormValue("rescan") == "true" {
-			rescan = true
-		}
-
-		previd, prevtime, err := db.GetLastScanTimeForTarget(domain)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"domain": domain,
-				"error":  err.Error(),
-			}).Error("Could not get last scan for target")
-			err = errors.New("Could not get last scan for target")
-			return
-		}
-
-		now := time.Now().UTC()
-
-		if previd != -1 { // check if previous scan exists
-			if now.Sub(prevtime).Hours() <= scanRefreshRate {
-				if !rescan {
-					// no rescan requested so return previous scan in any case
-					// this includes the rate limiting with no rescan case
-					resp := fmt.Sprintf(`{"scan_id":"%d"}`, previd)
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusOK)
-					fmt.Fprint(w, resp)
-					return
-				}
-
-				// forced rescan has been requested
-				if now.Sub(prevtime).Minutes() <= 3 { // rate limit scan requests for same target
-					if rescan {
-						w.WriteHeader(429) // 429 http status code is not exported ( https://codereview.appspot.com/7678043/ )
-						w.Header().Set("Content-Type", "text/html")
-						fmt.Fprint(w, fmt.Sprintf("Last scan for target %s initiated %s ago.\nPlease try again in %s.\n", domain, now.Sub(prevtime), 3*time.Minute-now.Sub(prevtime)))
-						return
-					}
-				}
-			}
-		}
-
-		//initiating a new scan
-		scan, err := db.NewScan(domain, -1) //no replay
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"domain": domain,
-				"error":  err.Error(),
-			}).Error("Could not create new scan")
-			err = errors.New("Could not create new scan")
-			return
-		}
-
-		resp := fmt.Sprintf(`{"scan_id":%d}`, scan.ID)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, resp)
-	} else {
+	if !validateDomain(domain) {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(w, "")
 	}
+
+	rescan := false
+	if r.FormValue("rescan") == "true" {
+		rescan = true
+	}
+
+	previd, prevtime, err := db.GetLastScanTimeForTarget(domain)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"domain": domain,
+			"error":  err.Error(),
+		}).Error("Could not get last scan for target")
+		err = errors.New("Could not get last scan for target")
+		return
+	}
+
+	now := time.Now().UTC()
+
+	if previd != -1 { // check if previous scan exists
+		if now.Sub(prevtime).Hours() <= scanRefreshRate {
+			if !rescan {
+				// no rescan requested so return previous scan in any case
+				// this includes the rate limiting with no rescan case
+				resp := fmt.Sprintf(`{"scan_id":"%d"}`, previd)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprint(w, resp)
+				return
+			}
+
+			// forced rescan has been requested
+			if now.Sub(prevtime).Minutes() <= 3 { // rate limit scan requests for same target
+				if rescan {
+					w.WriteHeader(429) // 429 http status code is not exported ( https://codereview.appspot.com/7678043/ )
+					w.Header().Set("Content-Type", "text/html")
+					fmt.Fprint(w, fmt.Sprintf("Last scan for target %s initiated %s ago.\nPlease try again in %s.\n", domain, now.Sub(prevtime), 3*time.Minute-now.Sub(prevtime)))
+					return
+				}
+			}
+		}
+	}
+
+	//initiating a new scan
+	scan, err := db.NewScan(domain, -1) //no replay
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"domain": domain,
+			"error":  err.Error(),
+		}).Error("Could not create new scan")
+		err = errors.New("Could not create new scan")
+		return
+	}
+	var sr scanResponse
+	sr.ID = float64(scan.ID)
+	respBody, err := json.Marshal(sr)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"domain": domain,
+			"error":  err.Error(),
+		}).Error("Could not marshal scan response")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(respBody)
 }
 
 // ResultHandler handles the results endpoint of the api.
@@ -197,7 +208,6 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 // CertificateHandler handles the /certificate endpoint of the api.
 // It queries the database for the provided cert ids and returns results in JSON.
 func CertificateHandler(w http.ResponseWriter, r *http.Request) {
-
 	var (
 		status int
 		err    error
