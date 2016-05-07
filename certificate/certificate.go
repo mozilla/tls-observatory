@@ -22,10 +22,10 @@ const Apple_TS_name = "Apple"
 const Android_TS_name = "Android"
 
 type Certificate struct {
-	ID                     float64                   `json:"id"`
+	ID                     int64                     `json:"id"`
 	ScanTarget             string                    `json:"scanTarget,omitempty"`
 	IPs                    []string                  `json:"ips,omitempty"`
-	Version                float64                   `json:"version,omitempty"`
+	Version                int                       `json:"version,omitempty"`
 	SignatureAlgorithm     string                    `json:"signatureAlgorithm,omitempty"`
 	Issuer                 Issuer                    `json:"issuer,omitempty"`
 	Validity               Validity                  `json:"validity,omitempty"`
@@ -45,7 +45,7 @@ type Certificate struct {
 }
 
 type Issuer struct {
-	ID           float64  `json:"id,omitempty"`
+	ID           int64    `json:"id,omitempty"`
 	Country      []string `json:"c,omitempty"`
 	Organisation []string `json:"o,omitempty"`
 	OrgUnit      []string `json:"ou,omitempty"`
@@ -415,7 +415,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 
 	var stored = Certificate{}
 
-	stored.Version = float64(cert.Version)
+	stored.Version = cert.Version
 
 	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
 

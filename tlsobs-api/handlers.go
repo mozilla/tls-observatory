@@ -18,7 +18,7 @@ import (
 var scanRefreshRate float64
 
 type scanResponse struct {
-	ID float64 `json:"scan_id"`
+	ID int64 `json:"scan_id"`
 }
 
 // ScanHandler handles the /scans endpoint of the api
@@ -80,10 +80,13 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			if !rescan {
 				// no rescan requested so return previous scan in any case
 				// this includes the rate limiting with no rescan case
-				resp := fmt.Sprintf(`{"scan_id":"%d"}`, previd)
+				sr := scanResponse{
+					ID: previd,
+				}
+				respBody, _ := json.Marshal(sr)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprint(w, resp)
+				w.Write(respBody)
 				return
 			}
 
@@ -109,16 +112,10 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not create new scan")
 		return
 	}
-	var sr scanResponse
-	sr.ID = float64(scan.ID)
-	respBody, err := json.Marshal(sr)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"domain": domain,
-			"error":  err.Error(),
-		}).Error("Could not marshal scan response")
-		return
+	sr := scanResponse{
+		ID: scan.ID,
 	}
+	respBody, _ := json.Marshal(sr)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)

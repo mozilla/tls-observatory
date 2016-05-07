@@ -26,11 +26,11 @@ func usage() {
 }
 
 type scan struct {
-	ID int `json:"scan_id"`
+	ID int64 `json:"scan_id"`
 }
 
 var observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
-var scanid = flag.Int("scanid", 0, "View results from a previous scan instead of starting a new one")
+var scanid = flag.Int64("scanid", 0, "View results from a previous scan instead of starting a new one")
 var rescan = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
 var printRaw = flag.Bool("raw", false, "Print raw JSON coming from the API")
 
@@ -136,25 +136,7 @@ func printCert(id int64) {
 		san  string
 	)
 	fmt.Println("\n--- Certificate ---")
-	resp, err := http.Get(fmt.Sprintf("%s/api/v1/certificate?id=%d", *observatory, id))
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("Failed to access certificate. HTTP %d: %s", resp.StatusCode, body)
-	}
-	if *printRaw {
-		fmt.Printf("%s\n", body)
-	}
-	err = json.Unmarshal(body, &cert)
-	if err != nil {
-		panic(err)
-	}
+	cert = getCert(id)
 	if len(cert.X509v3Extensions.SubjectAlternativeName) == 0 {
 		san = "- none"
 	} else {
@@ -162,19 +144,47 @@ func printCert(id int64) {
 			san += "- " + name + "\n"
 		}
 	}
-	fmt.Printf(`Subject  %s	
+	fmt.Printf(`Subject  %s
 SubjectAlternativeName
-%sIssuer   %s
-Validity %s to %s
+%sValidity %s to %s
 CA       %t
 SHA1     %s
 SHA256   %s
 SigAlg   %s
 Key      %s %.0fbits %s
-%s`, cert.Subject.String(), san, cert.Issuer.String(),
+%s`,
+		cert.Subject.String(), san,
 		cert.Validity.NotBefore.Format(time.RFC3339), cert.Validity.NotAfter.Format(time.RFC3339),
 		cert.CA, cert.Hashes.SHA1, cert.Hashes.SHA256, cert.SignatureAlgorithm,
 		cert.Key.Alg, cert.Key.Size, cert.Key.Curve, cert.Anomalies)
+	pathlen := 0
+	fmt.Println("\n--- Chain of trust ---")
+	for {
+		if cert.ID == cert.Issuer.ID && pathlen == 0 {
+			// if the certificate is self signed, there is no chain to print
+			fmt.Printf("The certificate is self-signed, there is no chain of trust to print.")
+			return
+		}
+		var description string
+		if pathlen == 0 {
+			description = "end entity"
+		} else if cert.ID == cert.Issuer.ID {
+			description = "root CA"
+		} else {
+			description = "intermediate CA"
+		}
+		//padding := strings.Repeat("-", pathlen) + ">"
+		fmt.Printf("%d:\t%s\n\ttype: %s\n\tkey: %s %.0fbits %s\n\tpin-sha256: %s\n\n",
+			pathlen, cert.Subject.String(), description,
+			cert.Key.Alg, cert.Key.Size, cert.Key.Curve,
+			cert.Hashes.PKPSHA256)
+		pathlen++
+		if cert.ID == cert.Issuer.ID {
+			break
+		}
+		cert = getCert(cert.Issuer.ID)
+	}
+
 }
 
 func printConnection(c connection.Stored) {
@@ -222,4 +232,27 @@ func printAnalysis(ars []database.Analysis) {
 			fmt.Println(result)
 		}
 	}
+}
+
+func getCert(id int64) (cert certificate.Certificate) {
+	resp, err := http.Get(fmt.Sprintf("%s/api/v1/certificate?id=%d", *observatory, id))
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Failed to access certificate. HTTP %d: %s", resp.StatusCode, body)
+	}
+	if *printRaw {
+		fmt.Printf("%s\n", body)
+	}
+	err = json.Unmarshal(body, &cert)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return
 }

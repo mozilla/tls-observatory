@@ -27,7 +27,7 @@ func Connect(domain, cipherscanbinPath string) ([]byte, error) {
 	}
 
 	cmd := cipherscanbinPath + " -j --curves -servername " + domain + " " + ip + ":443 "
-	fmt.Println(cmd)
+	log.Println(cmd)
 	comm := exec.Command("bash", "-c", cmd)
 	var out bytes.Buffer
 	var stderr bytes.Buffer

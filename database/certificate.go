@@ -377,11 +377,9 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 
 	cert := &certificate.Certificate{}
 
-	var certID int64
-
 	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
 
-	err := row.Scan(&certID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.PKPSHA256, &issuer, &subject,
+	err := row.Scan(&cert.ID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.PKPSHA256, &issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &key, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
@@ -424,7 +422,7 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 		return nil, err
 	}
 
-	cert.ValidationInfo, cert.Issuer.ID, err = db.GetValidationMapForCert(certID)
+	cert.ValidationInfo, cert.Issuer.ID, err = db.GetValidationMapForCert(cert.ID)
 
 	return cert, err
 }
@@ -456,7 +454,9 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 			raw_cert
 		FROM certificates WHERE id=$1`, certID)
 
-	cert := &certificate.Certificate{}
+	cert := &certificate.Certificate{
+		ID: certID,
+	}
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
 
@@ -606,10 +606,10 @@ func (db *DB) GetCurrentTrustIDForCert(certID int64) (int64, error) {
 	return trustID, nil
 }
 
-func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.ValidationInfo, float64, error) {
+func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.ValidationInfo, int64, error) {
 	var (
 		ubuntu, mozilla, microsoft, apple, android bool
-		issuerId                                   float64
+		issuerId                                   int64
 	)
 	m := make(map[string]certificate.ValidationInfo)
 	row := db.QueryRow(`SELECT
