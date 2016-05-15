@@ -105,7 +105,7 @@ func (r Run) start(id int) {
 		for _, target := range r.Targets {
 			log.Printf("[info] run %d starting scan of target %q", id, target)
 			id, err := r.scan(target)
-			debugprint("got scan id %s", id)
+			debugprint("got scan id %d", id)
 			if err != nil {
 				log.Printf("[error] failed to launch against %q: %v", target, err)
 				continue
@@ -120,10 +120,10 @@ func (r Run) start(id int) {
 }
 
 type scan struct {
-	ID string `json:"scan_id"`
+	ID int64 `json:"scan_id"`
 }
 
-func (r Run) scan(target string) (id string, err error) {
+func (r Run) scan(target string) (id int64, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("scan(target=%q) -> %v", e)
@@ -143,14 +143,14 @@ func (r Run) scan(target string) (id string, err error) {
 	if err != nil {
 		panic(err)
 	}
-	if s.ID == "" {
+	if s.ID < 1 {
 		panic("failed to launch scan on target " + target)
 	}
 	id = s.ID
 	return
 }
 
-func (r Run) evaluate(id string, notifchan chan Notification, wg *sync.WaitGroup) {
+func (r Run) evaluate(id int64, notifchan chan Notification, wg *sync.WaitGroup) {
 	defer func() {
 		if e := recover(); e != nil {
 			log.Printf("[error] evaluate(id=%q) -> %v", id, e)
@@ -163,7 +163,7 @@ func (r Run) evaluate(id string, notifchan chan Notification, wg *sync.WaitGroup
 		err     error
 	)
 	for {
-		resp, err := http.Get(observatory + "/api/v1/results?id=" + id)
+		resp, err := http.Get(fmt.Sprintf("%s/api/v1/results?id=%d", observatory, id))
 		if err != nil {
 			panic(err)
 		}
