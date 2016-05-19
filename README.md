@@ -98,7 +98,7 @@ $ GO15VENDOREXPERIMENT=1 go get github.com/mozilla/tls-observatory/tlsobs-api
 
 Create the Postgres database using the schema in `database/schema.sql`.
 
-Rhen create two configuration files for the api and the scanner using the templates in `conf/`.
+Then create two configuration files for the api and the scanner using the templates in `conf/`.
 
 For AWS deployment, you can use the ElasticBeanstalk environment creation script
 in `tools/aws-create-env.sh`. The script creates an RDS database and an EB
