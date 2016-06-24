@@ -104,7 +104,6 @@ runs:
 
         # Tracking protection
         - shavar.services.mozilla.com
-        - tracking.services.mozilla.com
 
         # Test Pilot
         - testpilot.firefox.com
@@ -421,7 +420,6 @@ runs:
     # Tracking protection paging
     - targets:
         - shavar.services.mozilla.com
-        - tracking.services.mozilla.com
       assertions:
         - certificate:
             validity: 
