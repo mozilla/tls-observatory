@@ -115,8 +115,17 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	sr := scanResponse{
 		ID: scan.ID,
 	}
-	respBody, _ := json.Marshal(sr)
-	w.Header().Set("Content-Type", "application/json")
+	respBody, err := json.Marshal(sr)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"scan_id": scan.ID,
+			"error":   err.Error(),
+		}).Error("Could not Marshal scan")
+
+		err = errors.New("Could not process the requested scan")
+		return
+	}
+	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
 }
@@ -124,11 +133,11 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 // ResultHandler handles the results endpoint of the api.
 // It has a scan id as input and returns its results ( if available )
 func ResultHandler(w http.ResponseWriter, r *http.Request) {
-
 	var (
 		status int
 		err    error
 	)
+	setResponseHeader(w)
 
 	defer func() {
 		if nil != err {
@@ -196,8 +205,7 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not process the requested scan")
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
+	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
 }
@@ -268,10 +276,22 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not process requested certificate")
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
+	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
+}
+
+func PreflightHandler(w http.ResponseWriter, r *http.Request) {
+	setResponseHeader(w)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("preflighted"))
+}
+
+func setResponseHeader(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS, POST")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	w.Header().Set("Content-Type", "application/json")
 }
 
 func validateDomain(domain string) bool {
