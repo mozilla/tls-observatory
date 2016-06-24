@@ -137,7 +137,6 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		status int
 		err    error
 	)
-	setResponseHeader(w)
 
 	defer func() {
 		if nil != err {
