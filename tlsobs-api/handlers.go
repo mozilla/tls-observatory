@@ -125,7 +125,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not process the requested scan")
 		return
 	}
-	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
 }
@@ -204,7 +203,6 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not process the requested scan")
 		return
 	}
-	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
 }
@@ -275,22 +273,8 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not process requested certificate")
 		return
 	}
-	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
-}
-
-func PreflightHandler(w http.ResponseWriter, r *http.Request) {
-	setResponseHeader(w)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("preflighted"))
-}
-
-func setResponseHeader(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS, POST")
-	w.Header().Set("Access-Control-Max-Age", "86400")
-	w.Header().Set("Content-Type", "application/json")
 }
 
 func validateDomain(domain string) bool {
