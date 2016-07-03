@@ -28,6 +28,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		status int
 		err    error
 	)
+	setResponseHeader(w)
 
 	defer func() {
 		if nil != err {
@@ -125,7 +126,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not process the requested scan")
 		return
 	}
-	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
 }
@@ -137,6 +137,7 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		status int
 		err    error
 	)
+	setResponseHeader(w)
 
 	defer func() {
 		if nil != err {
@@ -204,7 +205,6 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not process the requested scan")
 		return
 	}
-	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
 }
@@ -216,6 +216,7 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		status int
 		err    error
 	)
+	setResponseHeader(w)
 
 	defer func() {
 		if nil != err {
@@ -275,7 +276,6 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not process requested certificate")
 		return
 	}
-	setResponseHeader(w)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
 }
