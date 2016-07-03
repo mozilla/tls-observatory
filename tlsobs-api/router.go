@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func NewRouter() *mux.Router {
+func NewRouter() *CORSRouter{
 
 	router := mux.NewRouter().StrictSlash(true)
 	for _, route := range routes {
@@ -22,8 +22,27 @@ func NewRouter() *mux.Router {
 
 	}
 
-	return router
+	return &CORSRouter{router}
 }
+
+type CORSRouter struct {
+  r *mux.Router
+}
+
+
+func (s *CORSRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+  	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS, POST")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	w.Header().Set("Content-Type", "application/json")
+
+  if r.Method == "OPTIONS" {
+    return
+  }
+
+  s.r.ServeHTTP(w, r)
+}
+
 
 type Route struct {
 	Name        string
@@ -52,24 +71,5 @@ var routes = Routes{
 		"GET",
 		"/api/v1/certificate",
 		CertificateHandler,
-	},
-	// CORS preflight endpoints
-	Route{
-		"CORS Preflight",
-		"OPTIONS",
-		"/api/v1/scan",
-		PreflightHandler,
-	},
-	Route{
-		"CORS Preflight",
-		"OPTIONS",
-		"/api/v1/results",
-		PreflightHandler,
-	},
-	Route{
-		"CORS Preflight",
-		"OPTIONS",
-		"/api/v1/certificate",
-		PreflightHandler,
 	},
 }
