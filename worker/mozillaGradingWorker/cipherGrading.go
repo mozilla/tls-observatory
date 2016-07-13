@@ -2,14 +2,6 @@ package mozillaGradingWorker
 
 import "github.com/mozilla/tls-observatory/connection"
 
-var ECCRSAKeySize = map[int]int{
-	160: 1024,
-	224: 2048,
-	256: 3072,
-	384: 7680,
-	512: 15360,
-}
-
 func gradeCiphers(connInfo connection.Stored) (categoryResults, error) {
 	res := categoryResults{}
 
