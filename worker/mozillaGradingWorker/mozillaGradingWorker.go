@@ -15,8 +15,9 @@ the audited target`
 
 // EvaluationResults contains the results of the mozillaEvaluationWorker
 type EvaluationResults struct {
-	Grade    float64  `json:"grade"`
-	Failures []string `json:"failures"`
+	Grade    	float64   `json:"grade"`
+	LetterGrade string 	  `json:"lettergrade"`
+	Failures 	[]string  `json:"failures"`
 }
 
 type categoryResults struct {
@@ -94,12 +95,28 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 
 	fmt.Printf("proto : %d , cipher : %d , keyx: %d\n", int(protores.Grade), int(cipherres.Grade), int(keyxres.Grade))
 
-	er := EvaluationResults{Grade: score}
+	er := EvaluationResults{Grade: score, LetterGrade: getLetterfromGrade(score)}
 
 	fmt.Printf("The Score is : %d \n", int(score))
 
 	return json.Marshal(&er)
 
+}
+
+func getLetterfromGrade(grade float64) string {
+	if grade < 20 {
+		return "F"
+	}else if grade < 35 {
+		return "E"
+	}else if grade < 50 {
+		return "D"
+	}else if grade < 65 {
+		return "C"
+	}else if grade < 80 {
+		return "B"
+	}
+
+	return "A"
 }
 
 // contains checks if an entry exists in a slice and returns
