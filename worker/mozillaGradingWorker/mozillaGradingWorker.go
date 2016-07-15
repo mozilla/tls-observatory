@@ -2,7 +2,6 @@ package mozillaGradingWorker
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/logger"
@@ -15,18 +14,18 @@ the audited target`
 
 // EvaluationResults contains the results of the mozillaEvaluationWorker
 type EvaluationResults struct {
-	Grade    	float64   `json:"grade"`
-	LetterGrade string 	  `json:"lettergrade"`
-	Failures 	[]string  `json:"failures"`
+	Grade       float64  `json:"grade"`
+	LetterGrade string   `json:"lettergrade"`
+	Failures    []string `json:"failures"`
 }
 
 type categoryResults struct {
 	Grade          int
 	MaximumAllowed int
 	Remarks        []string
-	Fail           bool
 }
 
+// CipherSuite represent a ciphersuite generated and recognised by OpenSSL
 type CipherSuite struct {
 	Proto string     `json:"proto"`
 	Kx    string     `json:"kx"`
@@ -35,6 +34,7 @@ type CipherSuite struct {
 	Mac   string     `json:"mac"`
 }
 
+//Encryption represents the encryption aspects of a Ciphersuite
 type Encryption struct {
 	Cipher string `json:"cipher"`
 	Bits   int    `json:"key"`
@@ -84,7 +84,6 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	keyxres, err := gradeKeyX(connInfo)
 	if err != nil {
 		return nil, err
@@ -93,26 +92,22 @@ func Evaluate(connInfo connection.Stored) ([]byte, error) {
 	var score float64
 	score = float64(protores.Grade)*0.3 + float64(cipherres.Grade)*0.4 + float64(keyxres.Grade)*0.3
 
-	fmt.Printf("proto : %d , cipher : %d , keyx: %d\n", int(protores.Grade), int(cipherres.Grade), int(keyxres.Grade))
+	// fmt.Printf("proto : %d , cipher : %d , keyx: %d\n", int(protores.Grade), int(cipherres.Grade), int(keyxres.Grade))
 
 	er := EvaluationResults{Grade: score, LetterGrade: getLetterfromGrade(score)}
-
-	fmt.Printf("The Score is : %d \n", int(score))
-
 	return json.Marshal(&er)
-
 }
 
 func getLetterfromGrade(grade float64) string {
 	if grade < 20 {
 		return "F"
-	}else if grade < 35 {
+	} else if grade < 35 {
 		return "E"
-	}else if grade < 50 {
+	} else if grade < 50 {
 		return "D"
-	}else if grade < 65 {
+	} else if grade < 65 {
 		return "C"
-	}else if grade < 80 {
+	} else if grade < 80 {
 		return "B"
 	}
 

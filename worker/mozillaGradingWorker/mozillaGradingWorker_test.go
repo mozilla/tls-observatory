@@ -2,42 +2,52 @@ package mozillaGradingWorker
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
-    "fmt"
 
 	"github.com/mozilla/tls-observatory/connection"
 )
 
+type testSubject struct {
+	name          string
+	ciphersuite   string
+	expectedScore float64
+}
+
+var subjects []testSubject
+
+func init() {
+	subjects = append(subjects, testSubject{name: "pokeinthe.io", ciphersuite: pokeinthe, expectedScore: float64(94.5)}, testSubject{name: "google.com", ciphersuite: google, expectedScore: float64(91.5)}, testSubject{name: "mozilla.org", ciphersuite: mozilla, expectedScore: float64(84)})
+}
+
 func TestLevels(t *testing.T) {
-    var c connection.Stored
+	var c connection.Stored
 
-    fmt.Println("Pokeinthe")
+	for _, s := range subjects {
+		err := json.Unmarshal([]byte(s.ciphersuite), &c)
+		if err != nil {
+			t.Error(err)
+			t.Error(s.name)
+			t.Fail()
+		}
 
-    err := json.Unmarshal([]byte(pokeinthe), &c)
-    if err != nil {
-        return
-    }
+		data, err := Evaluate(c)
+		if err != nil {
+			t.Error(err)
+			t.Error(s.name)
+			t.Fail()
+		}
 
-    Evaluate(c)
+		res := EvaluationResults{}
 
-    fmt.Println("Mozilla")
+		json.Unmarshal(data, &res)
 
-    err = json.Unmarshal([]byte(mozilla), &c)
-    if err != nil {
-        return
-    }
-
-    Evaluate(c)
-
-    fmt.Println("Google")
-
-    err = json.Unmarshal([]byte(google), &c)
-    if err != nil {
-        return
-    }
-
-    Evaluate(c)
-
+		if res.Grade != s.expectedScore {
+			t.Error(s.name)
+			t.Error(fmt.Printf("Expected %f and got %f", s.expectedScore, res.Grade))
+			t.Fail()
+		}
+	}
 }
 
 var pokeinthe = `{
@@ -135,7 +145,7 @@ var pokeinthe = `{
         "serverside": true
     }`
 
-var  mozilla = `{
+var mozilla = `{
 
     "scanIP": "63.245.215.20",
     "serverside": true,

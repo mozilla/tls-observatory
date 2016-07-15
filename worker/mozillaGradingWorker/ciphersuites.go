@@ -1,5 +1,6 @@
 package mozillaGradingWorker
 
+//OpenSSLCiphersuites contains all the ciphersuites recognised by OpenSSL
 var OpenSSLCiphersuites = `{
 "AES128-GCM-SHA256": {
 	"proto": "TLSv1.2",
