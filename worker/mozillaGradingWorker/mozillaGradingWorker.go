@@ -52,12 +52,13 @@ func init() {
 	err := json.Unmarshal([]byte(OpenSSLCiphersuites), &opensslciphersuites)
 	if err != nil {
 		log.Error(err)
-		log.Error("Could not load OpenSSL ciphersuites. Evaluation Worker not available")
+		log.Error("Could not load OpenSSL ciphersuites. Grading Worker not available")
 		return
 	}
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
 }
 
+//go:generate  go run ../../tools/ciphers.go
 // Run implements the worker interface.It is called to get the worker results.
 func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
