@@ -2,6 +2,7 @@ package mozillaGradingWorker
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/logger"
@@ -112,6 +113,40 @@ func getLetterfromGrade(grade float64) string {
 	}
 
 	return "A"
+}
+
+func (e eval) AnalysisPrinter(r []byte, targetLevel interface{}) (results []string, err error) {
+	var eval EvaluationResults
+	err = json.Unmarshal(r, &eval)
+	if err != nil {
+		err = fmt.Errorf("Mozilla grading worker: failed to parse results: %v", err)
+		return
+	}
+	results = append(results, fmt.Sprintf("* Grade: %f", eval.Grade))
+	for _, e := range eval.Failures {
+		results = append(results, fmt.Sprintf("  - %s", e))
+	}
+	return
+}
+
+func (e eval) Assertor(evresults, assertresults []byte) (pass bool, body []byte, err error) {
+	var evres, assertres EvaluationResults
+	err = json.Unmarshal(evresults, &evres)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(assertresults, &assertres)
+	if err != nil {
+		return
+	}
+	if evres.Grade != assertres.Grade {
+		body = []byte(fmt.Sprintf(`Assertion mozillaGradingWorker. The domain scored %f instead of expected %f`,
+			assertres.Grade, evres.Grade))
+		pass = false
+	} else {
+		pass = true
+	}
+	return
 }
 
 // contains checks if an entry exists in a slice and returns
