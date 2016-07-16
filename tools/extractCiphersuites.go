@@ -25,7 +25,7 @@ type Encryption struct {
 	Bits   int    `json:"key"`
 }
 
-var opensslpath = "openssl"
+var opensslpath = "/opt/cipherscan/openssl"
 
 func main() {
 	cmd := opensslpath + " ciphers -v"
@@ -47,14 +47,23 @@ func main() {
 		if l == "" {
 			break
 		}
-		c := Cipher{}
 		line := strings.Fields(l)
-		c.Proto = line[1]
-		c.Kx = strings.Split(line[2], "=")[1]
-		c.Au = strings.Split(line[3], "=")[1]
-		c.Enc.Cipher = strings.Split(strings.Split(line[4], "=")[1], "(")[0]
-		c.Enc.Bits, _ = strconv.Atoi(strings.TrimRight(strings.Split(strings.Split(line[4], "=")[1], "(")[1], ")"))
-		c.Mac = strings.Split(line[5], "=")[1]
+		encbits, err := strconv.Atoi(strings.TrimRight(strings.Split(strings.Split(line[4], "=")[1], "(")[1], ")"))
+		if err != nil {
+			fmt.Errorf("Could not get encryption bits, %s", err)
+			return
+		}
+		enc := Encryption{
+			Cipher: strings.Split(strings.Split(line[4], "=")[1], "(")[0],
+			Bits:   encbits,
+		}
+		c := Cipher{
+			Proto: line[1],
+			Kx:    strings.Split(line[2], "=")[1],
+			Au:    strings.Split(line[3], "=")[1],
+			Enc:   enc,
+			Mac:   strings.Split(line[5], "=")[1],
+		}
 		ciphers[line[0]] = c
 	}
 
