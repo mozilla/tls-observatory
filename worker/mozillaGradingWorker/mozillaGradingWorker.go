@@ -48,7 +48,6 @@ var opensslciphersuites = make(map[string]CipherSuite)
 var log = logger.GetLogger()
 
 func init() {
-	log.Debug("Registering Grading...")
 	err := json.Unmarshal([]byte(OpenSSLCiphersuites), &opensslciphersuites)
 	if err != nil {
 		log.Error(err)
@@ -58,7 +57,7 @@ func init() {
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
 }
 
-//go:generate  go run ../../tools/ciphers.go
+//go:generate  go run /go/src/$PROJECT/tools/extractCiphersuites.go
 // Run implements the worker interface.It is called to get the worker results.
 func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
