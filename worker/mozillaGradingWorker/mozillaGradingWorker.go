@@ -122,7 +122,8 @@ func (e eval) AnalysisPrinter(r []byte, targetLevel interface{}) (results []stri
 		err = fmt.Errorf("Mozilla grading worker: failed to parse results: %v", err)
 		return
 	}
-	results = append(results, fmt.Sprintf("* Grade: %f", eval.Grade))
+	results = append(results, fmt.Sprintf("* Grade: %s (%.0f/100)",
+		eval.LetterGrade, eval.Grade))
 	for _, e := range eval.Failures {
 		results = append(results, fmt.Sprintf("  - %s", e))
 	}
