@@ -17,6 +17,7 @@ import (
 	"github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/worker"
 	_ "github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
+	_ "github.com/mozilla/tls-observatory/worker/mozillaGradingWorker"
 )
 
 func usage() {

@@ -13,6 +13,8 @@ ADD conf/ /etc/tls-observatory/
 RUN groupadd -r tlsobs && useradd -r -g tlsobs tlsobs
 USER tlsobs
 
+RUN go generate $PROJECT/worker/mozillaGradingWorker
+
 RUN go install $PROJECT/tlsobs-scanner
 
 ENTRYPOINT /go/bin/tlsobs-scanner
