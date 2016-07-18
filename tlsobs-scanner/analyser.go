@@ -57,7 +57,7 @@ func Setup(c config.Config) {
 		certPool := x509.NewCertPool()
 		poollen := 0
 		for len(poolData) > 0 {
-			// read the next PEM block, ignore non CERTIFICATE entires
+			// read the next PEM block, ignore non CERTIFICATE entries
 			var block *pem.Block
 			block, poolData = pem.Decode(poolData)
 			if block == nil {

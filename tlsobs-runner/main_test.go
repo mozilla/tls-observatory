@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// test reading a basic configuration file with smtp user & pass overriden by
+// test reading a basic configuration file with smtp user & pass overridden by
 // environment variables
 func TestConf(t *testing.T) {
 
