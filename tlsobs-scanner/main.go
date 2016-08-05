@@ -128,28 +128,45 @@ func scan(scanID int64, cipherscan string) {
 		"scan_id":  scanID,
 		"cert_id":  certID,
 		"trust_id": trustID,
-	}).Debug("Retrieved certs")
+	}).Debug("Certificate retrieved from target")
 
-	isTrustValid, err := db.IsTrustValid(trustID)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"scan_id": scanID,
-			"cert_id": certID,
-			"error":   err.Error(),
-		}).Error("Could not get if trust is valid")
-		return
-	}
 	completion += 20
-	_, err = db.Exec(`UPDATE scans
-			SET cert_id=$1, trust_id=$2, has_tls=TRUE, is_valid=$3, completion_perc=$4
-			WHERE id=$5`, certID, trustID, isTrustValid, completion, scanID)
+	_, err = db.Exec(`UPDATE scans SET cert_id=$1, has_tls=TRUE, completion_perc=$2
+			WHERE id=$3`, certID, completion, scanID)
 	if err != nil {
+		db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 		log.WithFields(logrus.Fields{
 			"scan_id": scanID,
 			"cert_id": certID,
 			"error":   err.Error(),
 		}).Error("Could not update scans for cert")
 		return
+	}
+
+	completion += 30
+	if trustID > 0 {
+		isTrustValid, err := db.IsTrustValid(trustID)
+		if err != nil {
+			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
+			log.WithFields(logrus.Fields{
+				"scan_id":  scanID,
+				"cert_id":  certID,
+				"trust_id": trustID,
+				"error":    err.Error(),
+			}).Error("Failed to determine certificate trust")
+			return
+		}
+		_, err = db.Exec(`UPDATE scans SET trust_id=$1, is_valid=$2, completion_perc=$3
+			WHERE id=$4`, trustID, isTrustValid, completion, scanID)
+		if err != nil {
+			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
+			log.WithFields(logrus.Fields{
+				"scan_id": scanID,
+				"cert_id": certID,
+				"error":   err.Error(),
+			}).Error("Could not update scans for cert")
+			return
+		}
 	}
 
 	// Cipherscan the target

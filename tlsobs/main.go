@@ -142,7 +142,7 @@ func printCert(id int64) {
 	// Print certificate information
 	cert = getCert(id)
 	if len(cert.X509v3Extensions.SubjectAlternativeName) == 0 {
-		san = "- none"
+		san = "- none\n"
 	} else {
 		for _, name := range cert.X509v3Extensions.SubjectAlternativeName {
 			san += "- " + name + "\n"
@@ -208,14 +208,17 @@ Mozilla Microsoft Apple Android
 		} else {
 			description = "intermediate CA"
 		}
-		//padding := strings.Repeat("-", pathlen) + ">"
-		fmt.Printf("%d:\t%s\n\ttype: %s\n\tkey: %s %.0fbits %s\n\tpin-sha256: %s\n\n",
-			pathlen, cert.Subject.String(), description,
+		fmt.Printf("%d:\t%s\n\tissuer: %s\n\ttype: %s\n\tkey: %s %.0fbits %s\n\tpin-sha256: %s\n\n",
+			pathlen, cert.Subject.String(), cert.Issuer.String(), description,
 			cert.Key.Alg, cert.Key.Size, cert.Key.Curve,
 			cert.Hashes.PKPSHA256)
 		pathlen++
 		if cert.ID == cert.Issuer.ID {
 			break
+		}
+		if cert.Issuer.ID < 1 {
+			fmt.Println("The issuer of the certificate is unknown.")
+			return
 		}
 		cert = getCert(cert.Issuer.ID)
 	}
