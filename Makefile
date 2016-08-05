@@ -72,9 +72,13 @@ go_vendor_dependencies:
 	$(GOGETTER) github.com/gorilla/context
 	$(GOGETTER) github.com/gorhill/cronexpr
 	$(GOGETTER) gopkg.in/yaml.v2
+	$(GOGETTER) github.com/fatih/color
 	echo 'removing .git from vendored pkg and moving them to vendor'
-	find .tmpdeps/src -type d -name ".git" ! -name ".gitignore" -exec rm -rf {} \; || exit 0
+	find .tmpdeps/src -name ".git" ! -name ".gitignore" -exec rm -rf {} \; || exit 0
+	[ -d vendor ] && git rm -rf vendor/ || exit 0
+	mkdir vendor/ || exit 0
 	cp -ar .tmpdeps/src/* vendor/
+	git add vendor/
 	rm -rf .tmpdeps
 
 test:
