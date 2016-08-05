@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jvehent/gozdef"
 	"gopkg.in/gcfg.v1"
 )
 
@@ -27,7 +26,6 @@ type Config struct {
 		AppleTS     string
 		AndroidTS   string
 	}
-	MozDef gozdef.MqConf
 }
 
 func Load(path string) (conf Config, err error) {
