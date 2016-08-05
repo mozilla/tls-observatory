@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/database"
@@ -137,16 +138,19 @@ func printCert(id int64) {
 		cert certificate.Certificate
 		san  string
 	)
-	fmt.Println("\n--- Certificate ---")
+
+	// Print certificate information
 	cert = getCert(id)
 	if len(cert.X509v3Extensions.SubjectAlternativeName) == 0 {
-		san = "- none"
+		san = "- none\n"
 	} else {
 		for _, name := range cert.X509v3Extensions.SubjectAlternativeName {
 			san += "- " + name + "\n"
 		}
 	}
-	fmt.Printf(`Subject  %s
+	fmt.Printf(`
+--- Certificate ---
+Subject  %s
 SubjectAlternativeName
 %sValidity %s to %s
 CA       %t
@@ -159,6 +163,35 @@ Key      %s %.0fbits %s
 		cert.Validity.NotBefore.Format(time.RFC3339), cert.Validity.NotAfter.Format(time.RFC3339),
 		cert.CA, cert.Hashes.SHA1, cert.Hashes.SHA256, cert.SignatureAlgorithm,
 		cert.Key.Alg, cert.Key.Size, cert.Key.Curve, cert.Anomalies)
+
+	// Print truststore information
+	green := color.New(color.FgGreen).SprintFunc()
+	red := color.New(color.FgRed).SprintFunc()
+	gmark := green("✓")
+	rmark := red("✘")
+	moztrust, microtrust, appletrust, androtrust := rmark, rmark, rmark, rmark
+	for truststore, trust := range cert.ValidationInfo {
+		if !trust.IsValid {
+			continue
+		}
+		switch truststore {
+		case "Mozilla":
+			moztrust = gmark
+		case "Microsoft":
+			microtrust = gmark
+		case "Apple":
+			appletrust = gmark
+		case "Android":
+			androtrust = gmark
+		}
+	}
+	fmt.Printf(`
+--- Trust ---
+Mozilla Microsoft Apple Android
+   %s        %s       %s      %s
+`, moztrust, microtrust, appletrust, androtrust)
+
+	// Print chain of trust
 	pathlen := 0
 	fmt.Println("\n--- Chain of trust ---")
 	for {
@@ -175,14 +208,17 @@ Key      %s %.0fbits %s
 		} else {
 			description = "intermediate CA"
 		}
-		//padding := strings.Repeat("-", pathlen) + ">"
-		fmt.Printf("%d:\t%s\n\ttype: %s\n\tkey: %s %.0fbits %s\n\tpin-sha256: %s\n\n",
-			pathlen, cert.Subject.String(), description,
+		fmt.Printf("%d:\t%s\n\tissuer: %s\n\ttype: %s\n\tkey: %s %.0fbits %s\n\tpin-sha256: %s\n\n",
+			pathlen, cert.Subject.String(), cert.Issuer.String(), description,
 			cert.Key.Alg, cert.Key.Size, cert.Key.Curve,
 			cert.Hashes.PKPSHA256)
 		pathlen++
 		if cert.ID == cert.Issuer.ID {
 			break
+		}
+		if cert.Issuer.ID < 1 {
+			fmt.Println("The issuer of the certificate is unknown.")
+			return
 		}
 		cert = getCert(cert.Issuer.ID)
 	}

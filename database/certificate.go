@@ -13,7 +13,7 @@ import (
 
 // InsertCertificatetoDB inserts a x509 certificate to the database.
 // It takes as input a Certificate pointer.
-// It returns the database ID of the inserted certificate ( -1 if an error occures ) and an error, if it occures.
+// It returns the database ID of the inserted certificate ( -1 if an error occurs ) and an error, if it occurs.
 func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error) {
 
 	var id int64
@@ -639,13 +639,13 @@ func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.Vali
 // It returns a "valid" if any of the per truststore valitities is valid
 // It returns a boolean that represent if trust is valid or not.
 func (db *DB) IsTrustValid(id int64) (bool, error) {
-
-	row := db.QueryRow("SELECT trusted_ubuntu OR trusted_mozilla OR trusted_microsoft OR trusted_apple OR trusted_android FROM trust WHERE id=$1", id)
-
-	var isValid bool
-	isValid = false
-
+	row := db.QueryRow(`SELECT trusted_ubuntu OR
+				   trusted_mozilla OR
+				   trusted_microsoft OR
+				   trusted_apple OR
+				   trusted_android
+			    FROM trust WHERE id=$1`, id)
+	isValid := false
 	err := row.Scan(&isValid)
-
 	return isValid, err
 }

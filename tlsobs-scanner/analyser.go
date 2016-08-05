@@ -147,7 +147,9 @@ func Setup(c config.Config) {
 }
 
 //handleCertChain takes the chain retrieved from the queue and tries to validate it
-//against each of the truststores provided.
+//against each of the truststores provided. The function returns the ID of the end
+//entity certificate (or -1 if not stored), the ID of the trust entry (or -1 if not
+//stored) and an error message.
 func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 
 	var intermediates []*x509.Certificate
@@ -237,22 +239,7 @@ func handleCertChain(chain *certificate.Chain) (int64, int64, error) {
 		"map length": len(certmap),
 	}).Debug("Certificate Map length")
 
-	trustID, err := storeCertificates(certmap)
-
-	leafID := int64(-1)
-
-	if trustID != -1 {
-		leafID, err = db.GetCertIDFromTrust(trustID)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"domain":   chain.Domain,
-				"trust_id": trustID,
-				"error":    err.Error(),
-			}).Error("Could not fetch leaf cert id")
-		}
-	}
-
-	return leafID, trustID, err
+	return storeCertificates(certmap)
 }
 
 //isChainValid creates the valid certificate chains by combining the chain retrieved with the provided truststore.
@@ -340,142 +327,151 @@ func isChainValid(endEntity *x509.Certificate, intermediates []*x509.Certificate
 
 }
 
-func storeCertificates(m map[string]certificate.Certificate) (int64, error) {
-	var leafTrust int64
-	leafTrust = -1
-	for _, c := range m {
+// storeCertificates loops through each certificate in a map of certs to store them in the database
+// (if not yet stored) or update their last seen timestamp (if already stored).
+// The same is done for the issuer of the certificate.
+// Then the trust of the certificate is checked. If a trust entry already exists for this certificate
+// and its issuer in database, the entry is updated. Otherwise, a new entry is created.
+//
+// The ID of the end entity certificate and its trust entry in database are returned, along with any error
+func storeCertificates(certmap map[string]certificate.Certificate) (EECertID int64, EETrustID int64, err error) {
+	EECertID, EETrustID = -1, -1
 
-		certID, err := db.GetCertIDBySHA256Fingerprint(c.Hashes.SHA256)
-
+	for _, cert := range certmap {
+		certID, err := db.GetCertIDBySHA256Fingerprint(cert.Hashes.SHA256)
 		if err != nil {
 			log.WithFields(logrus.Fields{
-				"domain":      c.ScanTarget,
-				"certificate": c.Hashes.SHA256,
+				"domain":      cert.ScanTarget,
+				"certificate": cert.Hashes.SHA256,
 				"error":       err.Error(),
 			}).Error("Could not get cert id from db")
 		}
 
 		// certificate does not yet exist in DB
 		if certID == -1 {
-			certID, err = db.InsertCertificatetoDB(&c)
+			certID, err = db.InsertCertificatetoDB(&cert)
 			if err != nil {
 				log.WithFields(logrus.Fields{
-					"domain":      c.ScanTarget,
-					"certificate": c.Hashes.SHA256,
+					"domain":      cert.ScanTarget,
+					"certificate": cert.Hashes.SHA256,
 					"error":       err.Error(),
 				}).Error("Could not insert cert to db")
 				continue
 			} else {
 
 				log.WithFields(logrus.Fields{
-					"domain":      c.ScanTarget,
-					"certificate": c.Hashes.SHA256,
+					"domain":      cert.ScanTarget,
+					"certificate": cert.Hashes.SHA256,
 				}).Debug("Inserted cert to db")
 			}
 		} else {
 			db.UpdateCertLastSeenByID(certID)
 		}
 
-		for _, p := range c.ParentSignature {
+		// If the certificate is not a CA Cert, stores its ID as the end entity
+		if !cert.CA && EECertID == -1 {
+			EECertID = certID
+		}
 
-			parID, err := db.GetCertIDBySHA256Fingerprint(p)
+		// insert the issuer of the certificate in DB (if not yet stored)
+		// or update its last seen timestamp (if already stored)
+		for _, issuer := range cert.ParentSignature {
 
+			issuerID, err := db.GetCertIDBySHA256Fingerprint(issuer)
 			if err != nil {
 				log.WithFields(logrus.Fields{
-					"domain":      c.ScanTarget,
-					"certificate": c.Hashes.SHA256,
-					"parent":      p,
+					"domain":      cert.ScanTarget,
+					"certificate": cert.Hashes.SHA256,
+					"issuer":      issuer,
 					"error":       err.Error(),
-				}).Error("Could not get cert id for parent from db")
+				}).Error("Failed to get id of issuer certificate from database")
 			}
 
-			if parID == -1 {
-
-				parent, ok := m[p]
+			if issuerID == -1 {
+				issuer, ok := certmap[issuer]
 				if !ok {
-
 					log.WithFields(logrus.Fields{
-						"domain":      c.ScanTarget,
-						"certificate": c.Hashes.SHA256,
-						"parent":      p,
-					}).Warning("Parent not found in chain")
+						"domain":      cert.ScanTarget,
+						"certificate": cert.Hashes.SHA256,
+						"issuer":      issuerID,
+					}).Warning("The issuer of the certificate was not found in the chain of trust, certificate is not trusted.")
 					continue
 				}
-				parID, err = db.InsertCertificatetoDB(&parent)
+				issuerID, err = db.InsertCertificatetoDB(&issuer)
 				if err != nil {
 					log.WithFields(logrus.Fields{
-						"domain":      c.ScanTarget,
-						"certificate": parent.Hashes.SHA256,
+						"domain":      cert.ScanTarget,
+						"certificate": issuer.Hashes.SHA256,
 						"error":       err.Error(),
-					}).Error("Could not store cert to db")
+					}).Error("Failed to store certificate in database")
 					continue
 				} else {
 					log.WithFields(logrus.Fields{
-						"domain":      c.ScanTarget,
-						"certificate": c.Hashes.SHA256,
-					}).Debug("Inserted cert")
+						"domain":      cert.ScanTarget,
+						"certificate": cert.Hashes.SHA256,
+					}).Debug("Inserted issuer certificate in database")
 				}
 			} else {
-				db.UpdateCertLastSeenByID(parID)
+				db.UpdateCertLastSeenByID(issuerID)
 			}
 
-			trustID, err := db.GetCurrentTrustID(certID, parID)
-
+			// check if a trust entry already exists for this certificate and its issuer.
+			// If none exists, create one. Otherwise, update the existing entry.
+			trustID, err := db.GetCurrentTrustID(certID, issuerID)
 			if err != nil {
 				log.WithFields(logrus.Fields{
-					"domain":      c.ScanTarget,
-					"certificate": c.Hashes.SHA256,
-					"parent":      p,
+					"domain":      cert.ScanTarget,
+					"certificate": cert.Hashes.SHA256,
+					"issuer":      issuer,
 					"error":       err.Error(),
 				}).Error("Could not get trust for certs")
 				continue
 			}
 
+			// No trust entry exists, create one
 			if trustID == -1 {
-
-				trustID, err = db.InsertTrustToDB(c, certID, parID)
+				trustID, err = db.InsertTrustToDB(cert, certID, issuerID)
 				if err != nil {
 					log.WithFields(logrus.Fields{
-						"domain":      c.ScanTarget,
-						"certificate": c.Hashes.SHA256,
-						"parent":      p,
+						"domain":      cert.ScanTarget,
+						"certificate": cert.Hashes.SHA256,
+						"issuer":      issuer,
 						"error":       err.Error(),
-					}).Error("Could not store trust for certs")
+					}).Error("Failed to store trust entry for certificate and its issuer")
 				} else {
 					log.WithFields(logrus.Fields{
-						"domain":      c.ScanTarget,
-						"certificate": c.Hashes.SHA256,
-						"parent":      p,
-					}).Debug("Stored trust for certs")
+						"domain":      cert.ScanTarget,
+						"certificate": cert.Hashes.SHA256,
+						"issuer":      issuer,
+					}).Debug("Trust entry for cert and issuer stored in database")
 				}
-			} else {
-				trustID, err = db.UpdateTrust(trustID, c)
-				if err != nil {
 
+				// Update the existing trust entry
+			} else {
+				trustID, err = db.UpdateTrust(trustID, cert)
+				if err != nil {
 					log.WithFields(logrus.Fields{
-						"domain":      c.ScanTarget,
-						"certificate": c.Hashes.SHA256,
-						"parent":      p,
+						"domain":      cert.ScanTarget,
+						"certificate": cert.Hashes.SHA256,
+						"issuer":      issuer,
 						"error":       err.Error(),
-					}).Error("Could not update trust for certs")
-					log.Println("Could not update trust for certs, ", err.Error())
+					}).Error("Failed to update trust entry for cert and issuer")
 				} else {
 					log.WithFields(logrus.Fields{
-						"domain":      c.ScanTarget,
-						"certificate": c.Hashes.SHA256,
-						"parent":      p,
-					}).Debug("Updated trust for certs")
+						"domain":      cert.ScanTarget,
+						"certificate": cert.Hashes.SHA256,
+						"issuer":      issuer,
+					}).Debug("Updated trust entry for cert and issuer")
 				}
 			}
 
-			if !c.CA && leafTrust == -1 {
-				leafTrust = trustID
+			// Store the trust ID of the EE cert
+			if !cert.CA && certID == EECertID && EETrustID == -1 {
+				EETrustID = trustID
 			}
 		}
 	}
-
-	return leafTrust, nil
-
+	return
 }
 
 //getFirstParent returns the first parent found for a certificate in a given certificate list ( does not verify signature)
