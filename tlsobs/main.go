@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/database"
@@ -137,7 +138,8 @@ func printCert(id int64) {
 		cert certificate.Certificate
 		san  string
 	)
-	fmt.Println("\n--- Certificate ---")
+
+	// Print certificate information
 	cert = getCert(id)
 	if len(cert.X509v3Extensions.SubjectAlternativeName) == 0 {
 		san = "- none"
@@ -146,7 +148,9 @@ func printCert(id int64) {
 			san += "- " + name + "\n"
 		}
 	}
-	fmt.Printf(`Subject  %s
+	fmt.Printf(`
+--- Certificate ---
+Subject  %s
 SubjectAlternativeName
 %sValidity %s to %s
 CA       %t
@@ -159,6 +163,32 @@ Key      %s %.0fbits %s
 		cert.Validity.NotBefore.Format(time.RFC3339), cert.Validity.NotAfter.Format(time.RFC3339),
 		cert.CA, cert.Hashes.SHA1, cert.Hashes.SHA256, cert.SignatureAlgorithm,
 		cert.Key.Alg, cert.Key.Size, cert.Key.Curve, cert.Anomalies)
+
+	// Print truststore information
+	green := color.New(color.FgGreen).SprintFunc()
+	red := color.New(color.FgRed).SprintFunc()
+	gmark := green("✓")
+	rmark := red("✘")
+	moztrust, microtrust, appletrust, androtrust := gmark, gmark, gmark, gmark
+	if !cert.ValidationInfo["Mozilla"].IsValid {
+		moztrust = rmark
+	}
+	if !cert.ValidationInfo["Microsoft"].IsValid {
+		moztrust = rmark
+	}
+	if !cert.ValidationInfo["Apple"].IsValid {
+		moztrust = rmark
+	}
+	if !cert.ValidationInfo["Android"].IsValid {
+		moztrust = rmark
+	}
+	fmt.Printf(`
+--- Trust ---
+Mozilla Microsoft Apple Android
+   %s        %s       %s      %s
+`, moztrust, microtrust, appletrust, androtrust)
+
+	// Print chain of trust
 	pathlen := 0
 	fmt.Println("\n--- Chain of trust ---")
 	for {
