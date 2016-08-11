@@ -15,6 +15,7 @@ runs:
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
         - versioncheck.addons.mozilla.org
+        - compatibility-lookup.services.mozilla.com
 
         # Balrog
         - aus3.mozilla.org
@@ -28,18 +29,23 @@ runs:
         - crash-reports.mozilla.com
 
         # everything.me
-        - appsearch.prod.mozaws.net
-        - geodude.prod.mozaws.net
+        - appsearch.services.mozilla.com
+        - geodude.services.mozilla.com
 
         # Find my device
         - find.firefox.com
 
-        # Fxa
+        # Firefox Accounts
         - accounts.firefox.com
         - api.accounts.firefox.com
         - oauth.accounts.firefox.com
         - profile.accounts.firefox.com
         - verifier.accounts.firefox.com
+        - firefoxusercontent.com
+        - mozillausercontent.com
+
+        # Firefox Settings (Kinto)
+        - firefox.settings.services.mozilla.com
 
         # Hello
         - hello.firefox.com
@@ -49,10 +55,12 @@ runs:
         - location.services.mozilla.com
         - location-leaderboard.services.mozilla.com
 
-        # Marketplace
+        # Marketplace & FxOS
         - marketplace.firefox.com
         - receiptcheck.marketplace.firefox.com
         - static.marketplace.firefox.com
+        - casttv.services.mozilla.com
+        - syncto.services.mozilla.com
 
         # Metrics
         - incoming.telemetry.mozilla.org
@@ -62,11 +70,16 @@ runs:
         - sql.telemetry.mozilla.org
         - pipeline-dwl.prod.mozaws.net
 
+        # Miracle (Context Graph collection endpoint)
+        - miracle.services.mozilla.com
+    
         # Misc
-        - firefoxusercontent.com
-        - mozillausercontent.com
+        - services.mozilla.com
         - status.services.mozilla.com
 
+        # Pageshot
+        - pageshot.net
+        
         # Persona
         - browserid.org
         - firefoxos.persona.org
@@ -146,6 +159,7 @@ runs:
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
         - versioncheck.addons.mozilla.org
+        - compatibility-lookup.services.mozilla.com
       assertions:
         - certificate:
             validity: 
@@ -159,6 +173,8 @@ runs:
     # Balrog paging
     - targets:
         - aus3.mozilla.org
+        - aus4.mozilla.org
+        - aus5.mozilla.org
       assertions:
         - certificate:
             validity:
@@ -168,7 +184,6 @@ runs:
           email:
               recipients:
                   - b64:YmFscm9nLXRsc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
-
 
     # Crash report paging
     - targets:
@@ -188,8 +203,8 @@ runs:
 
     # everything.me paging
     - targets:
-        - appsearch.prod.mozaws.net
-        - geodude.prod.mozaws.net
+        - appsearch.services.mozilla.com
+        - geodude.services.mozilla.com
       assertions:
         - certificate:
             validity: 
@@ -213,6 +228,18 @@ runs:
               recipients:
                   - b64:Zm1kQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
+    # Firefox Settings (Kinto)
+    - targets:
+        - firefox.settings.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
     # Fxa paging
     - targets:
         - accounts.firefox.com
@@ -265,6 +292,8 @@ runs:
         - marketplace.firefox.com
         - receiptcheck.marketplace.firefox.com
         - static.marketplace.firefox.com
+        - casttv.services.mozilla.com
+        - syncto.services.mozilla.com
       assertions:
         - certificate:
             validity: 
@@ -293,9 +322,23 @@ runs:
               recipients:
                   - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
 
+    # Miracle (Context Graph collection endpoint)
+    - targets:
+        - miracle.services.mozilla.com
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
     # Misc paging
     - targets:
         - status.services.mozilla.com
+        - services.mozilla.com
       assertions:
         - certificate:
             validity: 
@@ -305,6 +348,19 @@ runs:
           email:
               recipients:
                   - cloud-ops@mozilla.com
+    
+    # Pageshot
+    - targets:
+        - pageshot.net
+      assertions:
+        - certificate:
+            validity: 
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:dGVzdHBpbG90QG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
     # Persona paging
     - targets:
@@ -373,7 +429,6 @@ runs:
           email:
               recipients:
                   - b64:c3luY0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
-
 
     # Tiles paging
     - targets:
