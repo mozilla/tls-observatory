@@ -182,17 +182,23 @@ ORDER BY date_trunc('year', not_valid_after) ASC,
 ### List issuer, subject and SAN of Mozilla|Firefox certs not issued by Digicert
 
 ```sql
-SELECT  id,
-        issuer->'o'->>0 AS Issuer,
-        subject->>'cn' AS Subject,
-        san AS SubjectAltName
-FROM  certificates,
-      jsonb_array_elements_text(x509_subjectAltName) as san
+SELECT certificates.id,
+       issuer->'o'->>0 AS Issuer,
+       subject->>'cn' AS Subject,
+       san AS SubjectAltName
+FROM certificates
+      INNER JOIN trust ON (trust.cert_id=certificates.id),
+     jsonb_array_elements_text(x509_subjectAltName) AS san
 WHERE jsonb_typeof(x509_subjectAltName) != 'null'
       AND ( subject#>>'{cn}' ~ '\.(firefox|mozilla)\.'
-            OR san ~ '\.(firefox|mozilla)\.')
+            OR
+            san ~ '\.(firefox|mozilla)\.'
+          )
+      AND trust.trusted_mozilla='true'
+      AND certificates.not_valid_after>now()
       AND cast(issuer#>>'{o}' AS text) NOT LIKE '%DigiCert Inc%'
-ORDER BY id ASC;
+GROUP BY certificates.id, san
+ORDER BY certificates.id ASC;
 ```
 
 ### Find count of targets that support the SEED-SHA ciphersuite
