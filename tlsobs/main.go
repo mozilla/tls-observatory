@@ -37,6 +37,9 @@ var rescan = flag.Bool("r", false, "Force a rescan instead of retrieving latest 
 var printRaw = flag.Bool("raw", false, "Print raw JSON coming from the API")
 var targetLevel = flag.String("targetLevel", "modern", "Evaluate target against a given configuration level. eg `old`, intermediate, modern or all.")
 
+// exitCode is zero by default and non-zero if targetLevel isn't met
+var exitCode int = 0
+
 func main() {
 	var (
 		err     error
@@ -131,6 +134,8 @@ getresults:
 		printConnection(results.Conn_info)
 		printAnalysis(results.AnalysisResults)
 	}
+
+	os.Exit(exitCode)
 }
 
 func printCert(id int64) {
@@ -273,7 +278,7 @@ func printAnalysis(ars []database.Analysis) {
 		}
 		if err != nil {
 			fmt.Println(err)
-			continue
+			exitCode = 10
 		}
 		for _, result := range results {
 			fmt.Println(result)

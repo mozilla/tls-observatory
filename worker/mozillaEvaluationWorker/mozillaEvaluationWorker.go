@@ -717,6 +717,10 @@ func (e eval) AnalysisPrinter(r []byte, targetLevel interface{}) (results []stri
 		results = append(results,
 			fmt.Sprintf("  - oldest clients: %s", strings.Join(sstls.Configurations[eval.Level].OldestClients, ", ")))
 	}
+	if targetLevel.(string) != "" && eval.Level != targetLevel.(string) {
+		err = fmt.Errorf("Measured level %q does not match target level %q",
+			eval.Level, targetLevel.(string))
+	}
 	return
 }
 
