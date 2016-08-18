@@ -127,6 +127,7 @@ getresults:
 	fmt.Printf("\n")
 	if !results.Has_tls {
 		fmt.Printf("%s does not support SSL/TLS\n", target)
+		exitCode = 5
 	} else {
 		if *printRaw {
 			fmt.Printf("%s\n", body)
