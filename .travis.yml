@@ -20,4 +20,6 @@ script:
           docker push jvehent/tls-observatory-api:latest
           docker push jvehent/tls-observatory-scanner:latest
           docker push jvehent/tls-observatory-runner:latest
+        else
+          exit 0
         fi
