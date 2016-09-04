@@ -46,6 +46,7 @@ runs:
 
         # Firefox Settings (Kinto)
         - firefox.settings.services.mozilla.com
+        - webextensions.settings.services.mozilla.com
 
         # Hello
         - hello.firefox.com
@@ -231,6 +232,7 @@ runs:
     # Firefox Settings (Kinto)
     - targets:
         - firefox.settings.services.mozilla.com
+        - webextensions.settings.services.mozilla.com
       assertions:
         - certificate:
             validity: 
@@ -504,6 +506,8 @@ runs:
     - targets:
         - jve.linuxwall.info
         - vehent.org
+        - j.vehent.org
+        - securing-devops.com
         - mig.ninja
         - ulfr.io
       assertions:
@@ -517,7 +521,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - julien@linuxwall.info
+                  - julien@vehent.org
                   
     # kang's stuff
     - targets:
@@ -543,7 +547,7 @@ runs:
         - api.mig.mozilla.org
         # Server Side TLS Configurations
         - statics.tls.security.mozilla.org
-        - http-observatory.security.mozilla.org
+        - observatory.mozilla.org
       assertions:
         - certificate:
             validity: 
