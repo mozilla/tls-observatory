@@ -3,8 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
-
-	"github.com/gorilla/context"
+	"context"
 
 	pg "github.com/mozilla/tls-observatory/database"
 )
@@ -27,9 +26,7 @@ func Logging(l *log.Logger) Adapter {
 func AddDB(db *pg.DB) Adapter {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			context.Set(r, dbKey, db)
-			h.ServeHTTP(w, r)
-			context.Clear(r)
+			h.ServeHTTP(w, addtoContext(r, dbKey, db))
 		})
 	}
 }
@@ -40,4 +37,10 @@ func Adapt(h http.Handler, adapters ...Adapter) http.Handler {
 		h = adapter(h)
 	}
 	return h
+}
+
+// addToContext add the given key value pair to the given request's context
+func addtoContext(r *http.Request, key string, value interface{}) *http.Request {
+	ctx := r.Context()
+	return r.WithContext(context.WithValue(ctx, key, value))
 }

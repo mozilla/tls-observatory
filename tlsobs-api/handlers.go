@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/gorilla/context"
 
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
@@ -44,8 +43,8 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		"headers":     r.Header,
 	}).Debug("Scan endpoint received request")
 
-	val, ok := context.GetOk(r, dbKey)
-	if !ok {
+	val := r.Context().Value(dbKey)
+	if val == nil {
 		log.Error("Could not find db in request context")
 		err = errors.New("Could not access database.")
 		return
@@ -153,8 +152,8 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		"headers":     r.Header,
 	}).Debug("Results endpoint received request")
 
-	val, ok := context.GetOk(r, dbKey)
-	if !ok {
+	val := r.Context().Value(dbKey)
+	if val == nil {
 		log.Error("Could not find db in request context")
 		err = errors.New("Could not access database.")
 		return
@@ -232,8 +231,8 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		"headers":     r.Header,
 	}).Debug("Certificate Endpoint received request")
 
-	val, ok := context.GetOk(r, dbKey)
-	if !ok {
+	val := r.Context().Value( dbKey)
+	if val == nil {
 		log.Error("Could not find db in request context")
 		err = errors.New("Could not access database.")
 		return
