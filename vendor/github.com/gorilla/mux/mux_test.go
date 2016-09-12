@@ -5,6 +5,8 @@
 package mux
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -125,12 +127,12 @@ func TestHost(t *testing.T) {
 		},
 		{
 			title:        "Host route with pattern, additional capturing group, match",
-			route:        new(Route).Host("aaa.{v1:[a-z]{2}(b|c)}.ccc"),
+			route:        new(Route).Host("aaa.{v1:[a-z]{2}(?:b|c)}.ccc"),
 			request:      newRequest("GET", "http://aaa.bbb.ccc/111/222/333"),
 			vars:         map[string]string{"v1": "bbb"},
 			host:         "aaa.bbb.ccc",
 			path:         "",
-			hostTemplate: `aaa.{v1:[a-z]{2}(b|c)}.ccc`,
+			hostTemplate: `aaa.{v1:[a-z]{2}(?:b|c)}.ccc`,
 			shouldMatch:  true,
 		},
 		{
@@ -175,12 +177,12 @@ func TestHost(t *testing.T) {
 		},
 		{
 			title:        "Host route with hyphenated name and pattern, additional capturing group, match",
-			route:        new(Route).Host("aaa.{v-1:[a-z]{2}(b|c)}.ccc"),
+			route:        new(Route).Host("aaa.{v-1:[a-z]{2}(?:b|c)}.ccc"),
 			request:      newRequest("GET", "http://aaa.bbb.ccc/111/222/333"),
 			vars:         map[string]string{"v-1": "bbb"},
 			host:         "aaa.bbb.ccc",
 			path:         "",
-			hostTemplate: `aaa.{v-1:[a-z]{2}(b|c)}.ccc`,
+			hostTemplate: `aaa.{v-1:[a-z]{2}(?:b|c)}.ccc`,
 			shouldMatch:  true,
 		},
 		{
@@ -281,6 +283,30 @@ func TestPath(t *testing.T) {
 			shouldMatch:  false,
 		},
 		{
+			title:        "Path route, match root with no host",
+			route:        new(Route).Path("/"),
+			request:      newRequest("GET", "/"),
+			vars:         map[string]string{},
+			host:         "",
+			path:         "/",
+			pathTemplate: `/`,
+			shouldMatch:  true,
+		},
+		{
+			title: "Path route, match root with no host, App Engine format",
+			route: new(Route).Path("/"),
+			request: func() *http.Request {
+				r := newRequest("GET", "http://localhost/")
+				r.RequestURI = "/"
+				return r
+			}(),
+			vars:         map[string]string{},
+			host:         "",
+			path:         "/",
+			pathTemplate: `/`,
+			shouldMatch:  true,
+		},
+		{
 			title:       "Path route, wrong path in request in request URL",
 			route:       new(Route).Path("/111/222/333"),
 			request:     newRequest("GET", "http://localhost/1/2/3"),
@@ -331,12 +357,12 @@ func TestPath(t *testing.T) {
 		},
 		{
 			title:        "Path route with multiple patterns with pipe, match",
-			route:        new(Route).Path("/{category:a|(b/c)}/{product}/{id:[0-9]+}"),
+			route:        new(Route).Path("/{category:a|(?:b/c)}/{product}/{id:[0-9]+}"),
 			request:      newRequest("GET", "http://localhost/a/product_name/1"),
 			vars:         map[string]string{"category": "a", "product": "product_name", "id": "1"},
 			host:         "",
 			path:         "/a/product_name/1",
-			pathTemplate: `/{category:a|(b/c)}/{product}/{id:[0-9]+}`,
+			pathTemplate: `/{category:a|(?:b/c)}/{product}/{id:[0-9]+}`,
 			shouldMatch:  true,
 		},
 		{
@@ -361,12 +387,12 @@ func TestPath(t *testing.T) {
 		},
 		{
 			title:        "Path route with multiple hyphenated names and patterns with pipe, match",
-			route:        new(Route).Path("/{product-category:a|(b/c)}/{product-name}/{product-id:[0-9]+}"),
+			route:        new(Route).Path("/{product-category:a|(?:b/c)}/{product-name}/{product-id:[0-9]+}"),
 			request:      newRequest("GET", "http://localhost/a/product_name/1"),
 			vars:         map[string]string{"product-category": "a", "product-name": "product_name", "product-id": "1"},
 			host:         "",
 			path:         "/a/product_name/1",
-			pathTemplate: `/{product-category:a|(b/c)}/{product-name}/{product-id:[0-9]+}`,
+			pathTemplate: `/{product-category:a|(?:b/c)}/{product-name}/{product-id:[0-9]+}`,
 			shouldMatch:  true,
 		},
 		{
@@ -379,11 +405,22 @@ func TestPath(t *testing.T) {
 			pathTemplate: `/{type:(?i:daily|mini|variety)}-{date:\d{4,4}-\d{2,2}-\d{2,2}}`,
 			shouldMatch:  true,
 		},
+		{
+			title:        "Path route with empty match right after other match",
+			route:        new(Route).Path(`/{v1:[0-9]*}{v2:[a-z]*}/{v3:[0-9]*}`),
+			request:      newRequest("GET", "http://localhost/111/222"),
+			vars:         map[string]string{"v1": "111", "v2": "", "v3": "222"},
+			host:         "",
+			path:         "/111/222",
+			pathTemplate: `/{v1:[0-9]*}{v2:[a-z]*}/{v3:[0-9]*}`,
+			shouldMatch:  true,
+		},
 	}
 
 	for _, test := range tests {
 		testRoute(t, test)
 		testTemplate(t, test)
+		testUseEscapedRoute(t, test)
 	}
 }
 
@@ -461,6 +498,7 @@ func TestPathPrefix(t *testing.T) {
 	for _, test := range tests {
 		testRoute(t, test)
 		testTemplate(t, test)
+		testUseEscapedRoute(t, test)
 	}
 }
 
@@ -537,6 +575,7 @@ func TestHostPath(t *testing.T) {
 	for _, test := range tests {
 		testRoute(t, test)
 		testTemplate(t, test)
+		testUseEscapedRoute(t, test)
 	}
 }
 
@@ -743,7 +782,7 @@ func TestQueries(t *testing.T) {
 		},
 		{
 			title:       "Queries route with regexp pattern with quantifier, additional capturing group",
-			route:       new(Route).Queries("foo", "{v1:[0-9]{1}(a|b)}"),
+			route:       new(Route).Queries("foo", "{v1:[0-9]{1}(?:a|b)}"),
 			request:     newRequest("GET", "http://localhost?foo=1a"),
 			vars:        map[string]string{"v1": "1a"},
 			host:        "",
@@ -788,7 +827,7 @@ func TestQueries(t *testing.T) {
 		},
 		{
 			title:       "Queries route with hyphenated name and pattern with quantifier, additional capturing group",
-			route:       new(Route).Queries("foo", "{v-1:[0-9]{1}(a|b)}"),
+			route:       new(Route).Queries("foo", "{v-1:[0-9]{1}(?:a|b)}"),
 			request:     newRequest("GET", "http://localhost?foo=1a"),
 			vars:        map[string]string{"v-1": "1a"},
 			host:        "",
@@ -863,6 +902,7 @@ func TestQueries(t *testing.T) {
 	for _, test := range tests {
 		testRoute(t, test)
 		testTemplate(t, test)
+		testUseEscapedRoute(t, test)
 	}
 }
 
@@ -1022,6 +1062,7 @@ func TestSubRouter(t *testing.T) {
 	for _, test := range tests {
 		testRoute(t, test)
 		testTemplate(t, test)
+		testUseEscapedRoute(t, test)
 	}
 }
 
@@ -1112,6 +1153,40 @@ func TestStrictSlash(t *testing.T) {
 			path:           "/static/",
 			shouldMatch:    true,
 			shouldRedirect: false,
+		},
+	}
+
+	for _, test := range tests {
+		testRoute(t, test)
+		testTemplate(t, test)
+		testUseEscapedRoute(t, test)
+	}
+}
+
+func TestUseEncodedPath(t *testing.T) {
+	r := NewRouter()
+	r.UseEncodedPath()
+
+	tests := []routeTest{
+		{
+			title:        "Router with useEncodedPath, URL with encoded slash does match",
+			route:        r.NewRoute().Path("/v1/{v1}/v2"),
+			request:      newRequest("GET", "http://localhost/v1/1%2F2/v2"),
+			vars:         map[string]string{"v1": "1%2F2"},
+			host:         "",
+			path:         "/v1/1%2F2/v2",
+			pathTemplate: `/v1/{v1}/v2`,
+			shouldMatch:  true,
+		},
+		{
+			title:        "Router with useEncodedPath, URL with encoded slash doesn't match",
+			route:        r.NewRoute().Path("/v1/1/2/v2"),
+			request:      newRequest("GET", "http://localhost/v1/1%2F2/v2"),
+			vars:         map[string]string{"v1": "1%2F2"},
+			host:         "",
+			path:         "/v1/1%2F2/v2",
+			pathTemplate: `/v1/1/2/v2`,
+			shouldMatch:  false,
 		},
 	}
 
@@ -1329,6 +1404,11 @@ func testRoute(t *testing.T, test routeTest) {
 	}
 }
 
+func testUseEscapedRoute(t *testing.T, test routeTest) {
+	test.route.useEncodedPath = true
+	testRoute(t, test)
+}
+
 func testTemplate(t *testing.T, test routeTest) {
 	route := test.route
 	pathTemplate := test.pathTemplate
@@ -1466,9 +1546,40 @@ func stringMapEqual(m1, m2 map[string]string) bool {
 	return true
 }
 
-// newRequest is a helper function to create a new request with a method and url
+// newRequest is a helper function to create a new request with a method and url.
+// The request returned is a 'server' request as opposed to a 'client' one through
+// simulated write onto the wire and read off of the wire.
+// The differences between requests are detailed in the net/http package.
 func newRequest(method, url string) *http.Request {
 	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		panic(err)
+	}
+	// extract the escaped original host+path from url
+	// http://localhost/path/here?v=1#frag -> //localhost/path/here
+	opaque := ""
+	if i := len(req.URL.Scheme); i > 0 {
+		opaque = url[i+1:]
+	}
+
+	if i := strings.LastIndex(opaque, "?"); i > -1 {
+		opaque = opaque[:i]
+	}
+	if i := strings.LastIndex(opaque, "#"); i > -1 {
+		opaque = opaque[:i]
+	}
+
+	// Escaped host+path workaround as detailed in https://golang.org/pkg/net/url/#URL
+	// for < 1.5 client side workaround
+	req.URL.Opaque = opaque
+
+	// Simulate writing to wire
+	var buff bytes.Buffer
+	req.Write(&buff)
+	ioreader := bufio.NewReader(&buff)
+
+	// Parse request off of 'wire'
+	req, err = http.ReadRequest(ioreader)
 	if err != nil {
 		panic(err)
 	}

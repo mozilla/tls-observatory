@@ -3,10 +3,10 @@
 ## Getting started with the scanner
 
 You can use the TLS Observatory to compare your site against the mozilla guidelines.
-It requires Golang to be installed:
+It requires Golang 1.7+ to be installed:
 ```bash
 $ go version
-go version go1.5 linux/amd64
+go version go1.7 linux/amd64
  
 $ export GOPATH="$HOME/go"
 $ mkdir $GOPATH
@@ -87,11 +87,11 @@ $ git submodule update
 
 ### Build
 
-Requires Go 1.5 with vendoring experiment enabled.
+Requires Go 1.7.
 
 ```bash
-$ GO15VENDOREXPERIMENT=1 go get github.com/mozilla/tls-observatory/tlsobs-scanner
-$ GO15VENDOREXPERIMENT=1 go get github.com/mozilla/tls-observatory/tlsobs-api
+go get github.com/mozilla/tls-observatory/tlsobs-scanner
+go get github.com/mozilla/tls-observatory/tlsobs-api
 ```
 
 ### Deployment
