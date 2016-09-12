@@ -1,15 +1,19 @@
 package main
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 
+	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
 )
@@ -231,7 +235,7 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		"headers":     r.Header,
 	}).Debug("Certificate Endpoint received request")
 
-	val := r.Context().Value( dbKey)
+	val := r.Context().Value(dbKey)
 	if val == nil {
 		log.Error("Could not find db in request context")
 		err = errors.New("Could not access database.")
@@ -277,6 +281,134 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
+}
+
+// PostCertificateHandler handles the POST /certificate endpoint of the api.
+// It receives a single PEM encoded certificate, parses it, inserts it
+// into the database and returns results in JSON.
+func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
+	setResponseHeader(w)
+	log := logger.GetLogger()
+	log.WithFields(logrus.Fields{
+		"form values": r.Form.Encode(),
+		"headers":     r.Header,
+	}).Debug("PostCertificate Endpoint received request")
+
+	val := r.Context().Value(dbKey)
+	if val == nil {
+		httpError(w, http.StatusInternalServerError, "Could not find database handler in request context")
+		return
+	}
+	db := val.(*pg.DB)
+
+	_, certHeader, err := r.FormFile("certificate")
+	if err != nil {
+		httpError(w, http.StatusBadRequest,
+			fmt.Sprintf("Could not read certificate from form data: %v", err))
+		return
+	}
+
+	certReader, err := certHeader.Open()
+	if err != nil {
+		httpError(w, http.StatusBadRequest,
+			fmt.Sprintf("Could not read certificate from form data: %v", err))
+		return
+	}
+
+	certPEM, err := ioutil.ReadAll(certReader)
+	if err != nil {
+		httpError(w, http.StatusBadRequest,
+			fmt.Sprintf("Could not read certificate from form data: %v", err))
+		return
+	}
+
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil {
+		httpError(w, http.StatusBadRequest,
+			"Failed to parse certificate PEM")
+		return
+	}
+
+	certX509, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		httpError(w, http.StatusBadRequest,
+			fmt.Sprintf("Could not parse X.509 certificate: %v", err))
+		return
+	}
+
+	certHash := certificate.SHA256Hash(certX509.Raw)
+	id, err := db.GetCertIDBySHA256Fingerprint(certHash)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Failed to lookup certificate hash in database: %v", err))
+		return
+	}
+	if id > 0 {
+		// if the cert already exists in DB, return early
+		log.Printf("cert id %d already exists in database, returning it", id)
+		jsonCertFromID(w, r, id)
+		return
+	}
+
+	var valInfo certificate.ValidationInfo
+	cert := certificate.CertToStored(certX509, certHash, "", "", "", &valInfo)
+	id, err = db.InsertCertificatetoDB(&cert)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Failed to store certificate in database: %v", err))
+		return
+	}
+	cert.ID = id
+	// If the cert is self-signed (aka. Root CA), we're done here
+	if cert.IsSelfSigned() {
+		jsonCertFromID(w, r, cert.ID)
+		return
+	}
+
+	// to insert the trust, first build the certificate paths, then insert one trust
+	// entry for each known parent of the cert
+	paths, err := db.GetCertPaths(&cert)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Failed to retrieve chains from database: %v", err))
+		return
+	}
+	for _, parent := range paths.Parents {
+		cert.ValidationInfo = parent.GetValidityMap()
+		_, err := db.InsertTrustToDB(cert, cert.ID, parent.Cert.ID)
+		if err != nil {
+			httpError(w, http.StatusInternalServerError,
+				fmt.Sprintf("Failed to store trust in database: %v", err))
+			return
+		}
+	}
+
+	jsonCertFromID(w, r, cert.ID)
+	return
+}
+
+func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
+	val := r.Context().Value(dbKey)
+	if val == nil {
+		httpError(w, http.StatusInternalServerError, "Could not find database handler in request context")
+		return
+	}
+	db := val.(*pg.DB)
+	cert, err := db.GetCertByID(id)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not retrieved stored certificate from database: %v", err))
+		return
+	}
+
+	certJson, err := json.Marshal(cert)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not convert certificate to JSON: %v", err))
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	w.Write(certJson)
 }
 
 func PreflightHandler(w http.ResponseWriter, r *http.Request) {
