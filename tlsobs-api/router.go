@@ -53,6 +53,12 @@ var routes = Routes{
 		"/api/v1/certificate",
 		CertificateHandler,
 	},
+	Route{
+		"Certificate",
+		"POST",
+		"/api/v1/certificate",
+		PostCertificateHandler,
+	},
 	// CORS preflight endpoints
 	Route{
 		"CORS Preflight",

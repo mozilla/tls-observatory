@@ -1,6 +1,7 @@
 package database
 
 import (
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -509,6 +510,102 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 
 }
 
+// GetCertsBySubject returns a list of certificates that match a given subject
+func (db *DB) GetCertsBySubject(subject certificate.Subject) (certs []*certificate.Certificate, err error) {
+	// we must remove the ID before looking for the cert in database
+	subject.ID = 0
+	subjectJson, err := json.Marshal(subject)
+	if err != nil {
+		return
+	}
+	rows, err := db.Query(`SELECT id,
+			sha1_fingerprint,
+			sha256_fingerprint,
+			pkp_sha256,
+			issuer,
+			subject,
+			version,
+			is_ca,
+			not_valid_before,
+			not_valid_after,
+			key,
+			first_seen,
+			last_seen,
+			x509_basicConstraints,
+			x509_crlDistributionPoints,
+			x509_extendedKeyUsage,
+			x509_authorityKeyIdentifier,
+			x509_subjectKeyIdentifier,
+			x509_keyUsage,
+			x509_subjectAltName,
+			signature_algo,
+			raw_cert
+		FROM certificates
+		WHERE subject = $1`, subjectJson)
+	if rows != nil {
+		defer rows.Close()
+	}
+	if err == sql.ErrNoRows {
+		return
+	}
+	if err != nil && err != sql.ErrNoRows {
+		err = fmt.Errorf("Error while getting certificates by subject: '%v'", err)
+		return
+	}
+	for rows.Next() {
+		var (
+			cert certificate.Certificate
+			crl_dist_points, extkeyusage, keyusage,
+			subaltname, issuer, subject, key []byte
+		)
+
+		err = rows.Scan(&cert.ID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.PKPSHA256, &issuer, &subject,
+			&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
+			&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
+			&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(crl_dist_points, &cert.X509v3Extensions.CRLDistributionPoints)
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(extkeyusage, &cert.X509v3Extensions.ExtendedKeyUsage)
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(keyusage, &cert.X509v3Extensions.KeyUsage)
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(subaltname, &cert.X509v3Extensions.SubjectAlternativeName)
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(issuer, &cert.Issuer)
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(subject, &cert.Subject)
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(key, &cert.Key)
+		if err != nil {
+			return
+		}
+		cert.ValidationInfo, cert.Issuer.ID, err = db.GetValidationMapForCert(cert.ID)
+		if err != nil {
+			return
+		}
+		certs = append(certs, &cert)
+	}
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Failed to complete database query: '%v'", err)
+	}
+	return
+}
+
 func (db *DB) InsertTrustToDB(cert certificate.Certificate, certID, parID int64) (int64, error) {
 
 	var trustID int64
@@ -633,6 +730,46 @@ func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.Vali
 	}
 
 	return certificate.GetValidityMap(ubuntu, mozilla, microsoft, apple, android), issuerId, nil
+}
+
+func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Paths, err error) {
+	paths.Cert = cert
+	xcert, err := cert.ToX509()
+	if err != nil {
+		return
+	}
+	parents, err := db.GetCertsBySubject(cert.Issuer)
+	if err != nil {
+		return
+	}
+	for _, parent := range parents {
+		var (
+			curPath certificate.Paths
+			xparent *x509.Certificate
+		)
+		curPath.Cert = parent
+		xparent, err = parent.ToX509()
+		if err != nil {
+			return
+		}
+		// verify the parent signed the cert, or skip it
+		if xcert.CheckSignatureFrom(xparent) != nil {
+			continue
+		}
+		// if the parent is self-signed, we have a root, no need to go deeper
+		if parent.IsSelfSigned() {
+			paths.Parents = append(paths.Parents, curPath)
+			continue
+		}
+		// if the parent is not self signed, we grab its own parents
+		curPath, err := db.GetCertPaths(parent)
+		if err != nil {
+			continue
+		}
+		paths.Parents = append(paths.Parents, curPath)
+	}
+
+	return
 }
 
 // IsTrustValid returns the validity of the trust relationship for the given id.

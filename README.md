@@ -1,5 +1,7 @@
 # Mozilla TLS Observatory
 
+Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.org) !
+
 ## Getting started with the scanner
 
 You can use the TLS Observatory to compare your site against the mozilla guidelines.
@@ -20,20 +22,44 @@ $ go get github.com/mozilla/tls-observatory/tlsobs
 And scan using our hosted service:
 ```bash
 $ tlsobs twitter.com
-Scanning twitter.com (id 10131248)
-Retrieving cached results from 23h31m55.708675882s ago. To run a new scan, use '-r'.
+Scanning twitter.com (id 12302241)
+Retrieving cached results from 35m44.249807364s ago. To run a new scan, use '-r'.
 
 --- Certificate ---
-Subject  C=US, O=Twitter, Inc., OU=Twitter Security, CN=twitter.com	
+Subject  C=US, O=Twitter, Inc., OU=Twitter Security, CN=twitter.com
 SubjectAlternativeName
 - twitter.com
 - www.twitter.com
-Issuer   C=US, O=Symantec Corporation, OU=Symantec Trust Network, CN=Symantec Class 3 EV SSL CA - G3
-Validity 2014-09-10T00:00:00Z to 2016-05-09T23:59:59Z
+Validity 2016-03-09T00:00:00Z to 2018-03-14T12:00:00Z
 CA       false
-SHA1     ADD53F6680FE66E383CBAC3E60922E3B4C412BED
-SHA256   1B58D2C443AE4BD70B9B26EB6BF41CEE43CBA95D9DC65F54A0003E4DE9CDBAF6
+SHA1     235A79B3270D790505E0BEA2CF5C149F9038821B
+SHA256   334105950462AEAB4EAE05B74DF693FA6D73250ED152204778A2B7BD9CF5FD6A
 SigAlg   SHA256WithRSA
+Key      RSA 2048bits 
+
+--- Trust ---
+Mozilla Microsoft Apple Android
+   ✓        ✓       ✓      ✓
+
+--- Chain of trust ---
+0:	C=US, O=Twitter, Inc., OU=Twitter Security, CN=twitter.com
+	issuer: C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert SHA2 Extended Validation Server CA
+	type: end entity
+	key: RSA 2048bits 
+	pin-sha256: PS12nvydU5dSxolqCn3V11wWF5Z12JRhXT2dhyawT4M=
+
+1:	C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert SHA2 Extended Validation Server CA
+	issuer: C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert High Assurance EV Root CA
+	type: intermediate CA
+	key: RSA 2048bits 
+	pin-sha256: RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=
+
+2:	C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert High Assurance EV Root CA
+	issuer: C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert High Assurance EV Root CA
+	type: root CA
+	key: RSA 2048bits 
+	pin-sha256: WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=
+
 
 
 --- Ciphers Evaluation ---
@@ -57,20 +83,16 @@ Server Side Ordering true
 Curves Fallback      false
 
 --- Analyzers ---
+Measured level "intermediate" does not match target level "modern"
 * Mozilla evaluation: intermediate
-  - for old level: sha256WithRSAEncryption is not an old certificate signature, use sha1WithRSAEncryption
-  - for old level: consider adding ciphers ECDHE-ECDSA-CHACHA20-POLY1305, ECDHE-RSA-CHACHA20-POLY1305, ECDHE-ECDSA-AES128-GCM-SHA256, ECDHE-ECDSA-AES256-GCM-SHA384, DHE-RSA-AES128-GCM-SHA256, DHE-DSS-AES128-GCM-SHA256, DHE-DSS-AES256-GCM-SHA384, DHE-RSA-AES256-GCM-SHA384, ECDHE-ECDSA-AES128-SHA256, ECDHE-ECDSA-AES128-SHA, ECDHE-ECDSA-AES256-SHA384, ECDHE-ECDSA-AES256-SHA, DHE-RSA-AES128-SHA256, DHE-RSA-AES128-SHA, DHE-DSS-AES128-SHA256, DHE-RSA-AES256-SHA256, DHE-DSS-AES256-SHA, DHE-RSA-AES256-SHA, ECDHE-ECDSA-DES-CBC3-SHA, EDH-RSA-DES-CBC3-SHA, DHE-DSS-AES256-SHA256, DHE-DSS-AES128-SHA, DHE-RSA-CHACHA20-POLY1305, ECDHE-RSA-CAMELLIA256-SHA384, ECDHE-ECDSA-CAMELLIA256-SHA384, DHE-RSA-CAMELLIA256-SHA256, DHE-DSS-CAMELLIA256-SHA256, DHE-RSA-CAMELLIA256-SHA, DHE-DSS-CAMELLIA256-SHA, CAMELLIA256-SHA256, CAMELLIA256-SHA, ECDHE-RSA-CAMELLIA128-SHA256, ECDHE-ECDSA-CAMELLIA128-SHA256, DHE-RSA-CAMELLIA128-SHA256, DHE-DSS-CAMELLIA128-SHA256, DHE-RSA-CAMELLIA128-SHA, DHE-DSS-CAMELLIA128-SHA, CAMELLIA128-SHA256, CAMELLIA128-SHA, DHE-RSA-SEED-SHA, DHE-DSS-SEED-SHA, SEED-SHA
-  - for old level: add protocols SSLv3
-  - for old level: consider enabling OCSP stapling
-  - for intermediate level: consider adding ciphers ECDHE-ECDSA-CHACHA20-POLY1305, ECDHE-RSA-CHACHA20-POLY1305, ECDHE-ECDSA-AES128-GCM-SHA256, ECDHE-ECDSA-AES256-GCM-SHA384, DHE-RSA-AES128-GCM-SHA256, DHE-RSA-AES256-GCM-SHA384, ECDHE-ECDSA-AES128-SHA256, ECDHE-ECDSA-AES128-SHA, ECDHE-ECDSA-AES256-SHA384, ECDHE-ECDSA-AES256-SHA, DHE-RSA-AES128-SHA256, DHE-RSA-AES128-SHA, DHE-RSA-AES256-SHA256, DHE-RSA-AES256-SHA, ECDHE-ECDSA-DES-CBC3-SHA, EDH-RSA-DES-CBC3-SHA
-  - for intermediate level: increase priority of ECDHE-RSA-AES256-GCM-SHA384 over ECDHE-RSA-AES128-SHA
-  - for intermediate level: increase priority of AES256-GCM-SHA384 over AES128-SHA
-  - for intermediate level: increase priority of ECDHE-RSA-DES-CBC3-SHA over AES256-SHA
-  - for intermediate level: fix ciphersuite ordering, use recommended intermediate ciphersuite
   - for modern level: remove ciphersuites ECDHE-RSA-AES128-SHA, ECDHE-RSA-AES256-SHA, AES128-GCM-SHA256, AES128-SHA256, AES128-SHA, AES256-GCM-SHA384, AES256-SHA256, AES256-SHA, ECDHE-RSA-DES-CBC3-SHA, DES-CBC3-SHA
   - for modern level: consider adding ciphers ECDHE-ECDSA-AES256-GCM-SHA384, ECDHE-ECDSA-CHACHA20-POLY1305, ECDHE-RSA-CHACHA20-POLY1305, ECDHE-ECDSA-AES128-GCM-SHA256, ECDHE-ECDSA-AES256-SHA384, ECDHE-ECDSA-AES128-SHA256
   - for modern level: remove protocols TLSv1, TLSv1.1
+  - for modern level: consider enabling OCSP stapling
+  - for modern level: use a certificate of type ecdsa, not RSA
   - oldest clients: Firefox 1, Chrome 1, IE 7, Opera 5, Safari 1, Windows XP IE8, Android 2.3, Java 7
+* Grade: A (92/100)
+
 ```
 
 The analysis at the end tell you what need to be changed to reach the old, intermediate or modern level. We recommend to target the intermediate level by default, and modern if you don't care about old clients.
@@ -90,8 +112,10 @@ $ git submodule update
 Requires Go 1.7.
 
 ```bash
-go get github.com/mozilla/tls-observatory/tlsobs-scanner
-go get github.com/mozilla/tls-observatory/tlsobs-api
+go install github.com/mozilla/tls-observatory/tlsobs-scanner
+go install github.com/mozilla/tls-observatory/tlsobs-api
+go install github.com/mozilla/tls-observatory/tlsobs-runner
+go install github.com/mozilla/tls-observatory/tlsobs
 ```
 
 ### Deployment
@@ -115,7 +139,16 @@ templates provided in `tools/tls-observatory-api-elasticbeanstalk.json` and
 
 ### Configuration
 
+#### tlsobs-api
+
+Customize the configuration file under `conf/api.cfg`.
+
+#### tlsobs-scanner
+
+Customize the configuration file under `conf/scanner.cfg`.
+
 #### tlsobs-runner
+
 Runs regular tests against target sites and sends notifications.
 
 See `conf/runnel.yaml` for an example of configuration. The configuration can
@@ -126,16 +159,74 @@ also be provided by environment variables:
   define specific SMTP settings that override both local conf and
   TLSOBS_RUNNER_CONF.
 
-##Authors##
+## Development
 
- * Dimitris Bachtis
- * Julien Vehent
+### API Endpoints
 
-##License##
+#### POST /api/v1/scan
 
- * Mozilla Public License Version 2.0
+Schedule a scan of a given target.
 
-## Queries
+```bash
+$ curl -X POST 'https://tls-observatory.services.mozilla.com/api/v1/scan?target=ulfr.io&rescan=true'
+```
+
+**Parameters**:
+
+* `target` is the FQDN of the target site. eg. `google.com`. Do not use protocol handlers or query strings.
+* `rescan` asks for a rescan of the target when set to true.
+
+**Output**: a `json` document containing the Scan ID.
+
+**Caching**: When `rescan` is not `true`, if a scan of the target was done over the last 24 hours, the scan ID is returned. Use `rescan=true` to force a rescan within 24 hours of the previous scan.
+
+**Rate Limits**: Each target can only be scanned every 3 minutes with `rescan=true`.
+
+#### GET /api/v1/results
+
+Retrieve scan results by its ID.
+
+```bash
+curl https://tls-observatory.services.mozilla.com/api/v1/results?id=12302333
+```
+
+**Parameters**:
+
+* `id` is the Scan ID
+
+**Output**: a `json` document containing the scan results and the ID of the end-entity certificate.
+
+#### GET /api/v1/certificate
+
+Retrieve a certificate by its ID.
+
+```bash
+curl https://tls-observatory.services.mozilla.com/api/v1/certificate?id=1
+```
+
+**Parameters**:
+
+* `id` is the Certificate ID
+
+**Output**: a `json` document containing the parsed certificate and its raw X509 version encoded with base64.
+
+#### POST /api/v1/certificate
+
+Publish a certificate.
+
+```bash
+curl -X POST -F certificate=@example.pem https://tls-observatory.services.mozilla.com/api/v1/certificate
+```
+
+**Parameters**:
+
+* `certificate` is a POST multipart/form-data parameter that contains the PEM encoded certificate.
+
+**Output**: a `json` document containing the parsed certificate and its raw X509 version encoded with base64.
+
+**Caching**: Certificates are only stored once. The database uses the SHA256 hash of the DER (binary) certificate to identify duplicates. Posting a certificate already stored in database returns the stored version. 
+
+### Database Queries
 
 ### Find certificates signed by CAs identified by their SHA256 fingerprint
 
@@ -209,3 +300,13 @@ FROM scans, jsonb_array_elements(conn_info->'ciphersuite') as ciphersuites
 WHERE jsonb_typeof(conn_info) != 'null'
 AND ciphersuites->>'cipher'='SEED-SHA';
 ```
+
+## Authors
+
+ * Dimitris Bachtis
+ * Julien Vehent
+
+## License
+
+ * Mozilla Public License Version 2.0
+

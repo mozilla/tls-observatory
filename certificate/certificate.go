@@ -27,7 +27,7 @@ type Certificate struct {
 	IPs                    []string                  `json:"ips,omitempty"`
 	Version                int                       `json:"version,omitempty"`
 	SignatureAlgorithm     string                    `json:"signatureAlgorithm,omitempty"`
-	Issuer                 Issuer                    `json:"issuer,omitempty"`
+	Issuer                 Subject                   `json:"issuer,omitempty"`
 	Validity               Validity                  `json:"validity,omitempty"`
 	Subject                Subject                   `json:"subject,omitempty"`
 	Key                    SubjectPublicKeyInfo      `json:"key,omitempty"`
@@ -44,14 +44,6 @@ type Certificate struct {
 	Anomalies              string                    `json:"anomalies,omitempty"`
 }
 
-type Issuer struct {
-	ID           int64    `json:"id,omitempty"`
-	Country      []string `json:"c,omitempty"`
-	Organisation []string `json:"o,omitempty"`
-	OrgUnit      []string `json:"ou,omitempty"`
-	CommonName   string   `json:"cn,omitempty"`
-}
-
 type Hashes struct {
 	MD5       string `json:"md5,omitempty"`
 	SHA1      string `json:"sha1,omitempty"`
@@ -65,6 +57,7 @@ type Validity struct {
 }
 
 type Subject struct {
+	ID           int64    `json:"id,omitempty"`
 	Country      []string `json:"c,omitempty"`
 	Organisation []string `json:"o,omitempty"`
 	OrgUnit      []string `json:"ou,omitempty"`
@@ -441,12 +434,9 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	//Only the IsCa variable is set, as setting X509v3BasicConstraints
 	//messes up the validation procedure.
 	if cert.Version < 3 {
-
 		stored.CA = cert.IsCA
-
 	} else {
 		if cert.BasicConstraintsValid {
-
 			stored.X509v3BasicConstraints = "Critical"
 			stored.CA = cert.IsCA
 		} else {
@@ -478,7 +468,15 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Raw = base64.StdEncoding.EncodeToString(cert.Raw)
 
 	return stored
+}
 
+// ToX509() returns the crypto/x509 version of a certificate
+func (cert Certificate) ToX509() (xcert *x509.Certificate, err error) {
+	certRaw, err := base64.StdEncoding.DecodeString(cert.Raw)
+	if err != nil {
+		return
+	}
+	return x509.ParseCertificate(certRaw)
 }
 
 //printRawCertExtensions Print raw extension info
@@ -498,52 +496,48 @@ func printRawCertExtensions(cert *x509.Certificate) {
 
 }
 
-// String() prints the issuer as a single string, following OpenSSL's display
-// format: Issuer: C=US, O=Google Inc, CN=Google Internet Authority G2
-func (i Issuer) String() (str string) {
-	if len(i.Country) > 0 {
-		str += "C=" + strings.Join(i.Country, ", C=")
-	}
-	if len(i.Organisation) > 0 {
-		if str != "" {
-			str += ", "
-		}
-		str += "O=" + strings.Join(i.Organisation, ", O=")
-	}
-	if len(i.OrgUnit) > 0 {
-		if str != "" {
-			str += ", "
-		}
-		str += "OU=" + strings.Join(i.OrgUnit, ", OU=")
-	}
-	if str != "" {
-		str += ", "
-	}
-	str += "CN=" + i.CommonName
-	return str
-}
-
 // String() prints the subject as a single string, following OpenSSL's display
 // format: Subject: C=US, ST=California, L=Mountain View, O=Google Inc, CN=*.google.com
-func (s Subject) String() (str string) {
+func (s Subject) String() string {
+	var comp []string
 	if len(s.Country) > 0 {
-		str += "C=" + strings.Join(s.Country, ", C=")
+		comp = append(comp, "C="+strings.Join(s.Country, ", C="))
 	}
 	if len(s.Organisation) > 0 {
-		if str != "" {
-			str += ", "
-		}
-		str += "O=" + strings.Join(s.Organisation, ", O=")
+		comp = append(comp, "O="+strings.Join(s.Organisation, ", O="))
 	}
 	if len(s.OrgUnit) > 0 {
-		if str != "" {
-			str += ", "
+		comp = append(comp, "OU="+strings.Join(s.OrgUnit, ", OU="))
+	}
+	if len(s.CommonName) > 0 {
+		comp = append(comp, "CN="+s.CommonName)
+	}
+	return strings.Join(comp, ", ")
+}
+
+// IsSelfSigned return true if the subject and issuer fields of a certificate
+// are identical
+func (c Certificate) IsSelfSigned() bool {
+	if c.Subject.CommonName != c.Issuer.CommonName ||
+		len(c.Subject.Organisation) != len(c.Issuer.Organisation) ||
+		len(c.Subject.OrgUnit) != len(c.Issuer.OrgUnit) ||
+		len(c.Subject.Country) != len(c.Issuer.Country) {
+		return false
+	}
+	for i, _ := range c.Subject.Organisation {
+		if c.Subject.Organisation[i] != c.Issuer.Organisation[i] {
+			return false
 		}
-		str += "OU=" + strings.Join(s.OrgUnit, ", OU=")
 	}
-	if str != "" {
-		str += ", "
+	for i, _ := range c.Subject.OrgUnit {
+		if c.Subject.OrgUnit[i] != c.Issuer.OrgUnit[i] {
+			return false
+		}
 	}
-	str += "CN=" + s.CommonName
-	return str
+	for i, _ := range c.Subject.Country {
+		if c.Subject.Country[i] != c.Issuer.Country[i] {
+			return false
+		}
+	}
+	return true
 }

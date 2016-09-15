@@ -1,10 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/mozilla/tls-observatory/logger"
 )
+
+func httpError(w http.ResponseWriter, errorCode int, errorMessage string, args ...interface{}) {
+	log := logger.GetLogger()
+	log.Printf("%d: %s", errorCode, fmt.Sprintf(errorMessage, args...))
+	http.Error(w, fmt.Sprintf(errorMessage, args...), errorCode)
+	return
+}
 
 func Logger(inner http.Handler, name string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
