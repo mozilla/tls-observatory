@@ -63,25 +63,11 @@ tlsobs-runner:
 	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsobs-runner-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-runner
 	[ -x "$(BINDIR)/tlsobs-runner-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
 
-go_vendor_dependencies:
-	$(GOGETTER) github.com/Sirupsen/logrus
-	$(GOGETTER) gopkg.in/gcfg.v1
-	$(GOGETTER) github.com/lib/pq
-	$(GOGETTER) github.com/gorilla/mux
-	$(GOGETTER) github.com/gorilla/context
-	$(GOGETTER) github.com/gorhill/cronexpr
-	$(GOGETTER) gopkg.in/yaml.v2
-	$(GOGETTER) github.com/fatih/color
-	echo 'removing .git from vendored pkg and moving them to vendor'
-	find .tmpdeps/src -name ".git" ! -name ".gitignore" -exec rm -rf {} \; || exit 0
-	[ -d vendor ] && git rm -rf vendor/ || exit 0
-	mkdir vendor/ || exit 0
-	cp -ar .tmpdeps/src/* vendor/
-	git add vendor/
-	rm -rf .tmpdeps
+vendor:
+	govend -u
 
 test:
 	$(GO) test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
 	$(GO) test github.com/mozilla/tls-observatory/tlsobs-runner
 
-.PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs
+.PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor
