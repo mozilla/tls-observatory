@@ -209,3 +209,18 @@ FROM scans, jsonb_array_elements(conn_info->'ciphersuite') as ciphersuites
 WHERE jsonb_typeof(conn_info) != 'null'
 AND ciphersuites->>'cipher'='SEED-SHA';
 ```
+
+### Find intermediate CA certs whose root is trusted by Mozilla
+
+```sql
+SELECT id, subject
+FROM certificates
+WHERE is_ca=True
+  AND subject!=issuer
+  AND issuer IN (
+      SELECT subject
+      FROM certificates
+      WHERE in_mozilla_root_store=True
+  )
+GROUP BY subject, sha256_fingerprint;
+```
