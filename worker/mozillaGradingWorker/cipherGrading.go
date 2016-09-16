@@ -8,6 +8,10 @@ func gradeCiphers(connInfo connection.Stored) (categoryResults, error) {
 	best := 0
 	worst := 0
 
+	RC4Support := false
+	otherthanRC4 := false
+	RC4withTLSv11 := false
+
 	for _, cs := range connInfo.CipherSuite {
 
 		cipher := cs.Cipher
@@ -20,6 +24,23 @@ func gradeCiphers(connInfo connection.Stored) (categoryResults, error) {
 			if c.Enc.Bits < worst {
 				worst = c.Enc.Bits
 			}
+
+			if c.Enc.Cipher == "RC4" {
+				RC4Support = true
+				if contains(cs.Protocols, "TLSv1.1") || contains(cs.Protocols, "TLSv1.2"){
+					RC4withTLSv11 = true
+				}
+			}else{
+				otherthanRC4 = true
+			}
+		}
+	}
+
+	if RC4Support {
+		if RC4withTLSv11 {
+			res.Remarks = append(res.Remarks, "RC4 with TLSv1.1+, Grade capped to C")
+		}else{ 
+			res.Remarks = append(res.Remarks, "RC4 Ciphers supported, grade capped to B")
 		}
 	}
 

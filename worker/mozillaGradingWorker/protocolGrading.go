@@ -12,14 +12,14 @@ const (
 
 func gradeProtocol(connInfo connection.Stored) (categoryResults, error) {
 
-	res := categoryResults{}
+	res := categoryResults{MaximumAllowed: 100}
 	var allProtos []string
 	for _, cs := range connInfo.CipherSuite {
 
 		if contains(cs.Protocols, "SSLv2") {
 			res.Grade = 0
-			res.MaximumAllowed = 0
-			res.Remarks = append(res.Remarks, "SSLv2 not allowed")
+			res.MaximumAllowed = getMin(res.MaximumAllowed, 19)
+			res.Remarks = append(res.Remarks, "SSLv2 not allowed, Grade capped to F")
 			return res, nil
 		}
 
@@ -35,6 +35,9 @@ func gradeProtocol(connInfo connection.Stored) (categoryResults, error) {
 	if contains(allProtos, "TLSv1.2") {
 		worst = tlsv12
 		best = tlsv12
+	} else {
+		res.MaximumAllowed = 79
+		res.Remarks = append(res.Remarks, "Grade capped to B, TLSv1.2 not supported")
 	}
 	if contains(allProtos, "TLSv1.1") {
 		if best < tlsv11 {
@@ -55,6 +58,10 @@ func gradeProtocol(connInfo connection.Stored) (categoryResults, error) {
 		}
 	}
 	if contains(allProtos, "SSLv3") {
+
+		res.MaximumAllowed = 64
+		res.Remarks = append(res.Remarks, "Grade capped to C, due to SSLv3 support")
+
 		if best < sslv3 {
 			best = sslv3
 		}

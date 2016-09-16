@@ -77,25 +77,46 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
 // Evaluate runs compliance checks of the provided json Stored connection and returns the results
 func Evaluate(connInfo connection.Stored) ([]byte, error) {
+
+	er := EvaluationResults{}
 	protores, err := gradeProtocol(connInfo)
 	if err != nil {
 		return nil, err
 	}
+	er.Failures = append(er.Failures, protores.Remarks...)
+	gradeCap := protores.MaximumAllowed
+
 	cipherres, err := gradeCiphers(connInfo)
 	if err != nil {
 		return nil, err
 	}
+	er.Failures = append(er.Failures, cipherres.Remarks...)
+	if cipherres.MaximumAllowed > 0 && cipherres.MaximumAllowed < gradeCap {
+		gradeCap = cipherres.MaximumAllowed
+	}
+
 	keyxres, err := gradeKeyX(connInfo)
 	if err != nil {
 		return nil, err
 	}
+	er.Failures = append(er.Failures, keyxres.Remarks...)
+	if cipherres.MaximumAllowed > 0 && keyxres.MaximumAllowed < gradeCap {
+		gradeCap = keyxres.MaximumAllowed
+	}
 
 	var score float64
 	score = float64(protores.Grade)*0.3 + float64(cipherres.Grade)*0.4 + float64(keyxres.Grade)*0.3
+	if gradeCap != 0 && float64(gradeCap) < score {
+		score = float64(gradeCap)
+	}
 
-	// fmt.Printf("proto : %d , cipher : %d , keyx: %d\n", int(protores.Grade), int(cipherres.Grade), int(keyxres.Grade))
+	fmt.Printf("GradeCap == %d\n", gradeCap)
 
-	er := EvaluationResults{Grade: score, LetterGrade: getLetterfromGrade(score)}
+	fmt.Printf("proto : %d , cipher : %d , keyx: %d\nRemarks %v\n", int(protores.Grade), int(cipherres.Grade), int(keyxres.Grade), er.Failures)
+	fmt.Printf("Grade == %f\n\n\n", score)
+
+	er.Grade = score
+	er.LetterGrade = getLetterfromGrade(score)
 	return json.Marshal(&er)
 }
 
@@ -159,4 +180,13 @@ func contains(slice []string, entry string) bool {
 		}
 	}
 	return false
+}
+
+// getMin is a util function which just return the min of two ints
+func getMin(curr, new int) int {
+	if curr > new {
+		return curr
+	} else {
+		return new
+	}
 }
