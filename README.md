@@ -2,7 +2,7 @@
 
 Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.org) !
 
-## Getting started with the scanner
+## Getting started
 
 You can use the TLS Observatory to compare your site against the mozilla guidelines.
 It requires Golang 1.7+ to be installed:
@@ -96,6 +96,15 @@ Measured level "intermediate" does not match target level "modern"
 ```
 
 The analysis at the end tell you what need to be changed to reach the old, intermediate or modern level. We recommend to target the intermediate level by default, and modern if you don't care about old clients.
+
+### Using Docker
+
+A docker container also exists that contains the CLI, API, Scanner and Runner.
+Fetch is from `docker pull mozilla/tls-observatory`.
+```bash
+$ docker pull mozilla/tls-observatory
+$ docker run -it mozilla/tls-observatory tlsobs accounts.firefox.com
+```
 
 ## Contributing
 ### Clone this repository
