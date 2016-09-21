@@ -1,25 +1,34 @@
 sudo: required
 language: go
 go:
-  - 1.7
+- 1.7
 services:
-  - docker
+- docker
 env:
   global:
-    - DOCKER_EMAIL=jvehent@mozilla.com
-    - DOCKER_USERNAME=jvehent
-    - secure: "LwcQZ/M+4M+HJf6b/bKcGdmuTcT4XeN5MVuBSy34ag79/Zz3UinwBpW3peOhFNizJUbMVzPJJ7FGMWeUouq6lCcjjQZAIBnPWx/bhP0z7vIO8t2+XqKV47D3HqPOokqEdeKHvzr4xvfKGMBy+VMCWeuFI7Z3BLCqtWSQYDjAMTg="
+  - DOCKER_EMAIL=jvehent@mozilla.com
+  - DOCKER_USERNAME=jvehent
+  - secure: LwcQZ/M+4M+HJf6b/bKcGdmuTcT4XeN5MVuBSy34ag79/Zz3UinwBpW3peOhFNizJUbMVzPJJ7FGMWeUouq6lCcjjQZAIBnPWx/bhP0z7vIO8t2+XqKV47D3HqPOokqEdeKHvzr4xvfKGMBy+VMCWeuFI7Z3BLCqtWSQYDjAMTg=
+  - secure: O+sH0ZE8Uki4xdrOR8Mhms2dabq+sddlWg8gZz7NV+x6qJHRLmYmqk1yilqFxKi50sMNNGDdWvNQi4WrCbmdKSjrigSbDJhrZHF5nefk7b2z8hcmHACt/8ytv2KcxyjhA0qalXEw6Bf9obkDg+JVuSMvlCtXHuoi1uyyvD3gKuM=
+  - secure: gs7n/39cJJ4Xo7W6ex16pCkdL+kF63TXcssFOgZx8XOIQdhFZVcbDx/EfPbkJW4dUdn2huH620B2L7UrqFruWWtcQ8uv4NGPt5Qq1QnVc7jfSSWzkvWlW5Enkktsi4SWCV1ALoowW8Jfs55xyK0fPEkKqlM8b+1ruEi4YLJwqNs=
+  - secure: Yn1AeR9yB7SY/jwPZ96UjMTt8N3zBJV1VCwDWT5YsBILyRqrZfZ/r7YI+aEueC8dUeZ5b5jdSFYXNf+eMk1j31m4HqeKIQtVe/D8XHJNvxNlYg42W4R+qPz+uhzKB0UMrKvwPddrd6ceVeFqzRnHFl4SO2AjqBUjEPESnconnJ0=
 script:
-    - make
-    - docker build -t jvehent/tls-observatory-api -f tools/Dockerfile-api .
-    - docker build -t jvehent/tls-observatory-scanner -f tools/Dockerfile-scanner .
-    - docker build -t jvehent/tls-observatory-runner -f tools/Dockerfile-runner .
-    - >
-        if [ "$TRAVIS_BRANCH" == "master" ]; then
-          docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-          docker push jvehent/tls-observatory-api:latest
-          docker push jvehent/tls-observatory-scanner:latest
-          docker push jvehent/tls-observatory-runner:latest
-        else
-          exit 0
-        fi
+- make
+- docker build -t mozilla/tls-observatory .
+- |
+  if [ "$TRAVIS_BRANCH" == "master" ]; then
+    docker build -t jvehent/tls-observatory-api -f tools/Dockerfile-api .
+    docker build -t jvehent/tls-observatory-scanner -f tools/Dockerfile-scanner .
+    docker build -t jvehent/tls-observatory-runner -f tools/Dockerfile-runner .
+    docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+    docker push jvehent/tls-observatory-api:latest
+    docker push jvehent/tls-observatory-scanner:latest
+    docker push jvehent/tls-observatory-runner:latest
+    docker logout
+
+    docker login -e="$MZCSEMAIL" -u="$MZCSUSER" -p="$MZCSPASS"
+    docker push mozilla/tls-observatory:latest
+    docker logout
+  else
+    exit 0
+  fi
