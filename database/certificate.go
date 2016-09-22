@@ -76,7 +76,10 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 	}
 
 	err = db.QueryRow(`INSERT INTO certificates(
-					sha1_fingerprint, sha256_fingerprint, pkp_sha256,
+					sha1_fingerprint,
+					sha256_fingerprint,
+					sha256_subject_spki,
+					pkp_sha256,
 					issuer,
 					subject,
 					version,
@@ -94,9 +97,12 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 					signature_algo,
 					domains,
 					raw_cert
-					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,	$12, $13,
-					$14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING id`,
-		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Hashes.PKPSHA256,
+					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+					$14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING id`,
+		cert.Hashes.SHA1,
+		cert.Hashes.SHA256,
+		cert.Hashes.SHA256SubjectSPKI,
+		cert.Hashes.PKPSHA256,
 		issuer,
 		subject,
 		cert.Version,
@@ -184,7 +190,10 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 	}
 
 	queryStr := fmt.Sprintf(`INSERT INTO certificates(
-				sha1_fingerprint, sha256_fingerprint, pkp_sha256,
+				sha1_fingerprint,
+				sha256_fingerprint,
+				sha256_subject_spki,
+				pkp_sha256,
 				issuer,
 				subject,
 				version,
@@ -201,11 +210,14 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 				x509_subjectAltName,
 				signature_algo,
 				raw_cert, %s ) VALUES ( $1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-				$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23 ) RETURNING id`,
+				$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24 ) RETURNING id`,
 		tsVariable)
 
 	err = db.QueryRow(queryStr,
-		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.Hashes.PKPSHA256,
+		cert.Hashes.SHA1,
+		cert.Hashes.SHA256,
+		cert.Hashes.SHA256SubjectSPKI,
+		cert.Hashes.PKPSHA256,
 		issuer,
 		subject,
 		cert.Version,
@@ -354,6 +366,7 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 			id,
 			sha1_fingerprint,
 			sha256_fingerprint,
+			sha256_subject_spki,
 			pkp_sha256,
 			issuer,
 			subject,
@@ -380,7 +393,7 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
 
-	err := row.Scan(&cert.ID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.PKPSHA256, &issuer, &subject,
+	err := row.Scan(&cert.ID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256, &issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &key, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
@@ -434,6 +447,7 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 	row := db.QueryRow(`SELECT
 			sha1_fingerprint,
 			sha256_fingerprint,
+			sha256_subject_spki,
 			pkp_sha256,
 			issuer,
 			subject,
@@ -461,7 +475,7 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
 
-	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.PKPSHA256, &issuer, &subject,
+	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256, &issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
@@ -521,6 +535,7 @@ func (db *DB) GetCertsBySubject(subject certificate.Subject) (certs []*certifica
 	rows, err := db.Query(`SELECT id,
 			sha1_fingerprint,
 			sha256_fingerprint,
+			sha256_subject_spki,
 			pkp_sha256,
 			issuer,
 			subject,
@@ -559,8 +574,8 @@ func (db *DB) GetCertsBySubject(subject certificate.Subject) (certs []*certifica
 			subaltname, issuer, subject, key []byte
 		)
 
-		err = rows.Scan(&cert.ID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.PKPSHA256, &issuer, &subject,
-			&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
+		err = rows.Scan(&cert.ID, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
+			&issuer, &subject, &cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 			&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 			&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
 		if err != nil {
