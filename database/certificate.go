@@ -188,8 +188,7 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 	default:
 		return -1, errors.New(fmt.Sprintf("Cannot insert to DB, %s does not represent a valid truststore name.", tsName))
 	}
-
-	queryStr := fmt.Sprintf(`INSERT INTO certificates(
+	err = db.QueryRow(`INSERT INTO certificates(
 				sha1_fingerprint,
 				sha256_fingerprint,
 				sha256_subject_spki,
@@ -209,11 +208,12 @@ func (db *DB) InsertCACertificatetoDB(cert *certificate.Certificate, tsName stri
 				x509_keyUsage,
 				x509_subjectAltName,
 				signature_algo,
-				raw_cert, %s ) VALUES ( $1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-				$12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24 ) RETURNING id`,
-		tsVariable)
-
-	err = db.QueryRow(queryStr,
+				raw_cert,
+				$1)
+				VALUES ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+				$17, $18, $19, $20, $21, $22, $23, $24, $25)
+				RETURNING id`,
+		tsVariable,
 		cert.Hashes.SHA1,
 		cert.Hashes.SHA256,
 		cert.Hashes.SHA256SubjectSPKI,
@@ -262,7 +262,6 @@ func (db *DB) UpdateCertLastSeenByID(id int64) error {
 // It does a "dumb" translation from trust store name to mapped certificate table variables.
 // Outputs an error if any occur.
 func (db *DB) UpdateCACertTruststore(id int64, tsName string) error {
-
 	tsVariable := ""
 	switch tsName {
 	case certificate.Ubuntu_TS_name:
@@ -278,10 +277,8 @@ func (db *DB) UpdateCACertTruststore(id int64, tsName string) error {
 	default:
 		return errors.New(fmt.Sprintf("Cannot update DB, %s does not represent a valid truststore name.", tsName))
 	}
-
-	queryStr := fmt.Sprintf("UPDATE certificates SET %s=$1,last_seen=$2 WHERE id=$3", tsVariable)
-
-	_, err := db.Exec(queryStr, true, time.Now(), id)
+	_, err := db.Exec(`UPDATE certificates SET $1=$2,last_seen=$3 WHERE id=$4`,
+		tsVariable, true, time.Now(), id)
 	return err
 }
 
@@ -289,74 +286,47 @@ func (db *DB) UpdateCACertTruststore(id int64, tsName string) error {
 // Returns the mentioned id and any errors that happen.
 // It wraps the sql.ErrNoRows error in order to avoid passing not existing row errors to upper levels.
 // In that case it returns -1 with no error.
-func (db *DB) GetCertIDBySHA1Fingerprint(sha1 string) (int64, error) {
-
-	query := fmt.Sprintf(`SELECT id FROM certificates WHERE sha1_fingerprint='%s' ORDER BY id ASC LIMIT 1`, sha1)
-
-	row := db.QueryRow(query)
-
-	var id int64
-
-	err := row.Scan(&id)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return -1, nil
-		} else {
-			return -1, err
-		}
-	} else {
-		return id, nil
+func (db *DB) GetCertIDBySHA1Fingerprint(sha1 string) (id int64, err error) {
+	id = -1
+	err = db.QueryRow(`SELECT id
+				 FROM certificates
+				 WHERE sha1_fingerprint=$1
+				 ORDER BY id ASC LIMIT 1`,
+		sha1).Scan(&id)
+	if err == sql.ErrNoRows {
+		return -1, nil
 	}
+	return
 }
 
 // GetCertIDWithSHA256Fingerprint fetches the database id of the certificate with the given SHA256 fingerprint.
 // Returns the mentioned id and any errors that happen.
 // It wraps the sql.ErrNoRows error in order to avoid passing not existing row errors to upper levels.
 // In that case it returns -1 with no error.
-func (db *DB) GetCertIDBySHA256Fingerprint(sha256 string) (int64, error) {
-
-	query := fmt.Sprintf(`SELECT id FROM certificates WHERE sha256_fingerprint='%s' ORDER BY id ASC LIMIT 1`, sha256)
-
-	row := db.QueryRow(query)
-
-	var id int64
-
-	err := row.Scan(&id)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return -1, nil
-		} else {
-			return -1, err
-		}
-	} else {
-		return id, nil
+func (db *DB) GetCertIDBySHA256Fingerprint(sha256 string) (id int64, err error) {
+	id = -1
+	err = db.QueryRow(`SELECT id
+				 FROM certificates
+				 WHERE sha256_fingerprint=$1
+				 ORDER BY id ASC LIMIT 1`,
+		sha256).Scan(&id)
+	if err == sql.ErrNoRows {
+		return -1, nil
 	}
+	return
 }
 
 // GetCertIDFromTrust fetches the database id of the certificate in the trust relation with the given id.
 // Returns the mentioned id and any errors that happen.
 // It wraps the sql.ErrNoRows error in order to avoid passing not existing row errors to upper levels.
 // In that case it returns -1 with no error.
-func (db *DB) GetCertIDFromTrust(trustID int64) (int64, error) {
-
-	row := db.QueryRow("SELECT cert_id FROM trust WHERE id=$1", trustID)
-
-	var id int64
-
-	err := row.Scan(&id)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return -1, nil
-		} else {
-			return -1, err
-		}
-	} else {
-		return id, nil
+func (db *DB) GetCertIDFromTrust(trustID int64) (id int64, err error) {
+	id = -1
+	err = db.QueryRow("SELECT cert_id FROM trust WHERE id=$1", trustID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return -1, nil
 	}
-
+	return
 }
 
 // GetCertBySHA1Fingerprint fetches a certain certificate from the database.

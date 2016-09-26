@@ -12,56 +12,32 @@ BUILDREV	:= $(BUILDDATE)+$(BUILDREF).$(BUILDENV)
 OS			:= linux
 ARCH		:= amd64
 
-ifeq ($(ARCH),amd64)
-	FPMARCH := x86_64
-endif
-ifeq ($(ARCH),386)
-	FPMARCH := i386
-endif
 ifeq ($(OS),windows)
 	BINSUFFIX   := ".exe"
 else
 	BINSUFFIX	:= ""
 endif
-PREFIX		:= /usr/local/
-DESTDIR		:= /
-BINDIR		:= bin/$(OS)/$(ARCH)
-GCC			:= gcc
-CFLAGS		:=
-LDFLAGS		:=
-GOOPTS		:= -tags netgo
-GO 			:= GOOS=$(OS) GOARCH=$(ARCH) GO15VENDOREXPERIMENT=1 go
+GO 			:= GOOS=$(OS) GOARCH=$(ARCH) go
 GOGETTER	:= GOPATH=$(shell pwd)/.tmpdeps go get -d
 GOLDFLAGS	:= -ldflags "-X main.version=$(BUILDREV)"
-GOCFLAGS	:=
-MKDIR		:= mkdir
-INSTALL		:= install
 
 all: test tlsobs-scanner tlsobs-api tlsobs tlsobs-runner
 
 tlsobs-scanner:
 	echo building TLS Observatory Scanner for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsobs-scanner-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-scanner
-	[ -x "$(BINDIR)/tlsobs-scanner-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(GOPATH)/bin/tlsobs-scanner$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-scanner
 
 tlsobs-api:
 	echo building tlsobs-api for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsobs-api-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-api
-	[ -x "$(BINDIR)/tlsobs-api-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(GOPATH)/bin/tlsobs-api$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-api
 
 tlsobs:
 	echo building tlsobs client for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsobs-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs
-	[ -x "$(BINDIR)/tlsobs-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(GOPATH)/bin/tlsobs$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs
 
 tlsobs-runner:
 	echo building tlsobs-runner for $(OS)/$(ARCH)
-	$(MKDIR) -p $(BINDIR)
-	$(GO) build $(GOOPTS) -o $(BINDIR)/tlsobs-runner-$(BUILDREV)$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-runner
-	[ -x "$(BINDIR)/tlsobs-runner-$(BUILDREV)$(BINSUFFIX)" ] && echo SUCCESS && exit 0
+	$(GO) build $(GOOPTS) -o $(GOPATH)/bin/tlsobs-runner$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-runner
 
 vendor:
 	govend -u
