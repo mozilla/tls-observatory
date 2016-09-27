@@ -99,7 +99,9 @@ runs:
 
         # Product Delivery
         - download.mozilla.org
+        - download-legacy.allizom.org
         - download-installer.cdn.mozilla.net
+        - download-sha1.cdn.mozilla.net
 
         # Push
         - push.services.mozilla.com
@@ -393,7 +395,9 @@ runs:
     # Product Delivery paging
     - targets:
         - download.mozilla.org
+        - download-legacy.allizom.org
         - download-installer.cdn.mozilla.net
+        - download-sha1.cdn.mozilla.net
       assertions:
         - certificate:
             validity: 
