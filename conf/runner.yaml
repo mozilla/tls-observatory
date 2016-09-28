@@ -9,8 +9,6 @@ runs:
         - addons.mozilla.org
         - blocklist.addons.mozilla.org
         - builder.addons.mozilla.org
-        - controller-review.apk.firefox.com
-        - controller.apk.firefox.com
         - services.addons.mozilla.org
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
@@ -159,8 +157,6 @@ runs:
         - addons.mozilla.org
         - blocklist.addons.mozilla.org
         - builder.addons.mozilla.org
-        - controller-review.apk.firefox.com
-        - controller.apk.firefox.com
         - services.addons.mozilla.org
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
