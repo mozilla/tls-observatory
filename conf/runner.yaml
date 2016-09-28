@@ -46,6 +46,7 @@ runs:
         - mozillausercontent.com
 
         # Firefox Settings (Kinto)
+        - blocklists.settings.services.mozilla.com
         - firefox.settings.services.mozilla.com
         - webextensions.settings.services.mozilla.com
 
@@ -236,6 +237,7 @@ runs:
 
     # Firefox Settings (Kinto)
     - targets:
+        - blocklists.settings.services.mozilla.com
         - firefox.settings.services.mozilla.com
         - webextensions.settings.services.mozilla.com
       assertions:
