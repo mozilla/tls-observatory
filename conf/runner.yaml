@@ -9,8 +9,6 @@ runs:
         - addons.mozilla.org
         - blocklist.addons.mozilla.org
         - builder.addons.mozilla.org
-        - controller-review.apk.firefox.com
-        - controller.apk.firefox.com
         - services.addons.mozilla.org
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
@@ -29,6 +27,7 @@ runs:
         - crash-reports.mozilla.com
 
         # everything.me
+        - api.everything.me
         - appsearch.services.mozilla.com
         - geodude.services.mozilla.com
 
@@ -45,6 +44,7 @@ runs:
         - mozillausercontent.com
 
         # Firefox Settings (Kinto)
+        - blocklists.settings.services.mozilla.com
         - firefox.settings.services.mozilla.com
         - webextensions.settings.services.mozilla.com
 
@@ -73,7 +73,7 @@ runs:
 
         # Miracle (Context Graph collection endpoint)
         - miracle.services.mozilla.com
-    
+
         # Misc
         - services.mozilla.com
         - status.services.mozilla.com
@@ -81,7 +81,7 @@ runs:
 
         # Pageshot
         - pageshot.net
-        
+
         # Persona
         - browserid.org
         - firefoxos.persona.org
@@ -129,7 +129,7 @@ runs:
 
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">35d"
       # every tuesday at 6pm
       cron: "0 18 * * 2"
@@ -143,7 +143,7 @@ runs:
         - search.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -157,8 +157,6 @@ runs:
         - addons.mozilla.org
         - blocklist.addons.mozilla.org
         - builder.addons.mozilla.org
-        - controller-review.apk.firefox.com
-        - controller.apk.firefox.com
         - services.addons.mozilla.org
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
@@ -166,7 +164,7 @@ runs:
         - compatibility-lookup.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -196,7 +194,7 @@ runs:
         - crash-reports.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -207,11 +205,12 @@ runs:
 
     # everything.me paging
     - targets:
+        - api.everything.me
         - appsearch.services.mozilla.com
         - geodude.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -224,7 +223,7 @@ runs:
         - find.firefox.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -234,11 +233,12 @@ runs:
 
     # Firefox Settings (Kinto)
     - targets:
+        - blocklists.settings.services.mozilla.com
         - firefox.settings.services.mozilla.com
         - webextensions.settings.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -256,7 +256,7 @@ runs:
         - mozillausercontent.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -270,7 +270,7 @@ runs:
         - loop.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -284,7 +284,7 @@ runs:
         - location-leaderboard.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -301,7 +301,7 @@ runs:
         - syncto.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -319,7 +319,7 @@ runs:
         - pipeline-dwl.prod.mozaws.net
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -332,7 +332,7 @@ runs:
         - miracle.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -346,20 +346,20 @@ runs:
         - services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
           email:
               recipients:
                   - cloud-ops@mozilla.com
-    
+
     # Pageshot
     - targets:
         - pageshot.net
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -384,7 +384,7 @@ runs:
         - diresworb.org
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -400,7 +400,7 @@ runs:
         - download-sha1.cdn.mozilla.net
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -415,7 +415,7 @@ runs:
         - updates.push.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -429,7 +429,7 @@ runs:
         - sync-264-us-west-2.sync.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -443,7 +443,7 @@ runs:
         - tiles.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -458,7 +458,7 @@ runs:
         - universalsearch.testpilot.firefox.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -471,7 +471,7 @@ runs:
         - tls-observatory.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "30 18 * * *"
       notifications:
@@ -484,7 +484,7 @@ runs:
         - shavar.services.mozilla.com
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">14d"
       cron: "0 18 * * *"
       notifications:
@@ -517,7 +517,7 @@ runs:
         - ulfr.io
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">7d"
         - analysis:
             analyzer: mozillaEvaluationWorker
@@ -527,7 +527,7 @@ runs:
           email:
               recipients:
                   - julien@vehent.org
-                  
+
     # kang's stuff
     - targets:
         - insecure.ws
@@ -555,7 +555,7 @@ runs:
         - observatory.mozilla.org
       assertions:
         - certificate:
-            validity: 
+            validity:
                 notafter: ">15d"
       cron: "13 13 * * *"
       notifications:
