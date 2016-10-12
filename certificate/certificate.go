@@ -86,6 +86,7 @@ type Extensions struct {
 	ExtendedKeyUsage       []string `json:"extendedKeyUsage,omitempty"`
 	SubjectAlternativeName []string `json:"subjectAlternativeName,omitempty"`
 	CRLDistributionPoints  []string `json:"crlDistributionPoint,omitempty"`
+	PolicyIdentifiers      []string `json:"policyIdentifiers,omitempty"`
 }
 
 type X509v3BasicConstraints struct {
@@ -288,6 +289,11 @@ func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
 	}
 
 	return usage
+func getPolicyIdentifiers(cert *x509.Certificate) (identifiers []string) {
+	for _, pi := range cert.PolicyIdentifiers {
+		identifiers = append(identifiers, pi.String())
+	}
+	return
 }
 
 func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
@@ -355,6 +361,7 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 
 	return extensions
 
+		PolicyIdentifiers:      getPolicyIdentifiers(cert),
 }
 
 func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {

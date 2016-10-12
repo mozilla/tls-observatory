@@ -22,7 +22,7 @@ CREATE TABLE certificates(
     x509_authorityKeyIdentifier varchar NULL,
     x509_subjectKeyIdentifier   varchar NULL,
     x509_keyUsage               jsonb NULL,
-    x509_certificatePolicies    varchar NULL,
+    x509_certificatePolicies    jsonb NULL,
     x509_authorityInfoAccess    varchar NULL,
     x509_subjectAltName         jsonb NULL,
     x509_issuerAltName          varchar NULL,

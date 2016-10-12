@@ -39,6 +39,11 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 		return -1, err
 	}
 
+	policies, err := json.Marshal(cert.X509v3Extensions.PolicyIdentifiers)
+	if err != nil {
+		return -1, err
+	}
+
 	issuer, err := json.Marshal(cert.Issuer)
 	if err != nil {
 		return -1, err
@@ -95,6 +100,7 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 					x509_subjectKeyIdentifier,
 					x509_keyUsage,
 					x509_subjectAltName,
+					x509_certificatePolicies,
 					signature_algo,
 					domains,
 					raw_cert
@@ -119,6 +125,7 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 		cert.X509v3Extensions.SubjectKeyId,
 		keyusage,
 		subaltname,
+		policies,
 		cert.SignatureAlgorithm,
 		domainstr,
 		cert.Raw,
@@ -438,6 +445,7 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 			x509_subjectKeyIdentifier,
 			x509_keyUsage,
 			x509_subjectAltName,
+			x509_certificatePolicies,
 			signature_algo,
 			raw_cert
 		FROM certificates WHERE id=$1`, certID)
@@ -446,13 +454,13 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 		ID: certID,
 	}
 
-	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
+	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, permittednames, issuer, subject, key []byte
 
 	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256, &issuer, &subject,
 	err := row.Scan(&cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
-		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)
+		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies, &cert.X509v3Extensions.IsNameConstrained, &permittednames,
 	if err != nil {
 		return nil, err
 	}
@@ -473,6 +481,11 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 	}
 
 	err = json.Unmarshal(subaltname, &cert.X509v3Extensions.SubjectAlternativeName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(policies, &cert.X509v3Extensions.PolicyIdentifiers)
 	if err != nil {
 		return nil, err
 	}
