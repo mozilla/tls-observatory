@@ -76,6 +76,7 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 	}
 
 	err = db.QueryRow(`INSERT INTO certificates(
+					serial_number,
 					sha1_fingerprint,
 					sha256_fingerprint,
 					sha256_subject_spki,
@@ -99,6 +100,7 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 					raw_cert
 					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
 					$14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING id`,
+		cert.Serial,
 		cert.Hashes.SHA1,
 		cert.Hashes.SHA256,
 		cert.Hashes.SHA256SubjectSPKI,
@@ -415,6 +417,7 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 // It returns a pointer to a Certificate struct and any errors that occur.
 func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 	row := db.QueryRow(`SELECT
+			serial_number,
 			sha1_fingerprint,
 			sha256_fingerprint,
 			sha256_subject_spki,
@@ -446,6 +449,7 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 	var crl_dist_points, extkeyusage, keyusage, subaltname, issuer, subject, key []byte
 
 	err := row.Scan(&cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256, &issuer, &subject,
+	err := row.Scan(&cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &cert.SignatureAlgorithm, &cert.Raw)

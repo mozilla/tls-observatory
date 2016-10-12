@@ -23,6 +23,7 @@ const Android_TS_name = "Android"
 
 type Certificate struct {
 	ID                     int64                     `json:"id"`
+	Serial                 string                    `json:"serialNumber,omitempty"`
 	ScanTarget             string                    `json:"scanTarget,omitempty"`
 	IPs                    []string                  `json:"ips,omitempty"`
 	Version                int                       `json:"version,omitempty"`
@@ -418,6 +419,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 
 	stored.Version = cert.Version
 
+	stored.Serial = strings.ToUpper(hex.EncodeToString(cert.SerialNumber.Bytes()))
 	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
 
 	stored.Key, _ = getPublicKeyInfo(cert)
