@@ -261,7 +261,6 @@ func printAnalysis(ars []database.Analysis) {
 		return
 	}
 	fmt.Println("\n--- Analyzers ---")
-	sortAnalysis(ars)
 	for _, a := range ars {
 		var (
 			results []string
@@ -284,22 +283,6 @@ func printAnalysis(ars []database.Analysis) {
 		}
 		for _, result := range results {
 			fmt.Println(result)
-		}
-	}
-}
-
-func sortAnalysis(ars []database.Analysis) {
-	//Perform a simple bubblesort of the Analysis slice using the Analyzer name
-	swap := true
-	for swap {
-		swap = false
-		for i := 0; i < len(ars)-1; i++ {
-			if ars[i+1].Analyzer < ars[i].Analyzer {
-				tmp := ars[i+1]
-				ars[i+1] = ars[i]
-				ars[i] = tmp
-				swap = true
-			}
 		}
 	}
 }
