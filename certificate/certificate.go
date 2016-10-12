@@ -84,7 +84,7 @@ type Extensions struct {
 	KeyUsage               []string `json:"keyUsage,omitempty"`
 	ExtendedKeyUsage       []string `json:"extendedKeyUsage,omitempty"`
 	SubjectAlternativeName []string `json:"subjectAlternativeName,omitempty"`
-	CRLDistributionPoints  []string `json:"crlDistributionPoint,omitemptys"`
+	CRLDistributionPoints  []string `json:"crlDistributionPoint,omitempty"`
 }
 
 type X509v3BasicConstraints struct {
