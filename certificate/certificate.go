@@ -87,6 +87,8 @@ type Extensions struct {
 	SubjectAlternativeName []string `json:"subjectAlternativeName,omitempty"`
 	CRLDistributionPoints  []string `json:"crlDistributionPoint,omitempty"`
 	PolicyIdentifiers      []string `json:"policyIdentifiers,omitempty"`
+	IsNameConstrained      bool     `json:"isNameConstrained,omitempty"`
+	PermittedNames         []string `json:"permittedDomains,omitempty"`
 }
 
 type X509v3BasicConstraints struct {
@@ -362,6 +364,10 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 	return extensions
 
 		PolicyIdentifiers:      getPolicyIdentifiers(cert),
+		PermittedNames:         cert.PermittedDNSDomains,
+	if len(ext.PermittedNames) > 0 {
+		ext.IsNameConstrained = true
+	}
 }
 
 func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {

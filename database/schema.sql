@@ -26,6 +26,8 @@ CREATE TABLE certificates(
     x509_authorityInfoAccess    varchar NULL,
     x509_subjectAltName         jsonb NULL,
     x509_issuerAltName          varchar NULL,
+    is_name_constrained         bool NULL,
+    permitted_names             jsonb NULL,
     signature_algo              varchar NULL,
     in_ubuntu_root_store        bool NULL,
     in_mozilla_root_store       bool NULL,

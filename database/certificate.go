@@ -44,6 +44,11 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 		return -1, err
 	}
 
+	permittednames, err := json.Marshal(cert.X509v3Extensions.PermittedNames)
+	if err != nil {
+		return -1, err
+	}
+
 	issuer, err := json.Marshal(cert.Issuer)
 	if err != nil {
 		return -1, err
@@ -101,6 +106,8 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 					x509_keyUsage,
 					x509_subjectAltName,
 					x509_certificatePolicies,
+					is_name_constrained,
+					permitted_names,
 					signature_algo,
 					domains,
 					raw_cert
@@ -126,6 +133,8 @@ func (db *DB) InsertCertificatetoDB(cert *certificate.Certificate) (int64, error
 		keyusage,
 		subaltname,
 		policies,
+		cert.X509v3Extensions.IsNameConstrained,
+		permittednames,
 		cert.SignatureAlgorithm,
 		domainstr,
 		cert.Raw,
@@ -446,6 +455,8 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 			x509_keyUsage,
 			x509_subjectAltName,
 			x509_certificatePolicies,
+			is_name_constrained,
+			permitted_names,
 			signature_algo,
 			raw_cert
 		FROM certificates WHERE id=$1`, certID)
@@ -486,6 +497,11 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 	}
 
 	err = json.Unmarshal(policies, &cert.X509v3Extensions.PolicyIdentifiers)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(permittednames, &cert.X509v3Extensions.PermittedNames)
 	if err != nil {
 		return nil, err
 	}
