@@ -95,8 +95,8 @@ FOR EACH ROW EXECUTE PROCEDURE notify_trigger();
 CREATE ROLE tlsobsapi;
 ALTER ROLE tlsobsapi WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';
 GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsapi;
-GRANT INSERT ON scans TO tlsobsapi;
-GRANT USAGE ON scans_id_seq TO tlsobsapi;
+GRANT INSERT ON scans, certificates, trust TO tlsobsapi;
+GRANT USAGE ON scans_id_seq, certificates_id_seq, trust_id_seq TO tlsobsapi;
 
 CREATE ROLE tlsobsscanner;
 ALTER ROLE tlsobsscanner WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';
