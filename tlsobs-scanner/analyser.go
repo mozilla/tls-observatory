@@ -120,12 +120,19 @@ func Setup(c config.Config) {
 				vinfo.ValidationError = ""
 
 				st := certificate.CertToStored(cert, parentSignature, "", "", tsName, vinfo)
-				id, err = db.InsertCACertificatetoDB(&st, tsName)
+				id, err = db.InsertCertificate(&st)
 				if err != nil {
 					log.WithFields(logrus.Fields{
-						"tsname":      tsName,
 						"certificate": certificate.SHA256Hash(cert.Raw),
 						"error":       err.Error(),
+					}).Error("Could not insert certificate in db")
+				}
+				err = db.UpdateCACertTruststore(id, tsName)
+				if err != nil {
+					log.WithFields(logrus.Fields{
+						"tsname": tsName,
+						"id":     id,
+						"error":  err.Error(),
 					}).Error("Could not insert certificate in db")
 				}
 			} else {
@@ -349,7 +356,7 @@ func storeCertificates(certmap map[string]certificate.Certificate) (EECertID int
 
 		// certificate does not yet exist in DB
 		if certID == -1 {
-			certID, err = db.InsertCertificatetoDB(&cert)
+			certID, err = db.InsertCertificate(&cert)
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"domain":      cert.ScanTarget,
@@ -397,7 +404,7 @@ func storeCertificates(certmap map[string]certificate.Certificate) (EECertID int
 					}).Warning("The issuer of the certificate was not found in the chain of trust, certificate is not trusted.")
 					continue
 				}
-				issuerID, err = db.InsertCertificatetoDB(&issuer)
+				issuerID, err = db.InsertCertificate(&issuer)
 				if err != nil {
 					log.WithFields(logrus.Fields{
 						"domain":      cert.ScanTarget,

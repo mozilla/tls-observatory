@@ -352,7 +352,7 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var valInfo certificate.ValidationInfo
 	cert := certificate.CertToStored(certX509, certHash, "", "", "", &valInfo)
-	id, err = db.InsertCertificatetoDB(&cert)
+	id, err = db.InsertCertificate(&cert)
 	if err != nil {
 		httpError(w, http.StatusInternalServerError,
 			fmt.Sprintf("Failed to store certificate in database: %v", err))
