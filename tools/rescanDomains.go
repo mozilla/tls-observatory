@@ -14,7 +14,7 @@ import (
 )
 
 type scan struct {
-	ID string `json:"scan_id"`
+	ID int `json:"scan_id"`
 }
 
 func main() {
@@ -80,7 +80,7 @@ func main() {
 				if err != nil {
 					panic(err)
 				}
-				fmt.Printf("Started scan %s on %s - %s/api/v1/results?id=%s\n", scan.ID, domain, *observatory, scan.ID)
+				fmt.Printf("Started scan %d on %s - %s/api/v1/results?id=%d\n", scan.ID, domain, *observatory, scan.ID)
 				donedomains = append(donedomains, domain)
 				time.Sleep(500 * time.Millisecond)
 			}
