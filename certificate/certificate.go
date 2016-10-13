@@ -9,20 +9,25 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const Ubuntu_TS_name = "Ubuntu"
-const Mozilla_TS_name = "Mozilla"
-const Microsoft_TS_name = "Microsoft"
-const Apple_TS_name = "Apple"
-const Android_TS_name = "Android"
+const (
+	Ubuntu_TS_name    = "Ubuntu"
+	Mozilla_TS_name   = "Mozilla"
+	Microsoft_TS_name = "Microsoft"
+	Apple_TS_name     = "Apple"
+	Android_TS_name   = "Android"
+)
 
 type Certificate struct {
 	ID                     int64                     `json:"id"`
+	Serial                 string                    `json:"serialNumber,omitempty"`
 	ScanTarget             string                    `json:"scanTarget,omitempty"`
 	IPs                    []string                  `json:"ips,omitempty"`
 	Version                int                       `json:"version,omitempty"`
@@ -85,6 +90,9 @@ type Extensions struct {
 	ExtendedKeyUsage       []string `json:"extendedKeyUsage,omitempty"`
 	SubjectAlternativeName []string `json:"subjectAlternativeName,omitempty"`
 	CRLDistributionPoints  []string `json:"crlDistributionPoint,omitempty"`
+	PolicyIdentifiers      []string `json:"policyIdentifiers,omitempty"`
+	IsNameConstrained      bool     `json:"isNameConstrained,omitempty"`
+	PermittedNames         []string `json:"permittedNames,omitempty"`
 }
 
 type X509v3BasicConstraints struct {
@@ -277,21 +285,27 @@ func GetValidityMap(trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_
 
 }
 
-func getExtKeyUsageAsStringArray(cert *x509.Certificate) []string {
-
-	usage := make([]string, len(cert.ExtKeyUsage))
-
-	for i, eku := range cert.ExtKeyUsage {
-
-		usage[i] = ExtKeyUsage[eku]
+func getExtKeyUsages(cert *x509.Certificate) []string {
+	usage := make([]string, 0)
+	for _, eku := range cert.ExtKeyUsage {
+		usage = append(usage, ExtKeyUsage[eku])
 	}
-
+	for _, unknownEku := range cert.UnknownExtKeyUsage {
+		usage = append(usage, unknownEku.String())
+	}
 	return usage
 }
 
-func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
+func getPolicyIdentifiers(cert *x509.Certificate) []string {
+	identifiers := make([]string, 0)
+	for _, pi := range cert.PolicyIdentifiers {
+		identifiers = append(identifiers, pi.String())
+	}
+	return identifiers
+}
 
-	var usage []string
+func getKeyUsages(cert *x509.Certificate) []string {
+	usage := make([]string, 0)
 	keyUsage := cert.KeyUsage
 
 	//calculate included keyUsage from bitmap
@@ -338,22 +352,27 @@ func getKeyUsageAsStringArray(cert *x509.Certificate) []string {
 //getCertExtensions currently stores only the extensions that are already exported by GoLang
 //(in the x509 Certificate Struct)
 func getCertExtensions(cert *x509.Certificate) Extensions {
-
-	extensions := Extensions{}
-
-	extensions.AuthorityKeyId = base64.StdEncoding.EncodeToString(cert.AuthorityKeyId)
-	extensions.SubjectKeyId = base64.StdEncoding.EncodeToString(cert.SubjectKeyId)
-
-	extensions.KeyUsage = getKeyUsageAsStringArray(cert)
-
-	extensions.ExtendedKeyUsage = getExtKeyUsageAsStringArray(cert)
-
-	extensions.SubjectAlternativeName = cert.DNSNames
-
-	extensions.CRLDistributionPoints = cert.CRLDistributionPoints
-
-	return extensions
-
+	// initialize []string to store them as `[]` instead of null
+	san := make([]string, 0)
+	san = append(san, cert.DNSNames...)
+	crld := make([]string, 0)
+	crld = append(crld, cert.CRLDistributionPoints...)
+	pnames := make([]string, 0)
+	pnames = append(pnames, cert.PermittedDNSDomains...)
+	ext := Extensions{
+		AuthorityKeyId:         base64.StdEncoding.EncodeToString(cert.AuthorityKeyId),
+		SubjectKeyId:           base64.StdEncoding.EncodeToString(cert.SubjectKeyId),
+		KeyUsage:               getKeyUsages(cert),
+		ExtendedKeyUsage:       getExtKeyUsages(cert),
+		PolicyIdentifiers:      getPolicyIdentifiers(cert),
+		SubjectAlternativeName: san,
+		CRLDistributionPoints:  crld,
+		PermittedNames:         pnames,
+	}
+	if len(ext.PermittedNames) > 0 {
+		ext.IsNameConstrained = true
+	}
+	return ext
 }
 
 func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
@@ -413,14 +432,22 @@ func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
 
 //certtoStored returns a Certificate struct created from a X509.Certificate
 func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *ValidationInfo) Certificate {
-
-	var stored = Certificate{}
+	var (
+		err    error
+		stored = Certificate{}
+	)
+	// initialize []string to never store them as null
+	stored.ParentSignature = make([]string, 0)
+	stored.IPs = make([]string, 0)
 
 	stored.Version = cert.Version
-
+	stored.Serial = strings.ToUpper(hex.EncodeToString(cert.SerialNumber.Bytes()))
 	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
 
-	stored.Key, _ = getPublicKeyInfo(cert)
+	stored.Key, err = getPublicKeyInfo(cert)
+	if err != nil {
+		log.Printf("Failed to retrieve public key information: %v. Continuing anyway.", err)
+	}
 
 	stored.Issuer.Country = cert.Issuer.Country
 	stored.Issuer.Organisation = cert.Issuer.Organization
