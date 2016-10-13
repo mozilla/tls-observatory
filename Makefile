@@ -47,6 +47,7 @@ test:
 	$(GO) test github.com/mozilla/tls-observatory/tlsobs-runner
 
 truststores:
+	cd truststores && git pull origin master && cd ..
 	cat truststores/data/mozilla/snapshot/*.pem > conf/truststores/CA_mozilla_nss.crt
 	cat truststores/data/microsoft/snapshot/*.pem > conf/truststores/CA_microsoft.crt
 	cat truststores/data/apple/snapshot/*.pem > conf/truststores/CA_apple_latest.crt

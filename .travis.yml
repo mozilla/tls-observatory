@@ -13,6 +13,7 @@ env:
   - secure: gs7n/39cJJ4Xo7W6ex16pCkdL+kF63TXcssFOgZx8XOIQdhFZVcbDx/EfPbkJW4dUdn2huH620B2L7UrqFruWWtcQ8uv4NGPt5Qq1QnVc7jfSSWzkvWlW5Enkktsi4SWCV1ALoowW8Jfs55xyK0fPEkKqlM8b+1ruEi4YLJwqNs=
   - secure: Yn1AeR9yB7SY/jwPZ96UjMTt8N3zBJV1VCwDWT5YsBILyRqrZfZ/r7YI+aEueC8dUeZ5b5jdSFYXNf+eMk1j31m4HqeKIQtVe/D8XHJNvxNlYg42W4R+qPz+uhzKB0UMrKvwPddrd6ceVeFqzRnHFl4SO2AjqBUjEPESnconnJ0=
 script:
+- make truststores
 - make
 - docker build -t mozilla/tls-observatory .
 - |
