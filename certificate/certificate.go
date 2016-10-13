@@ -92,7 +92,7 @@ type Extensions struct {
 	CRLDistributionPoints  []string `json:"crlDistributionPoint,omitempty"`
 	PolicyIdentifiers      []string `json:"policyIdentifiers,omitempty"`
 	IsNameConstrained      bool     `json:"isNameConstrained,omitempty"`
-	PermittedNames         []string `json:"permittedDomains,omitempty"`
+	PermittedNames         []string `json:"permittedNames,omitempty"`
 }
 
 type X509v3BasicConstraints struct {
@@ -285,26 +285,27 @@ func GetValidityMap(trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_
 
 }
 
-func getExtKeyUsages(cert *x509.Certificate) (usage []string) {
+func getExtKeyUsages(cert *x509.Certificate) []string {
+	usage := make([]string, 0)
 	for _, eku := range cert.ExtKeyUsage {
 		usage = append(usage, ExtKeyUsage[eku])
 	}
 	for _, unknownEku := range cert.UnknownExtKeyUsage {
 		usage = append(usage, unknownEku.String())
 	}
-	return
+	return usage
 }
 
-func getPolicyIdentifiers(cert *x509.Certificate) (identifiers []string) {
+func getPolicyIdentifiers(cert *x509.Certificate) []string {
+	identifiers := make([]string, 0)
 	for _, pi := range cert.PolicyIdentifiers {
 		identifiers = append(identifiers, pi.String())
 	}
-	return
+	return identifiers
 }
 
 func getKeyUsages(cert *x509.Certificate) []string {
-
-	var usage []string
+	usage := make([]string, 0)
 	keyUsage := cert.KeyUsage
 
 	//calculate included keyUsage from bitmap
@@ -351,15 +352,22 @@ func getKeyUsages(cert *x509.Certificate) []string {
 //getCertExtensions currently stores only the extensions that are already exported by GoLang
 //(in the x509 Certificate Struct)
 func getCertExtensions(cert *x509.Certificate) Extensions {
+	// initialize []string to store them as `[]` instead of null
+	san := make([]string, 0)
+	san = append(san, cert.DNSNames...)
+	crld := make([]string, 0)
+	crld = append(crld, cert.CRLDistributionPoints...)
+	pnames := make([]string, 0)
+	pnames = append(pnames, cert.PermittedDNSDomains...)
 	ext := Extensions{
 		AuthorityKeyId:         base64.StdEncoding.EncodeToString(cert.AuthorityKeyId),
 		SubjectKeyId:           base64.StdEncoding.EncodeToString(cert.SubjectKeyId),
 		KeyUsage:               getKeyUsages(cert),
 		ExtendedKeyUsage:       getExtKeyUsages(cert),
 		PolicyIdentifiers:      getPolicyIdentifiers(cert),
-		SubjectAlternativeName: cert.DNSNames,
-		CRLDistributionPoints:  cert.CRLDistributionPoints,
-		PermittedNames:         cert.PermittedDNSDomains,
+		SubjectAlternativeName: san,
+		CRLDistributionPoints:  crld,
+		PermittedNames:         pnames,
 	}
 	if len(ext.PermittedNames) > 0 {
 		ext.IsNameConstrained = true
@@ -428,6 +436,10 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 		err    error
 		stored = Certificate{}
 	)
+	// initialize []string to never store them as null
+	stored.ParentSignature = make([]string, 0)
+	stored.IPs = make([]string, 0)
+
 	stored.Version = cert.Version
 	stored.Serial = strings.ToUpper(hex.EncodeToString(cert.SerialNumber.Bytes()))
 	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
