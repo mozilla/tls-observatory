@@ -36,7 +36,8 @@ function WaitHttpStatus() {
   ZONE=${2}
   HTTP_PATH=${3}
   WANTED_STATUS=${4:-200}
-  URL=${INSTANCE}:80${HTTP_PATH}
+  PORT=${5:-80}
+  URL=${INSTANCE}:${PORT}${HTTP_PATH}
   echo "Waiting for HTTP ${WANTED_STATUS} from ${URL} "
   ${GCLOUD} compute ssh ${INSTANCE} \
     --zone ${ZONE} \
@@ -52,6 +53,21 @@ function WaitHttpStatus() {
       done"
 }
 
+function WaitForEtcd() {
+  echo "Waiting for etcd @ ${ETCD_MACHINES[1]}"
+  while true; do
+    ${GCLOUD} compute ssh ${ETCD_MACHINES[1]} \
+        --zone ${ETCD_ZONES[1]} \
+        --command "\
+     until curl -s -L -m 10 localhost:4001/v2/keys/ > /dev/null; do \
+       echo -n .; \
+       sleep 1; \
+     done" && break;
+    sleep 1
+    echo "Retrying..."
+  done
+}
+
 
 function AppendAndJoin {
   local SUFFIX=${1}
@@ -61,6 +77,53 @@ function AppendAndJoin {
   local o="$( printf "${SEPARATOR}%s${SUFFIX}" ${ARRAY} )"
   local o="${o:${#SEPARATOR}}" # remove leading separator
   echo "${o}"
+}
+
+function PopulateEtcdForLog() {
+  export PUT="curl -s -L -X PUT --retry 10"
+  export ETCD="${ETCD_MACHINES[1]}:4001"
+  ${GCLOUD} compute ssh ${ETCD_MACHINES[1]} \
+      --zone ${ETCD_ZONES[1]} \
+      --command "\
+    ${PUT} ${ETCD}/v2/keys/root/serving_sth && \
+    ${PUT} ${ETCD}/v2/keys/root/cluster_config && \
+    ${PUT} ${ETCD}/v2/keys/root/sequence_mapping && \
+    ${PUT} ${ETCD}/v2/keys/root/entries/ -d dir=true && \
+    ${PUT} ${ETCD}/v2/keys/root/nodes/ -d dir=true"
+
+  ${GCLOUD} compute ssh ${ETCD_MACHINES[1]} \
+      --zone ${ETCD_ZONES[1]} \
+      --command "\
+    sudo docker run gcr.io/${PROJECT}/ct-log:test \
+      /usr/local/bin/ct-clustertool initlog \
+      --key=/usr/local/etc/server-key.pem \
+      --etcd_servers=${ETCD_MACHINES[1]}:4001 \
+      --logtostderr"
+}
+
+function PopulateEtcdForMirror() {
+  export PUT="curl -s -L -X PUT --retry 10"
+  export ETCD="${ETCD_MACHINES[1]}:4001"
+  ${GCLOUD} compute ssh ${ETCD_MACHINES[1]} \
+      --zone ${ETCD_ZONES[1]} \
+      --command "\
+    ${PUT} ${ETCD}/v2/keys/root/serving_sth && \
+    ${PUT} ${ETCD}/v2/keys/root/cluster_config && \
+    ${PUT} ${ETCD}/v2/keys/root/nodes/ -d dir=true"
+}
+
+function PopulateEtcd() {
+  case "${INSTANCE_TYPE}" in
+    "log")
+      PopulateEtcdForLog
+      ;;
+    "mirror")
+      PopulateEtcdForMirror
+      ;;
+    *)
+      echo "Unknown INSTANCE_TYPE: ${INSTANCE_TYPE}"
+      exit 1
+  esac
 }
 
 

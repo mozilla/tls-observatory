@@ -329,27 +329,31 @@ void LevelDB::InitializeNode(const string& node_id) {
   ScopedLatency latency(latency_by_op_ms.GetScopedLatency("initialize_node"));
   unique_lock<mutex> lock(lock_);
   string existing_id;
-  leveldb::Status status(db_->Get(leveldb::ReadOptions(),
-                                  string(kMetaPrefix) + kMetaNodeIdKey,
-                                  &existing_id));
-  if (!status.IsNotFound()) {
-    LOG(FATAL) << "Attempting to initialize DB beloging to node with node_id: "
-               << existing_id;
+  if (NodeId(&existing_id) != this->NOT_FOUND) {
+    LOG(FATAL)
+        << "Attempting to initialize DB belonging to node with node_id: "
+        << existing_id;
   }
-  status = db_->Put(leveldb::WriteOptions(),
-                    string(kMetaPrefix) + kMetaNodeIdKey, node_id);
+  leveldb::Status status =
+      db_->Put(leveldb::WriteOptions(), string(kMetaPrefix) + kMetaNodeIdKey,
+               node_id);
   CHECK(status.ok()) << "Failed to store NodeId: " << status.ToString();
 }
 
 
 Database::LookupResult LevelDB::NodeId(string* node_id) {
   CHECK_NOTNULL(node_id);
-  if (!db_->Get(leveldb::ReadOptions(), string(kMetaPrefix) + kMetaNodeIdKey,
-                node_id)
-           .ok()) {
+  leveldb::Status status =
+      db_->Get(leveldb::ReadOptions(), string(kMetaPrefix) + kMetaNodeIdKey,
+               node_id);
+
+  if (status.ok()) {
+    return this->LOOKUP_OK;
+  }
+  if (status.IsNotFound()) {
     return this->NOT_FOUND;
   }
-  return this->LOOKUP_OK;
+  LOG(FATAL) << "Node ID lookup failed: " << status.ToString();
 }
 
 
