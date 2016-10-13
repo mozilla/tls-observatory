@@ -46,4 +46,11 @@ test:
 	$(GO) test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
 	$(GO) test github.com/mozilla/tls-observatory/tlsobs-runner
 
-.PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor
+truststores:
+	cat truststores/data/mozilla/snapshot/*.pem > conf/truststores/CA_mozilla_nss.crt
+	cat truststores/data/microsoft/snapshot/*.pem > conf/truststores/CA_microsoft.crt
+	cat truststores/data/apple/snapshot/*.pem > conf/truststores/CA_apple_latest.crt
+	cat truststores/data/java/snapshot/*.pem > conf/truststores/CA_java.crt
+	curl -o conf/truststores/CA_AOSP.crt https://pki.google.com/roots.pem
+
+.PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor truststores
