@@ -56,6 +56,11 @@ func Setup(c config.Config) {
 		}
 		certPool := x509.NewCertPool()
 		poollen := 0
+
+		// keep a list of cert hashes currently in this truststore
+		// to remove certs no longer in it
+		certHashes := make([]string, 0)
+
 		for len(poolData) > 0 {
 			// read the next PEM block, ignore non CERTIFICATE entries
 			var block *pem.Block
@@ -97,15 +102,15 @@ func Setup(c config.Config) {
 			//Push current certificate to DB as trusted
 			v := &certificate.ValidationInfo{}
 			v.IsValid = true
-
+			certHash := certificate.SHA256Hash(cert.Raw)
+			certHashes = append(certHashes, certHash)
 			parentSignature := ""
 			if cert.Subject.CommonName == cert.Issuer.CommonName {
-				parentSignature = certificate.SHA256Hash(cert.Raw)
+				// self-signed, parent sig is self sig
+				parentSignature = certHash
 			}
-
-			var id int64
-			id = -1
-			id, err = db.GetCertIDBySHA256Fingerprint(certificate.SHA256Hash(cert.Raw))
+			var id int64 = -1
+			id, err = db.GetCertIDBySHA256Fingerprint(certHash)
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"tsname":      tsName,
@@ -115,6 +120,7 @@ func Setup(c config.Config) {
 			}
 
 			if id == -1 {
+				// insert certificate for the first time
 				vinfo := &certificate.ValidationInfo{}
 				vinfo.IsValid = true
 				vinfo.ValidationError = ""
@@ -127,19 +133,36 @@ func Setup(c config.Config) {
 						"error":       err.Error(),
 					}).Error("Could not insert certificate in db")
 				}
-				err = db.UpdateCACertTruststore(id, tsName)
-				if err != nil {
-					log.WithFields(logrus.Fields{
-						"tsname": tsName,
-						"id":     id,
-						"error":  err.Error(),
-					}).Error("Could not insert certificate in db")
-				}
-			} else {
-				db.UpdateCACertTruststore(id, tsName)
 			}
-
+			switch tsName {
+			case certificate.Ubuntu_TS_name:
+				err = db.AddCertToUbuntuTruststore(id)
+			case certificate.Mozilla_TS_name:
+				err = db.AddCertToMozillaTruststore(id)
+			case certificate.Microsoft_TS_name:
+				err = db.AddCertToMicrosoftTruststore(id)
+			case certificate.Apple_TS_name:
+				err = db.AddCertToAppleTruststore(id)
+			case certificate.Android_TS_name:
+				err = db.AddCertToAndroidTruststore(id)
+			}
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"tsname": tsName,
+					"id":     id,
+					"error":  err.Error(),
+				}).Error("Could not update certificate trust in db")
+			}
 			poollen++
+		}
+		// We have a list of certificates in the current truststore and
+		// we use it to disable certs no longer in in
+		err = db.RemoveCACertFromTruststore(certHashes, tsName)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"tsname": tsName,
+				"error":  err.Error(),
+			}).Fatal("Failed to update trust of certificates no longer in truststore")
 		}
 		trustStores = append(trustStores, certificate.TrustStore{tsName, certPool})
 		log.WithFields(logrus.Fields{

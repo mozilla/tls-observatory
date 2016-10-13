@@ -169,11 +169,34 @@ func (db *DB) UpdateCertLastSeenByID(id int64) error {
 	return err
 }
 
-// UpdateCACertTruststore updates the last_seen timestamp and the in_xxx_root_store variables of the certificate with the given id.
-// It takes as input a certificate id and the name of the imported trust store.
-// It does a "dumb" translation from trust store name to mapped certificate table variables.
-// Outputs an error if any occur.
-func (db *DB) UpdateCACertTruststore(id int64, tsName string) error {
+func (db *DB) AddCertToUbuntuTruststore(id int64) error {
+	_, err := db.Exec(`UPDATE certificates SET in_ubuntu_root_store='true',last_seen=NOW() WHERE id=$1`, id)
+	return err
+}
+
+func (db *DB) AddCertToMozillaTruststore(id int64) error {
+	_, err := db.Exec(`UPDATE certificates SET in_mozilla_root_store='true',last_seen=NOW() WHERE id=$1`, id)
+	return err
+}
+
+func (db *DB) AddCertToMicrosoftTruststore(id int64) error {
+	_, err := db.Exec(`UPDATE certificates SET in_microsoft_root_store='true',last_seen=NOW() WHERE id=$1`, id)
+	return err
+}
+
+func (db *DB) AddCertToAppleTruststore(id int64) error {
+	_, err := db.Exec(`UPDATE certificates SET in_apple_root_store='true',last_seen=NOW() WHERE id=$1`, id)
+	return err
+}
+
+func (db *DB) AddCertToAndroidTruststore(id int64) error {
+	_, err := db.Exec(`UPDATE certificates SET in_android_root_store='true',last_seen=NOW() WHERE id=$1`, id)
+	return err
+}
+
+// RemoveCACertFromTruststore takes a list of hashes from certs trusted by a given truststore and disables
+// the trust of all certs not listed but trusted in DB
+func (db *DB) RemoveCACertFromTruststore(trustedCerts []string, tsName string) error {
 	tsVariable := ""
 	switch tsName {
 	case certificate.Ubuntu_TS_name:
@@ -189,8 +212,16 @@ func (db *DB) UpdateCACertTruststore(id int64, tsName string) error {
 	default:
 		return errors.New(fmt.Sprintf("Cannot update DB, %s does not represent a valid truststore name.", tsName))
 	}
-	_, err := db.Exec(`UPDATE certificates SET $1=$2,last_seen=$3 WHERE id=$4`,
-		tsVariable, true, time.Now(), id)
+	var fps string
+	for _, fp := range trustedCerts {
+		if len(fps) > 1 {
+			fps += ","
+		}
+		fps += "'" + fp + "'"
+	}
+	q := fmt.Sprintf(`UPDATE certificates SET %s='false', last_seen=NOW()  WHERE %s='true' AND sha256_fingerprint NOT IN (%s)`,
+		tsVariable, tsVariable, fps)
+	_, err := db.Exec(q)
 	return err
 }
 
