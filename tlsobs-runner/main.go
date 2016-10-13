@@ -129,7 +129,7 @@ func (r Run) scan(target string) (id int64, err error) {
 			err = fmt.Errorf("scan(target=%q) -> %v", e)
 		}
 	}()
-	resp, err := http.Post(observatory+"/api/v1/scan?target="+target, "application/json", nil)
+	resp, err := http.Post(observatory+"/api/v1/scan?rescan=true&target="+target, "application/json", nil)
 	if err != nil {
 		panic(err)
 	}
