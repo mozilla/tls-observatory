@@ -54,4 +54,7 @@ truststores:
 	cat truststores/data/java/snapshot/*.pem > conf/truststores/CA_java.crt
 	curl -o conf/truststores/CA_AOSP.crt https://pki.google.com/roots.pem
 
-.PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor truststores
+cipherscan:
+	cd cipherscan && git pull origin master && cd ..
+
+.PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor truststores cipherscan
