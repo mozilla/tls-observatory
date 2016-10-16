@@ -1,24 +1,54 @@
 package certificate
 
+import "fmt"
+
 // Paths represent the chain of trust between a given certificate
 // and one of multiple parents. It is meant to be walked recursively
 // from an end-entity to a trusted root
 type Paths struct {
-	Cert    *Certificate
-	Parents []Paths
-	sep     string
+	Cert    *Certificate `json:"certificate"`
+	Parents []Paths      `json:"parents"`
+	// vars to help pretty printing
+	sep       string
+	depth     int
+	neighbors int
+	islast    bool
 }
 
+const (
+	E_SEP string = "   "
+	S_SEP string = "│  "
+	T_SEP string = "├──"
+	L_SEP string = "└──"
+	C_SEP string = "───"
+)
+
 func (p Paths) String() (str string) {
-	if len(p.Parents) == 0 {
-		str = p.sep + "`> root: "
-	} else if p.sep != "" {
-		str = p.sep + "`> intermediate: "
+	var sep, nsep string
+	for i := 0; i < p.depth; i++ {
+		if i == p.depth-1 {
+			if p.islast || p.neighbors == 0 {
+				sep += L_SEP
+				nsep += E_SEP
+			} else {
+				sep += T_SEP
+				nsep += S_SEP
+			}
+		} else if i == 0 {
+			nsep += p.sep
+
+		}
 	}
-	str += p.Cert.Subject.String()
-	for _, parent := range p.Parents {
-		parent.sep = p.sep + "   "
-		str += "\n" + parent.String()
+	sep = p.sep + sep
+	str = fmt.Sprintf("%s%s (id=%d)\n", sep, p.Cert.Subject.String(), p.Cert.ID)
+	for i, parent := range p.Parents {
+		parent.sep = nsep
+		parent.neighbors = len(p.Parents)
+		parent.depth = p.depth + 1
+		if i == len(p.Parents)-1 {
+			parent.islast = true
+		}
+		str += parent.String()
 	}
 	return
 }

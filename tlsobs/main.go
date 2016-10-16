@@ -159,16 +159,16 @@ func printCert(id int64) {
 Subject  %s
 SubjectAlternativeName
 %sValidity %s to %s
-CA       %t
 SHA1     %s
 SHA256   %s
 SigAlg   %s
 Key      %s %.0fbits %s
+ID       %d
 %s`,
 		cert.Subject.String(), san,
 		cert.Validity.NotBefore.Format(time.RFC3339), cert.Validity.NotAfter.Format(time.RFC3339),
-		cert.CA, cert.Hashes.SHA1, cert.Hashes.SHA256, cert.SignatureAlgorithm,
-		cert.Key.Alg, cert.Key.Size, cert.Key.Curve, cert.Anomalies)
+		cert.Hashes.SHA1, cert.Hashes.SHA256, cert.SignatureAlgorithm,
+		cert.Key.Alg, cert.Key.Size, cert.Key.Curve, cert.ID, cert.Anomalies)
 
 	// Print truststore information
 	green := color.New(color.FgGreen).SprintFunc()
@@ -198,37 +198,7 @@ Mozilla Microsoft Apple Android
 `, moztrust, microtrust, appletrust, androtrust)
 
 	// Print chain of trust
-	pathlen := 0
-	fmt.Println("\n--- Chain of trust ---")
-	for {
-		if cert.ID == cert.Issuer.ID && pathlen == 0 {
-			// if the certificate is self signed, there is no chain to print
-			fmt.Printf("The certificate is self-signed, there is no chain of trust to print.")
-			return
-		}
-		var description string
-		if pathlen == 0 {
-			description = "end entity"
-		} else if cert.ID == cert.Issuer.ID {
-			description = "root CA"
-		} else {
-			description = "intermediate CA"
-		}
-		fmt.Printf("%d:\t%s\n\tissuer: %s\n\ttype: %s\n\tkey: %s %.0fbits %s\n\tpin-sha256: %s\n\n",
-			pathlen, cert.Subject.String(), cert.Issuer.String(), description,
-			cert.Key.Alg, cert.Key.Size, cert.Key.Curve,
-			cert.Hashes.PKPSHA256)
-		pathlen++
-		if cert.ID == cert.Issuer.ID {
-			break
-		}
-		if cert.Issuer.ID < 1 {
-			fmt.Println("The issuer of the certificate is unknown.")
-			return
-		}
-		cert = getCert(cert.Issuer.ID)
-	}
-
+	fmt.Printf("\n--- Chain of trust ---\n%s\n", getPaths(cert.ID).String())
 }
 
 func printConnection(c connection.Stored) {
@@ -304,6 +274,29 @@ func getCert(id int64) (cert certificate.Certificate) {
 		fmt.Printf("%s\n", body)
 	}
 	err = json.Unmarshal(body, &cert)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return
+}
+
+func getPaths(id int64) (paths certificate.Paths) {
+	resp, err := http.Get(fmt.Sprintf("%s/api/v1/paths?id=%d", *observatory, id))
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Failed to access certificate paths. HTTP %d: %s", resp.StatusCode, body)
+	}
+	if *printRaw {
+		fmt.Printf("%s\n", body)
+	}
+	err = json.Unmarshal(body, &paths)
 	if err != nil {
 		log.Fatal(err)
 	}
