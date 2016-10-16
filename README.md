@@ -216,6 +216,8 @@ curl https://tls-observatory.services.mozilla.com/api/v1/certificate?id=1
 **Parameters**:
 
 * `id` is the Certificate ID
+* `sha256` the hexadecimal checksum of the DER certificate (only if `id` is not
+  provided)
 
 **Output**: a `json` document containing the parsed certificate and its raw X509 version encoded with base64.
 
@@ -234,6 +236,22 @@ curl -X POST -F certificate=@example.pem https://tls-observatory.services.mozill
 **Output**: a `json` document containing the parsed certificate and its raw X509 version encoded with base64.
 
 **Caching**: Certificates are only stored once. The database uses the SHA256 hash of the DER (binary) certificate to identify duplicates. Posting a certificate already stored in database returns the stored version. 
+
+#### GET /api/v1/paths
+
+Retrieve the paths from a certificate to one of multiple roots.
+
+```bash
+curl https://tls-observatory.services.mozilla.com/api/v1/paths?id=1
+```
+
+**Parameters**:
+
+* `id` is the ID of the certificate to start the path at.
+* `sha256` the hexadecimal checksum of the DER certificate (only if `id` is not
+  provided)
+
+**Output**: a `json` document containing the paths document. Each entry in the path contains the current certificate and an array of parents, if any exist.
 
 ### Database Queries
 
