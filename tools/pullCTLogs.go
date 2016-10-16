@@ -121,5 +121,6 @@ func main() {
 			}
 			log.Printf("https://tls-observatory.services.mozilla.com/api/v1/certificate?id=%d\n\n", tlsobs_cert.ID)
 		}
+		offset += 100
 	}
 }
