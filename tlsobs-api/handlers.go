@@ -252,6 +252,7 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonCertFromID(w, r, id)
+	return
 }
 
 // PostCertificateHandler handles the POST /certificate endpoint of the api.
@@ -358,6 +359,69 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// PathsHandler handles the /paths endpoint of the api.
+// It queries the database for the provided cert ids or sha256 and returns
+// its chain of trust in JSON.
+func PathsHandler(w http.ResponseWriter, r *http.Request) {
+	var (
+		err error
+		id  int64
+	)
+	setResponseHeader(w)
+	log := logger.GetLogger()
+	log.WithFields(logrus.Fields{
+		"form values": r.Form.Encode(),
+		"headers":     r.Header,
+	}).Debug("Paths Endpoint received request")
+
+	val := r.Context().Value(dbKey)
+	if val == nil {
+		httpError(w, http.StatusInternalServerError, "Could not find database handler in request context")
+		return
+	}
+	db := val.(*pg.DB)
+
+	if r.FormValue("id") != "" {
+		id, err = strconv.ParseInt(r.FormValue("id"), 10, 64)
+		if err != nil {
+			httpError(w, http.StatusBadRequest,
+				fmt.Sprintf("Could not parse certificate id: %v", err))
+			return
+		}
+	} else if r.FormValue("sha256") != "" {
+		id, err = db.GetCertIDBySHA256Fingerprint(r.FormValue("sha256"))
+		if err != nil {
+			httpError(w, http.StatusInternalServerError,
+				fmt.Sprintf("Could not retrieve certificate: %v", err))
+			return
+		}
+	} else {
+		httpError(w, http.StatusBadRequest, "Certificate ID or SHA256 are missing")
+		return
+	}
+	cert, err := db.GetCertByID(id)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not retrieved stored certificate from database: %v", err))
+		return
+	}
+	paths, err := db.GetCertPaths(cert)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Failed to retrieve certificate paths from database: %v", err))
+		return
+	}
+	pathsJson, err := json.Marshal(paths)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError,
+			fmt.Sprintf("Could not convert certificate paths to JSON: %v", err))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(pathsJson)
+	return
+}
+
 func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 	val := r.Context().Value(dbKey)
 	if val == nil {
@@ -378,7 +442,12 @@ func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 			fmt.Sprintf("Could not convert certificate to JSON: %v", err))
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	switch r.Method {
+	case "GET":
+		w.WriteHeader(http.StatusOK)
+	case "POST":
+		w.WriteHeader(http.StatusCreated)
+	}
 	w.Write(certJson)
 }
 
