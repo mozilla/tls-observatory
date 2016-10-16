@@ -213,23 +213,14 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CertificateHandler handles the /certificate endpoint of the api.
-// It queries the database for the provided cert ids and returns results in JSON.
+// It queries the database for the provided cert ids or sha256 and returns results in JSON.
 func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 	var (
-		status int
-		err    error
+		err error
+		id  int64
 	)
 	setResponseHeader(w)
-
-	defer func() {
-		if nil != err {
-			http.Error(w, err.Error(), status)
-		}
-	}()
-
 	log := logger.GetLogger()
-	status = http.StatusInternalServerError
-
 	log.WithFields(logrus.Fields{
 		"form values": r.Form.Encode(),
 		"headers":     r.Header,
@@ -237,50 +228,30 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 
 	val := r.Context().Value(dbKey)
 	if val == nil {
-		log.Error("Could not find db in request context")
-		err = errors.New("Could not access database.")
+		httpError(w, http.StatusInternalServerError, "Could not find database handler in request context")
 		return
 	}
-
 	db := val.(*pg.DB)
 
-	idStr := r.FormValue("id")
-
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"cert_id": id,
-			"error":   err.Error(),
-		}).Error("Could not parse certificate id")
-
-		status = http.StatusBadRequest
-		err = errors.New("Could not parse provided certificate id")
+	if r.FormValue("id") != "" {
+		id, err = strconv.ParseInt(r.FormValue("id"), 10, 64)
+		if err != nil {
+			httpError(w, http.StatusBadRequest,
+				fmt.Sprintf("Could not parse certificate id: %v", err))
+			return
+		}
+	} else if r.FormValue("sha256") != "" {
+		id, err = db.GetCertIDBySHA256Fingerprint(r.FormValue("sha256"))
+		if err != nil {
+			httpError(w, http.StatusInternalServerError,
+				fmt.Sprintf("Could not retrieve certificate: %v", err))
+			return
+		}
+	} else {
+		httpError(w, http.StatusBadRequest, "Certificate ID or SHA256 are missing")
 		return
 	}
-
-	cert, err := db.GetCertByID(id)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"cert_id": id,
-			"error":   err.Error(),
-		}).Error("Could not get cert from database")
-
-		err = errors.New("Could not access database to get requested certificate")
-		return
-	}
-
-	jsScan, err := json.Marshal(cert)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"cert_id": id,
-			"error":   err.Error(),
-		}).Error("Could not Marshal cert")
-
-		err = errors.New("Could not process requested certificate")
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, string(jsScan))
+	jsonCertFromID(w, r, id)
 }
 
 // PostCertificateHandler handles the POST /certificate endpoint of the api.

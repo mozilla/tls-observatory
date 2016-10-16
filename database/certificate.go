@@ -252,7 +252,7 @@ func (db *DB) GetCertIDBySHA256Fingerprint(sha256 string) (id int64, err error) 
 				 FROM certificates
 				 WHERE sha256_fingerprint=$1
 				 ORDER BY id ASC LIMIT 1`,
-		sha256).Scan(&id)
+		strings.ToUpper(sha256)).Scan(&id)
 	if err == sql.ErrNoRows {
 		return -1, nil
 	}
