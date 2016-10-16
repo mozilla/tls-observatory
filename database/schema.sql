@@ -39,6 +39,7 @@ CREATE TABLE certificates(
     raw_cert                    varchar NOT NULL
 );
 CREATE INDEX certificates_sha256_fingerprint_idx ON certificates(sha256_fingerprint);
+CREATE INDEX certificates_subject_idx ON certificates(subject);
 
 CREATE TABLE trust (
     id                serial primary key,
@@ -53,6 +54,7 @@ CREATE TABLE trust (
     is_current        bool NOT NULL
 );
 CREATE INDEX trust_cert_id_idx ON trust(cert_id);
+CREATE INDEX trust_issuer_id_idx ON trust(issuer_id);
 CREATE INDEX trust_is_current_idx ON trust(is_current);
 
 CREATE TABLE scans(
