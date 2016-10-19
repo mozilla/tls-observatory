@@ -457,6 +457,11 @@ func PreflightHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("preflighted"))
 }
 
+func HeartbeatHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("I iz alive."))
+}
+
 func setResponseHeader(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS, POST")
