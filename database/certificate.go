@@ -383,15 +383,15 @@ func (db *DB) GetCertBySHA1Fingerprint(sha1 string) (*certificate.Certificate, e
 	return db.GetCertByID(id)
 }
 
-// GetCertsBySubject returns a list of certificates that match a given subject
-func (db *DB) GetCertsBySubject(subject certificate.Subject) (certs []*certificate.Certificate, err error) {
+// GetCACertsBySubject returns a list of CA certificates that match a given subject
+func (db *DB) GetCACertsBySubject(subject certificate.Subject) (certs []*certificate.Certificate, err error) {
 	// we must remove the ID before looking for the cert in database
 	subject.ID = 0
 	subjectJson, err := json.Marshal(subject)
 	if err != nil {
 		return
 	}
-	rows, err := db.Query(`SELECT id FROM certificates WHERE subject=$1`, subjectJson)
+	rows, err := db.Query(`SELECT id FROM certificates WHERE is_ca='true' AND subject=$1`, subjectJson)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -555,7 +555,7 @@ func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Pat
 	if err != nil {
 		return
 	}
-	parents, err := db.GetCertsBySubject(cert.Issuer)
+	parents, err := db.GetCACertsBySubject(cert.Issuer)
 	if err != nil {
 		return
 	}
