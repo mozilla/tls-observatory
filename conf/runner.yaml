@@ -106,6 +106,8 @@ runs:
         # Sync
         - token.services.mozilla.com
         - sync-264-us-west-2.sync.services.mozilla.com
+        - 401inator.sync.services.mozilla.com
+        - eolinator.services.mozilla.com
 
         # Tiles
         - tiles.cdn.mozilla.net
@@ -407,6 +409,8 @@ runs:
     - targets:
         - token.services.mozilla.com
         - sync-264-us-west-2.sync.services.mozilla.com
+        - eolinator.services.mozilla.com
+        - 401inator.sync.services.mozilla.com
       assertions:
         - certificate:
             validity:
