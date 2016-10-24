@@ -83,7 +83,7 @@ func main() {
 			// create a mime/multipart form with the certificate
 			var b bytes.Buffer
 			w := multipart.NewWriter(&b)
-			fw, err := w.CreateFormFile("certificate", cert.Subject.CommonName)
+			fw, err := w.CreateFormFile("certificate", certificate.SHA256Hash(cert.Raw))
 			if err != nil {
 				log.Fatal(err)
 			}
