@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"time"
 
 	_ "github.com/Sirupsen/logrus"
 
@@ -52,6 +53,16 @@ func main() {
 	}
 	db.SetMaxOpenConns(runtime.NumCPU() * 10)
 	db.SetMaxIdleConns(2)
+	// simple DB watchdog, crashes the process if connection dies
+	go func() {
+		for {
+			_, err = db.Query("SELECT 1")
+			if err != nil {
+				log.Fatal("Database connection failed:", err)
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
 
 	scanRefreshRate = float64(conf.General.ScanRefreshRate)
 

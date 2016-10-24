@@ -70,6 +70,16 @@ func main() {
 	}
 	db.SetMaxOpenConns(conf.General.MaxProc)
 	db.SetMaxIdleConns(10)
+	// simple DB watchdog, crashes the process if connection dies
+	go func() {
+		for {
+			_, err = db.Query("SELECT 1")
+			if err != nil {
+				log.Fatal("Database connection failed:", err)
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
 	incomingScans := db.RegisterScanListener(
 		conf.General.PostgresDB,
 		conf.General.PostgresUser,
