@@ -51,12 +51,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	db.SetMaxOpenConns(runtime.NumCPU() * 10)
+	db.SetMaxOpenConns(runtime.NumCPU() * 27)
 	db.SetMaxIdleConns(2)
 	// simple DB watchdog, crashes the process if connection dies
 	go func() {
 		for {
-			_, err = db.Query("SELECT 1")
+			rows, err := db.Query("SELECT 1")
+			if rows != nil {
+				defer rows.Close()
+			}
 			if err != nil {
 				log.Fatal("Database connection failed:", err)
 			}
