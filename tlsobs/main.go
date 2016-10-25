@@ -66,7 +66,12 @@ func main() {
 		usage()
 		os.Exit(1)
 	}
-	target = flag.Arg(0)
+
+	target = strings.TrimPrefix(flag.Arg(0), "https://")
+	// also trim http:// prefix ( in case someone has a really wrong idea of what
+	// the observatory does...)
+	target = strings.TrimPrefix(target, "http://")
+
 	if *rescan {
 		rescanP = "&rescan=true"
 	}
