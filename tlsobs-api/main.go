@@ -56,12 +56,13 @@ func main() {
 	// simple DB watchdog, crashes the process if connection dies
 	go func() {
 		for {
-			rows, err := db.Query("SELECT 1")
-			if rows != nil {
-				defer rows.Close()
-			}
+			var one uint
+			err = db.QueryRow("SELECT 1").Scan(&one)
 			if err != nil {
 				log.Fatal("Database connection failed:", err)
+			}
+			if one != 1 {
+				log.Fatal("Apparently the database doesn't know the meaning of one anymore. Crashing.")
 			}
 			time.Sleep(10 * time.Second)
 		}
