@@ -12,7 +12,7 @@ import (
 )
 
 // RegisterScanListener "subscribes" to the notifications published to the scan_listener notifier.
-// It has as input the usual sb attributes and returns an int64 channel which can be consumed
+// It has as input the usual db attributes and returns an int64 channel which can be consumed
 // for newly created scan id's.
 func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode string) <-chan int64 {
 
@@ -48,22 +48,22 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 
 		for m := range listener.Notify {
 			sid := m.Extra
-			if db.acquireNotification(sid) {
-
-				id, err := strconv.ParseInt(string(sid), 10, 64)
-				if err != nil {
-					log.WithFields(logrus.Fields{
-						"scan_id": sid,
-						"error":   err.Error(),
-					}).Error("could not decode acquired notification")
-				}
-
-				listenerChan <- id
-
-				log.WithFields(logrus.Fields{
-					"scan_id": id,
-				}).Debug("Acquired notification.")
+			if !db.acquireScan(sid) {
+				// skip this scan if we didn't acquire it
+				continue
 			}
+			// scan was acquired, inform the scanner to launch it
+			id, err := strconv.ParseInt(string(sid), 10, 64)
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"scan_id": sid,
+					"error":   err.Error(),
+				}).Error("could not decode acquired notification")
+			}
+			listenerChan <- id
+			log.WithFields(logrus.Fields{
+				"scan_id": id,
+			}).Debug("Acquired notification.")
 		}
 
 	}()
@@ -72,10 +72,9 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 	go func() {
 		for {
 			// don't requeue scans more than 3 times
-			_, err := db.Exec(`UPDATE scans
-			  		   SET ack = false, timestamp = NOW()
-				           WHERE completion_perc = 0 AND attempts < 3 AND ack = true
-					   AND timestamp < NOW() - INTERVAL '10 minute'`)
+			_, err := db.Exec(`UPDATE scans SET ack = false, timestamp = NOW()
+				             WHERE completion_perc = 0 AND attempts < 3 AND ack = true
+						   AND timestamp < NOW() - INTERVAL '10 minute'`)
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"error": err,
@@ -83,7 +82,7 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 			}
 			_, err = db.Exec(fmt.Sprintf(`SELECT pg_notify('%s', ''||id )
 						      FROM scans
-						      WHERE ack=FALSE
+						      WHERE ack=false
 						      ORDER BY id ASC
 						      LIMIT 1000`, listenerName))
 			if err != nil {
@@ -94,11 +93,13 @@ func (db *DB) RegisterScanListener(dbname, user, password, hostport, sslmode str
 			time.Sleep(3 * time.Minute)
 		}
 	}()
-
 	return listenerChan
 }
 
-func (db *DB) acquireNotification(id string) bool {
+// acquireScan provides a way to limit to one the number of scanners
+// evaluating a given target, but setting a `ack` boolean to true when a
+// scanner picks up a scan
+func (db *DB) acquireScan(id string) bool {
 	tx, err := db.Begin()
 	if err != nil {
 		return false
@@ -107,26 +108,29 @@ func (db *DB) acquireNotification(id string) bool {
 	// for update. if a scanner succeeds, it will return true, otherwise it
 	// will return false.
 	row := tx.QueryRow("SELECT ack FROM scans WHERE id=$1 FOR UPDATE", id)
-
 	ack := false
 	err = row.Scan(&ack)
 	if err != nil {
 		tx.Rollback()
 		return false
 	}
-	if !ack {
-		_, err = tx.Exec("UPDATE scans SET ack=$1 WHERE id=$2", true, id)
-		if err != nil {
-			tx.Rollback()
-			return false
-		}
-		err = tx.Commit()
-		if err != nil {
-			tx.Rollback()
-			return false
-		}
-		return true
+	if ack {
+		// if ack was true in db, that means another job already acked this
+		// scan so we drop the lock and return false
+		tx.Rollback()
+		return false
 	}
-	tx.Rollback()
-	return false
+	// otherwise, ack is false and we acquire it to run the scan
+	// if anything fails along the way, we drop the lock by rolling back
+	_, err = tx.Exec("UPDATE scans SET ack=true WHERE id=$1", id)
+	if err != nil {
+		tx.Rollback()
+		return false
+	}
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		return false
+	}
+	return true
 }
