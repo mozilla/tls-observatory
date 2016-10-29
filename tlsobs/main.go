@@ -32,12 +32,11 @@ type scan struct {
 }
 
 var (
-	observatory   = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
-	scanid        = flag.Int64("scanid", 0, "View results from a previous scan instead of starting a new one. eg `1234`")
-	rescan        = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
-	printCertPath = flag.Bool("p", false, "Display certificate paths to known root CAs")
-	printRaw      = flag.Bool("raw", false, "Print raw JSON coming from the API")
-	targetLevel   = flag.String("targetLevel", "modern", "Evaluate target against a given configuration level. eg `old`, intermediate, modern or all.")
+	observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
+	scanid      = flag.Int64("scanid", 0, "View results from a previous scan instead of starting a new one. eg `1234`")
+	rescan      = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
+	printRaw    = flag.Bool("raw", false, "Print raw JSON coming from the API")
+	targetLevel = flag.String("targetLevel", "modern", "Evaluate target against a given configuration level. eg `old`, intermediate, modern or all.")
 )
 
 // exitCode is zero by default and non-zero if targetLevel isn't met
@@ -205,10 +204,8 @@ Mozilla Microsoft Apple Android
    %s        %s       %s      %s
 `, moztrust, microtrust, appletrust, androtrust)
 
-	if *printCertPath {
-		// Print chain of trust
-		fmt.Printf("\n--- Chain of trust ---\n%s\n", getPaths(cert.ID).String())
-	}
+	// Print chain of trust
+	fmt.Printf("\n--- Chain of trust ---\n%s\n", getPaths(cert.ID).String())
 }
 
 func printConnection(c connection.Stored) {
