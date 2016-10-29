@@ -40,6 +40,7 @@ CREATE TABLE certificates(
 );
 CREATE INDEX certificates_sha256_fingerprint_idx ON certificates(sha256_fingerprint);
 CREATE INDEX certificates_subject_idx ON certificates(subject);
+ALTER TABLE certificates ADD CONSTRAINT certificates_unique_sha256_fingerprint UNIQUE (sha256_fingerprint);
 
 CREATE TABLE trust (
     id                serial primary key,
@@ -76,6 +77,7 @@ CREATE INDEX scans_completion_attempts_idx ON scans(completion_perc, attempts);
 CREATE INDEX scans_ack_idx ON scans(ack);
 CREATE INDEX scans_target_idx ON scans(target);
 CREATE INDEX scans_timestamp_idx ON scans(timestamp);
+CREATE INDEX scans_cert_id_idx ON scans(cert_id);
 
 CREATE TABLE analysis(
     id          serial primary key,
