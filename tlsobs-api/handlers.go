@@ -45,6 +45,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	log.WithFields(logrus.Fields{
 		"form values": r.Form,
 		"headers":     r.Header,
+		"uri":         r.URL.RequestURI(),
 	}).Debug("Scan endpoint received request")
 
 	val := r.Context().Value(dbKey)
@@ -131,6 +132,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
+	logRequest(r, http.StatusOK, len(respBody))
 }
 
 // ResultHandler handles the results endpoint of the api.
@@ -154,6 +156,7 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 	log.WithFields(logrus.Fields{
 		"form values": r.Form,
 		"headers":     r.Header,
+		"uri":         r.URL.RequestURI(),
 	}).Debug("Results endpoint received request")
 
 	val := r.Context().Value(dbKey)
@@ -210,6 +213,7 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
+	logRequest(r, http.StatusOK, len(jsScan))
 }
 
 // CertificateHandler handles the /certificate endpoint of the api.
@@ -224,6 +228,7 @@ func CertificateHandler(w http.ResponseWriter, r *http.Request) {
 	log.WithFields(logrus.Fields{
 		"form values": r.Form.Encode(),
 		"headers":     r.Header,
+		"uri":         r.URL.RequestURI(),
 	}).Debug("Certificate Endpoint received request")
 
 	val := r.Context().Value(dbKey)
@@ -264,6 +269,7 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 	log.WithFields(logrus.Fields{
 		"form values": r.Form.Encode(),
 		"headers":     r.Header,
+		"uri":         r.URL.RequestURI(),
 	}).Debug("PostCertificate Endpoint received request")
 
 	val := r.Context().Value(dbKey)
@@ -372,6 +378,7 @@ func PathsHandler(w http.ResponseWriter, r *http.Request) {
 	log.WithFields(logrus.Fields{
 		"form values": r.Form.Encode(),
 		"headers":     r.Header,
+		"uri":         r.URL.RequestURI(),
 	}).Debug("Paths Endpoint received request")
 
 	val := r.Context().Value(dbKey)
@@ -419,6 +426,7 @@ func PathsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(pathsJson)
+	logRequest(r, http.StatusOK, len(pathsJson))
 	return
 }
 
@@ -445,8 +453,10 @@ func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 	switch r.Method {
 	case "GET":
 		w.WriteHeader(http.StatusOK)
+		logRequest(r, http.StatusOK, len(certJson))
 	case "POST":
 		w.WriteHeader(http.StatusCreated)
+		logRequest(r, http.StatusCreated, len(certJson))
 	}
 	w.Write(certJson)
 }

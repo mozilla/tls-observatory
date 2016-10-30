@@ -1,11 +1,6 @@
 package logger
 
-import (
-	"log/syslog"
-
-	log "github.com/Sirupsen/logrus"
-	logrus_syslog "github.com/Sirupsen/logrus/hooks/syslog"
-)
+import log "github.com/Sirupsen/logrus"
 
 var logger = init_logger()
 
@@ -20,18 +15,19 @@ func init_logger() *log.Logger {
 	l.Level = log.InfoLevel
 	l.Formatter = f
 
-	//add syslog.LOG_DEBUG as the lowest level of logging to syslog ( so no filtering is applied.
-	//All the log filtering is taken care on the local logger level
-	hook, err := logrus_syslog.NewSyslogHook("", "", syslog.LOG_DEBUG, "")
+	/*
+		//add syslog.LOG_DEBUG as the lowest level of logging to syslog ( so no filtering is applied.
+		//All the log filtering is taken care on the local logger level
+		hook, err := logrus_syslog.NewSyslogHook("", "", syslog.LOG_DEBUG, "")
 
-	if err == nil {
-		l.Hooks.Add(hook)
-	} else {
-		l.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("Could not add syslog logging hook")
-	}
-
+		if err == nil {
+			l.Hooks.Add(hook)
+		} else {
+			l.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("Could not add syslog logging hook")
+		}
+	*/
 	return l
 
 }

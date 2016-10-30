@@ -5,15 +5,18 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/mozilla/tls-observatory/logger"
 )
 
 func httpError(w http.ResponseWriter, errorCode int, errorMessage string, args ...interface{}) {
-	log := logger.GetLogger()
 	log.Printf("%d: %s", errorCode, fmt.Sprintf(errorMessage, args...))
 	http.Error(w, fmt.Sprintf(errorMessage, args...), errorCode)
 	return
+}
+
+func logRequest(r *http.Request, code, size int) {
+	log.Printf("x-forwarded-for=[%s] %s %s %s resp_code=%d resp_size=%d user-agent=%s",
+		r.Header.Get("X-Forwarded-For"), r.Method, r.Proto, r.URL.String(),
+		code, size, r.UserAgent())
 }
 
 func Logger(inner http.Handler, name string) http.Handler {
