@@ -453,11 +453,11 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 	db := val.(*pg.DB)
 	certs, err := db.GetAllCertsInStore(r.FormValue("store"))
 	if err == pg.ErrInvalidCertStore {
-		httpError(w, http.StatusBadRequest, "Invalid certificate trust store provided")
+		httpError(w, http.StatusBadRequest, fmt.Sprintf("Invalid certificate trust store provided: %s", r.FormValue("store")))
 		return
 	} else if err != nil {
 		logrus.Error("Error querying truststore:", err)
-		httpError(w, http.StatusBadRequest, "Invalid certificate trust store provided")
+		httpError(w, http.StatusBadRequest, "Error querying trust store")
 		return
 	}
 	switch r.FormValue("format") {
@@ -468,7 +468,7 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/x-pem-file")
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(certsJSON)
 		logRequest(r, http.StatusOK, len(certsJSON))
 	case "pem":
@@ -486,10 +486,11 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			buffer.Write([]byte{'\n'})
 		}
-		w.Header().Set("Content-Type", "application/x-pem-file")
+		bufferLen := buffer.Len()
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		buffer.WriteTo(w)
-		logRequest(r, http.StatusOK, buffer.Len())
+		logRequest(r, http.StatusOK, bufferLen)
 	default:
 		httpError(w, http.StatusBadRequest, "Invalid output format")
 	}
