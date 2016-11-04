@@ -96,4 +96,10 @@ var routes = Routes{
 		"/api/v1/__heartbeat__",
 		HeartbeatHandler,
 	},
+	Route{
+		"Truststore",
+		"GET",
+		"/api/v1/truststore",
+		TruststoreHandler,
+	},
 }

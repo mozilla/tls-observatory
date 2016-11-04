@@ -13,6 +13,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
+	"bytes"
 	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
@@ -428,6 +429,70 @@ func PathsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(pathsJson)
 	logRequest(r, http.StatusOK, len(pathsJson))
 	return
+}
+
+// TruststoreHandler handles the /truststore endpoint of the api.
+// It queries the database for all certificates trusted by a certain program.
+// It takes the following parameters as HTTP query parameters:
+//     store: one of {"mozilla", "android", "apple", "microsoft", "ubuntu"}
+//     format: one of {"json", "pem"}
+func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
+	setResponseHeader(w)
+	log := logger.GetLogger()
+	log.WithFields(logrus.Fields{
+		"form values": r.Form.Encode(),
+		"headers":     r.Header,
+		"uri":         r.URL.RequestURI(),
+	}).Debug("Truststore Endpoint received request")
+
+	val := r.Context().Value(dbKey)
+	if val == nil {
+		httpError(w, http.StatusInternalServerError, "Could not find database handler in request context")
+		return
+	}
+	db := val.(*pg.DB)
+	certs, err := db.GetAllCertsInStore(r.FormValue("store"))
+	if err == pg.ErrInvalidCertStore {
+		httpError(w, http.StatusBadRequest, "Invalid certificate trust store provided")
+		return
+	} else if err != nil {
+		logrus.Error("Error querying truststore:", err)
+		httpError(w, http.StatusBadRequest, "Invalid certificate trust store provided")
+		return
+	}
+	switch r.FormValue("format") {
+	case "json":
+		certsJSON, err := json.Marshal(certs)
+		if err != nil {
+			httpError(w, http.StatusInternalServerError, "Could not marshal certificates")
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/x-pem-file")
+		w.Write(certsJSON)
+		logRequest(r, http.StatusOK, len(certsJSON))
+	case "pem":
+		var buffer bytes.Buffer
+		for _, cert := range certs {
+			x509, err := cert.ToX509()
+			if err != nil {
+				httpError(w, http.StatusInternalServerError, "Could not convert certificate to X509")
+				return
+			}
+			err = pem.Encode(&buffer, &pem.Block{Type: "CERTIFICATE", Bytes: x509.Raw})
+			if err != nil {
+				httpError(w, http.StatusInternalServerError, "Error PEM-encoding certificate")
+				return
+			}
+			buffer.Write([]byte{'\n'})
+		}
+		w.Header().Set("Content-Type", "application/x-pem-file")
+		w.WriteHeader(http.StatusOK)
+		buffer.WriteTo(w)
+		logRequest(r, http.StatusOK, buffer.Len())
+	default:
+		httpError(w, http.StatusBadRequest, "Invalid output format")
+	}
 }
 
 func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
