@@ -14,6 +14,7 @@ import (
 	"github.com/Sirupsen/logrus"
 
 	"bytes"
+	"crypto/sha256"
 	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
@@ -479,6 +480,23 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 				httpError(w, http.StatusInternalServerError, "Could not convert certificate to X509")
 				return
 			}
+			fingerprint := sha256.Sum256(x509.Raw)
+			buffer.Write([]byte(fmt.Sprintf(`# Certificate "%s"
+# Issuer: CN=%s,OU=%s,O=%s,C=%s
+# Serial Number: %x
+# Subject: CN=%s,OU=%s,O=%s,C=%s
+# Not Valid Before: %s
+# Not Valid After : %s
+# Fingerprint (SHA256): %x
+`,
+				x509.Subject.CommonName,
+				x509.Issuer.CommonName, x509.Issuer.OrganizationalUnit, x509.Issuer.Organization, x509.Issuer.Country,
+				x509.SerialNumber,
+				x509.Subject.CommonName, x509.Subject.OrganizationalUnit, x509.Subject.Organization, x509.Subject.Country,
+				x509.NotBefore,
+				x509.NotAfter,
+				fingerprint,
+			)))
 			err = pem.Encode(&buffer, &pem.Block{Type: "CERTIFICATE", Bytes: x509.Raw})
 			if err != nil {
 				httpError(w, http.StatusInternalServerError, "Error PEM-encoding certificate")
