@@ -482,17 +482,17 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			fingerprint := sha256.Sum256(x509.Raw)
 			buffer.Write([]byte(fmt.Sprintf(`# Certificate "%s"
-# Issuer: CN=%s,OU=%s,O=%s,C=%s
+# Issuer: %s
 # Serial Number: %x
-# Subject: CN=%s,OU=%s,O=%s,C=%s
+# Subject: %s
 # Not Valid Before: %s
 # Not Valid After : %s
 # Fingerprint (SHA256): %x
 `,
 				x509.Subject.CommonName,
-				x509.Issuer.CommonName, x509.Issuer.OrganizationalUnit, x509.Issuer.Organization, x509.Issuer.Country,
+				cert.Issuer.String(),
 				x509.SerialNumber,
-				x509.Subject.CommonName, x509.Subject.OrganizationalUnit, x509.Subject.Organization, x509.Subject.Country,
+				cert.Subject.String(),
 				x509.NotBefore,
 				x509.NotAfter,
 				fingerprint,
