@@ -484,7 +484,6 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 				httpError(w, http.StatusInternalServerError, "Error PEM-encoding certificate")
 				return
 			}
-			buffer.Write([]byte{'\n'})
 		}
 		bufferLen := buffer.Len()
 		w.Header().Set("Content-Type", "text/plain")
