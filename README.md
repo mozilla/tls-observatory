@@ -253,6 +253,21 @@ curl https://tls-observatory.services.mozilla.com/api/v1/paths?id=1
 
 **Output**: a `json` document containing the paths document. Each entry in the path contains the current certificate and an array of parents, if any exist.
 
+#### GET /api/v1/truststore
+
+Retrieve all the certificates in a given truststore.
+
+```bash
+curl https://tls-observatory.services.mozilla.com/api/v1/truststore?store=mozilla&format=pem
+```
+
+**Parameters**:
+
+* `store` is the store to retrieve certificates from. "mozilla", "android", "apple", "microsoft" and "ubuntu" are allowed.
+* `format`, either "pem" or "json". 
+
+**Output**: if `format` is pem, a series of PEM-format certificates. If `format` is json, a json array of certificate objects, each with the same format of `/api/v1/certificate`.
+
 ### Database Queries
 
 ### Find certificates signed by CAs identified by their SHA256 fingerprint

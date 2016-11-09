@@ -272,10 +272,79 @@ func (db *DB) GetCertIDFromTrust(trustID int64) (id int64, err error) {
 	return
 }
 
+type Scannable interface {
+	Scan(dest ...interface{}) error
+}
+
+func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
+	cert := certificate.Certificate{}
+
+	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, permittednames, issuer, subject, key []byte
+
+	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
+		&issuer, &subject,
+		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
+		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
+		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies, &cert.X509v3Extensions.IsNameConstrained, &permittednames,
+		&cert.SignatureAlgorithm, &cert.Raw)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(crl_dist_points, &cert.X509v3Extensions.CRLDistributionPoints)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(extkeyusage, &cert.X509v3Extensions.ExtendedKeyUsage)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(keyusage, &cert.X509v3Extensions.KeyUsage)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(subaltname, &cert.X509v3Extensions.SubjectAlternativeName)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(policies, &cert.X509v3Extensions.PolicyIdentifiers)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(permittednames, &cert.X509v3Extensions.PermittedNames)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(issuer, &cert.Issuer)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(subject, &cert.Subject)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(key, &cert.Key)
+	if err != nil {
+		return cert, err
+	}
+
+	cert.ValidationInfo, cert.Issuer.ID, err = db.GetValidationMapForCert(cert.ID)
+	return cert, err
+}
+
 // GetCertByID fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
 func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 	row := db.QueryRow(`SELECT
+                        id,
 			serial_number,
 			sha1_fingerprint,
 			sha256_fingerprint,
@@ -303,72 +372,65 @@ func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
 			signature_algo,
 			raw_cert
 		FROM certificates WHERE id=$1`, certID)
+	cert, err := db.scanCert(row)
+	return &cert, err
 
-	cert := &certificate.Certificate{
-		ID: certID,
+}
+
+var ErrInvalidCertStore = fmt.Errorf("Invalid certificate store provided")
+
+func (db *DB) GetAllCertsInStore(store string) (out []certificate.Certificate, err error) {
+	switch store {
+	case
+		"mozilla",
+		"android",
+		"apple",
+		"microsoft",
+		"ubuntu":
+		query := fmt.Sprintf(`SELECT
+                        id,
+			serial_number,
+			sha1_fingerprint,
+			sha256_fingerprint,
+			sha256_subject_spki,
+			pkp_sha256,
+			issuer,
+			subject,
+			version,
+			is_ca,
+			not_valid_before,
+			not_valid_after,
+			key,
+			first_seen,
+			last_seen,
+			x509_basicConstraints,
+			x509_crlDistributionPoints,
+			x509_extendedKeyUsage,
+			x509_authorityKeyIdentifier,
+			x509_subjectKeyIdentifier,
+			x509_keyUsage,
+			x509_subjectAltName,
+			x509_certificatePolicies,
+			is_name_constrained,
+			permitted_names,
+			signature_algo,
+			raw_cert
+                    FROM certificates WHERE in_%s_root_store=true`, store)
+		rows, err := db.Query(query)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			cert, err := db.scanCert(rows)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, cert)
+		}
+		return out, err
+	default:
+		return nil, ErrInvalidCertStore
 	}
-
-	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, permittednames, issuer, subject, key []byte
-
-	err := row.Scan(&cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
-		&issuer, &subject,
-		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
-		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
-		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies, &cert.X509v3Extensions.IsNameConstrained, &permittednames,
-		&cert.SignatureAlgorithm, &cert.Raw)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(crl_dist_points, &cert.X509v3Extensions.CRLDistributionPoints)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(extkeyusage, &cert.X509v3Extensions.ExtendedKeyUsage)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(keyusage, &cert.X509v3Extensions.KeyUsage)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(subaltname, &cert.X509v3Extensions.SubjectAlternativeName)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(policies, &cert.X509v3Extensions.PolicyIdentifiers)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(permittednames, &cert.X509v3Extensions.PermittedNames)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(issuer, &cert.Issuer)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(subject, &cert.Subject)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(key, &cert.Key)
-	if err != nil {
-		return nil, err
-	}
-
-	cert.ValidationInfo, cert.Issuer.ID, err = db.GetValidationMapForCert(certID)
-
-	return cert, err
-
 }
 
 // GetCertBySHA1Fingerprint fetches a certain certificate from the database.
