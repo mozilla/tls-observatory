@@ -114,7 +114,6 @@ func scan(scanID int64, cipherscan string) {
 	log.WithFields(logrus.Fields{
 		"scan_id": scanID,
 	}).Info("Received new scan")
-
 	db.Exec("UPDATE scans SET attempts = attempts + 1 WHERE id=$1", scanID)
 
 	scan, err := db.GetScanByID(scanID)
@@ -234,7 +233,8 @@ func scan(scanID int64, cipherscan string) {
 	// launch workers that evaluate the results
 	resChan := make(chan worker.Result)
 	totalWorkers := 0
-	for _, wrkInfo := range worker.AvailableWorkers {
+	for k, wrkInfo := range worker.AvailableWorkers {
+		workerInput.Params, _ = scan.AnalysisParams[k]
 		go wrkInfo.Runner.(worker.Worker).Run(workerInput, resChan)
 		totalWorkers++
 	}
@@ -252,7 +252,6 @@ func scan(scanID int64, cipherscan string) {
 			}).Error("Analysis workers timed out after 30 seconds")
 			goto updatecompletion
 		case res := <-resChan:
-			endedWorkers += endedWorkers
 			completion = ((endedWorkers/totalWorkers)*60 + completion)
 			log.WithFields(logrus.Fields{
 				"scan_id":     scanID,
