@@ -56,20 +56,25 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("Could not access database.")
 		return
 	}
-
 	db := val.(*pg.DB)
+
+	// The params have to be read before the form values because FormValue
+	// consumes r.Body
+	params, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		httpError(w, http.StatusInternalServerError, "Error reading HTTP body")
+		return
+	}
+	if len(params) == 0 {
+		params = []byte("{}")
+	}
 
 	domain := r.FormValue("target")
 	if !validateDomain(domain) {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "")
+		return
 	}
-
-	rescan := false
-	if r.FormValue("rescan") == "true" {
-		rescan = true
-	}
-
+	rescan := r.FormValue("rescan") == "true"
 	previd, prevtime, err := db.GetLastScanTimeForTarget(domain)
 	if err != nil {
 		log.WithFields(logrus.Fields{
@@ -110,7 +115,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//initiating a new scan
-	scan, err := db.NewScan(domain, -1) //no replay
+	scan, err := db.NewScan(domain, -1, params) //no replay
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"domain": domain,

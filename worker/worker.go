@@ -24,6 +24,7 @@ type Input struct {
 	Connection  connection.Stored
 	Scanid      int64
 	DBHandle    *database.DB
+	Params      interface{}
 }
 
 // Info represents the information that every worker gives about itself at the

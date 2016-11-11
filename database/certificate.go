@@ -665,3 +665,56 @@ func (db *DB) IsTrustValid(id int64) (bool, error) {
 	err := row.Scan(&isValid)
 	return isValid, err
 }
+
+// GetAllCertsInChain returns the certificate chain of which tipCertID is the tip of,
+// which is to say it returns the certificate that trusts tipCertID, and the
+// certificate that trusts that other certificate, etc.
+func (db *DB) GetAllCertsInChain(tipCertID int64) ([]certificate.Certificate, error) {
+	rows, err := db.Query(`
+WITH RECURSIVE parents AS (
+	SELECT * FROM trust WHERE cert_id=$1
+	UNION ALL
+	SELECT trust.* FROM trust JOIN parents ON trust.cert_id=parents.issuer_id WHERE trust.cert_id IS DISTINCT FROM trust.issuer_id
+)
+SELECT                        
+	id,
+	serial_number,
+	sha1_fingerprint,
+	sha256_fingerprint,
+	sha256_subject_spki,
+	pkp_sha256,
+	issuer,
+	subject,
+	version,
+	is_ca,
+	not_valid_before,
+	not_valid_after,
+	key,
+	first_seen,
+	last_seen,
+	x509_basicConstraints,
+	x509_crlDistributionPoints,
+	x509_extendedKeyUsage,
+	x509_authorityKeyIdentifier,
+	x509_subjectKeyIdentifier,
+	x509_keyUsage,
+	x509_subjectAltName,
+	x509_certificatePolicies,
+	is_name_constrained,
+	permitted_names,
+	signature_algo,
+	raw_cert
+FROM certificates INNER JOIN (SELECT $1 UNION ALL SELECT issuer_id FROM parents) p(cert_id) ON p.cert_id=certificates.id`, tipCertID)
+	if err != nil {
+		return nil, err
+	}
+	var certs []certificate.Certificate
+	for rows.Next() {
+		cert, err := db.scanCert(rows)
+		if err != nil {
+			return nil, err
+		}
+		certs = append(certs, cert)
+	}
+	return certs, nil
+}
