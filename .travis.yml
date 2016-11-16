@@ -17,7 +17,7 @@ script:
 - make
 - docker build -t mozilla/tls-observatory .
 - |
-  if [ "$TRAVIS_BRANCH" == "master" ]; then
+  if [ ! -z "$TRAVIS_TAG" ]; then
     docker build -t jvehent/tls-observatory-api -f tools/Dockerfile-api .
     docker build -t jvehent/tls-observatory-scanner -f tools/Dockerfile-scanner .
     docker build -t jvehent/tls-observatory-runner -f tools/Dockerfile-runner .
