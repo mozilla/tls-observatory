@@ -343,34 +343,7 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 // GetCertByID fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
 func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
-	row := db.QueryRow(`SELECT
-                        id,
-			serial_number,
-			sha1_fingerprint,
-			sha256_fingerprint,
-			sha256_subject_spki,
-			pkp_sha256,
-			issuer,
-			subject,
-			version,
-			is_ca,
-			not_valid_before,
-			not_valid_after,
-			key,
-			first_seen,
-			last_seen,
-			x509_basicConstraints,
-			x509_crlDistributionPoints,
-			x509_extendedKeyUsage,
-			x509_authorityKeyIdentifier,
-			x509_subjectKeyIdentifier,
-			x509_keyUsage,
-			x509_subjectAltName,
-			x509_certificatePolicies,
-			is_name_constrained,
-			permitted_names,
-			signature_algo,
-			raw_cert
+	row := db.QueryRow(`SELECT ` + strings.Join(allCertificateColumns, ", ") + `
 		FROM certificates WHERE id=$1`, certID)
 	cert, err := db.scanCert(row)
 	return &cert, err
@@ -387,34 +360,7 @@ func (db *DB) GetAllCertsInStore(store string) (out []certificate.Certificate, e
 		"apple",
 		"microsoft",
 		"ubuntu":
-		query := fmt.Sprintf(`SELECT
-                        id,
-			serial_number,
-			sha1_fingerprint,
-			sha256_fingerprint,
-			sha256_subject_spki,
-			pkp_sha256,
-			issuer,
-			subject,
-			version,
-			is_ca,
-			not_valid_before,
-			not_valid_after,
-			key,
-			first_seen,
-			last_seen,
-			x509_basicConstraints,
-			x509_crlDistributionPoints,
-			x509_extendedKeyUsage,
-			x509_authorityKeyIdentifier,
-			x509_subjectKeyIdentifier,
-			x509_keyUsage,
-			x509_subjectAltName,
-			x509_certificatePolicies,
-			is_name_constrained,
-			permitted_names,
-			signature_algo,
-			raw_cert
+		query := fmt.Sprintf(`SELECT ` + strings.Join(allCertificateColumns, ", ") + `
                     FROM certificates WHERE in_%s_root_store=true`, store)
 		rows, err := db.Query(query)
 		if err != nil {
@@ -666,45 +612,48 @@ func (db *DB) IsTrustValid(id int64) (bool, error) {
 	return isValid, err
 }
 
-// GetAllCertsInChain returns the certificate chain of which tipCertID is the tip of,
-// which is to say it returns the certificate that trusts tipCertID, and the
+var allCertificateColumns = []string{
+	"id",
+ 	"serial_number",
+	"sha1_fingerprint",
+	"sha256_fingerprint",
+	"sha256_subject_spki",
+	"pkp_sha256",
+	"issuer",
+	"subject",
+	"version",
+	"is_ca",
+	"not_valid_before",
+	"not_valid_after",
+	"key",
+	"first_seen",
+	"last_seen",
+	"x509_basicConstraints",
+	"x509_crlDistributionPoints",
+	"x509_extendedKeyUsage",
+	"x509_authorityKeyIdentifier",
+	"x509_subjectKeyIdentifier",
+	"x509_keyUsage",
+	"x509_subjectAltName",
+	"x509_certificatePolicies",
+	"is_name_constrained",
+	"permitted_names",
+	"signature_algo",
+	"raw_cert",
+}
+
+// GetAllCertsInChain returns the certificate chain of which endEntityID is the tip of,
+// which is to say it returns the certificate that signs endEntityID, and the
 // certificate that trusts that other certificate, etc.
-func (db *DB) GetAllCertsInChain(tipCertID int64) ([]certificate.Certificate, error) {
+func (db *DB) GetAllCertsInChain(endEntityID int64) ([]certificate.Certificate, error) {
 	rows, err := db.Query(`
 WITH RECURSIVE parents AS (
 	SELECT * FROM trust WHERE cert_id=$1
 	UNION ALL
 	SELECT trust.* FROM trust JOIN parents ON trust.cert_id=parents.issuer_id WHERE trust.cert_id IS DISTINCT FROM trust.issuer_id
 )
-SELECT                        
-	id,
-	serial_number,
-	sha1_fingerprint,
-	sha256_fingerprint,
-	sha256_subject_spki,
-	pkp_sha256,
-	issuer,
-	subject,
-	version,
-	is_ca,
-	not_valid_before,
-	not_valid_after,
-	key,
-	first_seen,
-	last_seen,
-	x509_basicConstraints,
-	x509_crlDistributionPoints,
-	x509_extendedKeyUsage,
-	x509_authorityKeyIdentifier,
-	x509_subjectKeyIdentifier,
-	x509_keyUsage,
-	x509_subjectAltName,
-	x509_certificatePolicies,
-	is_name_constrained,
-	permitted_names,
-	signature_algo,
-	raw_cert
-FROM certificates INNER JOIN (SELECT $1 UNION ALL SELECT issuer_id FROM parents) p(cert_id) ON p.cert_id=certificates.id`, tipCertID)
+SELECT ` + strings.Join(allCertificateColumns, ", ")  + `
+FROM certificates INNER JOIN (SELECT $1 UNION ALL SELECT issuer_id FROM parents) p(cert_id) ON p.cert_id=certificates.id`, endEntityID)
 	if err != nil {
 		return nil, err
 	}
