@@ -8,8 +8,8 @@ import (
 	"github.com/mozilla/tls-observatory/worker"
 	"io/ioutil"
 	"os/exec"
-	"reflect"
 	"os"
+	"encoding/json"
 )
 
 var workerName = "evCheckerWorker"
@@ -29,6 +29,10 @@ type evWorker struct{
 	Binary string
 }
 
+type params struct {
+	OID string
+}
+
 func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 	scan, err := in.DBHandle.GetScanByID(in.Scanid)
 	if err != nil {
@@ -36,21 +40,16 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 		return
 	}
 
-	params := reflect.ValueOf(in.Params)
-	if params.Kind() != reflect.Map {
-		w.error(res, "%s", fmt.Errorf("Invalid parameters passed to evWorker: %s", params))
-		return
+	out, err := json.Marshal(in.Params)
+	if err != nil {
+		w.error(res, "Could not marshal parameters to JSON: %s", err)
 	}
-	var oid string
-	for _, k := range params.MapKeys() {
-		if k.Interface() == "oid" {
-			var ok bool
-			oid, ok = params.MapIndex(k).Interface().(string)
-			if !ok {
-				w.error(res, "%s", fmt.Errorf("Could not cast oid to string"))
-			}
-		}
+	var params params
+	err = json.Unmarshal(out, &params)
+	if err != nil {
+		w.error(res, "Could not map parameters to struct: %s", err)
 	}
+
 	certs, err := in.DBHandle.GetAllCertsInChain(in.Certificate.ID)
 	if err != nil {
 		w.error(res, "Could not get all certificates in chain: %s", err)
@@ -83,26 +82,29 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 		w.error(res, "Could not write certificates to temporary file: %s", err)
 		return
 	}
-	cmd := exec.Command(EvCheckerBinaryName, "-o", oid, "-h", scan.Target, "-c", file.Name())
-	_, err = cmd.Output()
-	if err != nil {
-		w.error(res, "Could not get output from ev-checker: %s", err)
+	cmd := exec.Command(EvCheckerBinaryName, "-o", params.OID, "-h", scan.Target, "-c", file.Name())
+	out, err = cmd.Output()
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		w.error(res, "ev-checker did not exist successfully. %s, Stderr: %s", exitErr, string(exitErr.Stderr))
+		return
+	} else	if err != nil {
+		w.error(res, "Could not get output from ev-checker: %+v", err)
 		return
 	}
 	res <- worker.Result{
 		Success:    true,
 		WorkerName: workerName,
 		Errors:     nil,
-		Result:     []byte(`"Success"`),
+		Result:     out,
 	}
 }
 
-func (w evWorker) error(res chan worker.Result, messageFormat string, err error) {
+func (w evWorker) error(res chan worker.Result, messageFormat string,  args ...interface{}) {
 	res <- worker.Result{
 		Success:    false,
 		WorkerName: workerName,
 		Errors: []string{
-			fmt.Sprintf(messageFormat, err),
+			fmt.Sprintf(messageFormat, args...),
 		},
 	}
 }
