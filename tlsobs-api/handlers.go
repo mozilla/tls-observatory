@@ -57,17 +57,10 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	db := val.(*pg.DB)
 
-	// The params have to be read before the form values because FormValue
-	// consumes r.Body
-	params, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		httpError(w, http.StatusInternalServerError, "Error reading HTTP body")
-		return
-	}
+	params := r.FormValue("params")
 	if len(params) == 0 {
-		params = []byte("{}")
+		params = "{}"
 	}
-
 	domain := r.FormValue("target")
 	if !validateDomain(domain) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -114,7 +107,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//initiating a new scan
-	scan, err := db.NewScan(domain, -1, params) //no replay
+	scan, err := db.NewScan(domain, -1, []byte(params)) //no replay
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"domain": domain,
