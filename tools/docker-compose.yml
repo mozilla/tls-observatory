@@ -1,0 +1,47 @@
+version: '2'
+services:
+  postgres:
+    build:
+      context: ../
+      dockerfile: ./tools/Dockerfile-postgres
+    ports:
+      - 5432
+
+  api:
+    build:
+      context: ../
+      dockerfile: ./tools/Dockerfile-api
+    image: jvehent/tls-observatory-api
+    links: 
+      - postgres
+    ports:
+      - 8083:8083
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  scanner:
+    build:
+      context: ../
+      dockerfile: ./tools/Dockerfile-scanner
+    image: jvehent/tls-observatory-scanner
+    links:
+      - postgres
+      - sampleapp
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  sampleapp:
+    build:
+      context: .
+      dockerfile: Dockerfile-sample_app
+    ports:
+      - 443
+  runner:
+    build:
+      context: ../
+      dockerfile: ./tools/Dockerfile-runner
+    image: jvehent/tls-observatory-runner
+    links:
+      - api
