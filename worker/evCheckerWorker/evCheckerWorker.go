@@ -91,6 +91,7 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 		w.error(res, "Could not get output from ev-checker: %+v", err)
 		return
 	}
+	out, _ = json.Marshal(out)
 	res <- worker.Result{
 		Success:    true,
 		WorkerName: workerName,
