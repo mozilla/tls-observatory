@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 )
 
-var workerName = "evCheckerWorker"
+var workerName = "ev-checker"
 var workerDesc = `Determines if a given EV policy fulfills the requirements of Mozilla's Root CA program.`
 
 var log = logger.GetLogger()
