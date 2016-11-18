@@ -14,6 +14,7 @@ import (
 	"github.com/Sirupsen/logrus"
 
 	"bytes"
+	"crypto/sha256"
 	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
@@ -451,11 +452,11 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 	db := val.(*pg.DB)
 	certs, err := db.GetAllCertsInStore(r.FormValue("store"))
 	if err == pg.ErrInvalidCertStore {
-		httpError(w, http.StatusBadRequest, "Invalid certificate trust store provided")
+		httpError(w, http.StatusBadRequest, fmt.Sprintf("Invalid certificate trust store provided: %s", r.FormValue("store")))
 		return
 	} else if err != nil {
 		logrus.Error("Error querying truststore:", err)
-		httpError(w, http.StatusBadRequest, "Invalid certificate trust store provided")
+		httpError(w, http.StatusBadRequest, "Error querying trust store")
 		return
 	}
 	switch r.FormValue("format") {
@@ -466,7 +467,7 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/x-pem-file")
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(certsJSON)
 		logRequest(r, http.StatusOK, len(certsJSON))
 	case "pem":
@@ -477,17 +478,34 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 				httpError(w, http.StatusInternalServerError, "Could not convert certificate to X509")
 				return
 			}
+			fingerprint := sha256.Sum256(x509.Raw)
+			buffer.Write([]byte(fmt.Sprintf(`# Certificate "%s"
+# Issuer: %s
+# Serial Number: %x
+# Subject: %s
+# Not Valid Before: %s
+# Not Valid After : %s
+# Fingerprint (SHA256): %x
+`,
+				x509.Subject.CommonName,
+				cert.Issuer.String(),
+				x509.SerialNumber,
+				cert.Subject.String(),
+				x509.NotBefore,
+				x509.NotAfter,
+				fingerprint,
+			)))
 			err = pem.Encode(&buffer, &pem.Block{Type: "CERTIFICATE", Bytes: x509.Raw})
 			if err != nil {
 				httpError(w, http.StatusInternalServerError, "Error PEM-encoding certificate")
 				return
 			}
-			buffer.Write([]byte{'\n'})
 		}
-		w.Header().Set("Content-Type", "application/x-pem-file")
+		bufferLen := buffer.Len()
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		buffer.WriteTo(w)
-		logRequest(r, http.StatusOK, buffer.Len())
+		logRequest(r, http.StatusOK, bufferLen)
 	default:
 		httpError(w, http.StatusBadRequest, "Invalid output format")
 	}

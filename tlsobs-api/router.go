@@ -65,6 +65,12 @@ var routes = Routes{
 		"/api/v1/paths",
 		PathsHandler,
 	},
+	Route{
+		"Truststore",
+		"GET",
+		"/api/v1/truststore",
+		TruststoreHandler,
+	},
 	// CORS preflight endpoints
 	Route{
 		"CORS Preflight",
@@ -91,15 +97,15 @@ var routes = Routes{
 		PreflightHandler,
 	},
 	Route{
+		"CORS Preflight",
+		"OPTIONS",
+		"/api/v1/truststore",
+		PreflightHandler,
+	},
+	Route{
 		"Heartbeat",
 		"GET",
 		"/api/v1/__heartbeat__",
 		HeartbeatHandler,
-	},
-	Route{
-		"Truststore",
-		"GET",
-		"/api/v1/truststore",
-		TruststoreHandler,
 	},
 }
