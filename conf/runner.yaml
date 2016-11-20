@@ -135,6 +135,69 @@ runs:
               recipients:
                   - cloud-ops@mozilla.com
 
+    # Cloud Services TLS monitoring, all sites that must match intermediate level
+    - targets:
+        #AMO
+        - addon.mozilla.org
+        - addons.mozilla.org
+        - blocklist.addons.mozilla.org
+        - builder.addons.mozilla.org
+        - services.addons.mozilla.org
+        - static.addons.mozilla.net
+        - versioncheck-bg.addons.mozilla.org
+        - versioncheck.addons.mozilla.org
+        - compatibility-lookup.services.mozilla.com
+
+        # Balrog
+        - aus5.mozilla.org
+
+        # Firefox Settings (Kinto)
+        - blocklists.settings.services.mozilla.com
+        - firefox.settings.services.mozilla.com
+        - webextensions.settings.services.mozilla.com
+        
+        # Test Pilot
+        - testpilot.firefox.com
+        - embedly-proxy.services.mozilla.com
+        - universalsearch.testpilot.firefox.com
+        
+        # Miracle (Context Graph collection endpoint)
+        - miracle.services.mozilla.com
+        
+        # Pageshot
+        - pageshot.net
+        
+        # Push
+        - push.services.mozilla.com
+        - updates.push.services.mozilla.com
+        
+        # Tiles
+        - tiles.cdn.mozilla.net
+        - tiles.services.mozilla.com
+      assertions:
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "intermediate"}'
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloud-ops@mozilla.com
+
+    # Cloud Services TLS monitoring, all sites that must match modern level
+    - targets:    
+        # TLS Observatory
+        - tls-observatory.services.mozilla.com
+      assertions:
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "modern"}'
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloud-ops@mozilla.com
+                  
     # absearch paging
     - targets:
         - search.services.mozilla.com
@@ -479,7 +542,6 @@ runs:
     # Cloud Services product delivery, must remain on the old config for XPSP2
     - targets:
         - download-sha1.allizom.org
-        - download-sha1.cdn.mozilla.net
         - crash-reports-xpsp2.mozilla.com
       assertions:
         - analysis:
@@ -489,8 +551,21 @@ runs:
       notifications:
           email:
               recipients:
-                  - cloudsec@mozilla.com
-
+                  - cloud-ops@mozilla.com
+                  
+    # Cloud Services product delivery CDN always shows as bad because of RC4, AWS limitation
+    - targets:
+        - download-sha1.cdn.mozilla.net
+      assertions:
+        - analysis:
+            analyzer: mozillaEvaluationWorker
+            result: '{"level": "bad"}'
+      cron: "0 19 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloud-ops@mozilla.com
+                  
     # Julien's stuff
     - targets:
         - jve.linuxwall.info
