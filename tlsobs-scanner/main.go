@@ -127,7 +127,7 @@ func scan(scanID int64, cipherscan string) {
 	var completion int
 
 	// Retrieve the certificate from the target
-	certID, trustID, err := handleCert(scan.Target)
+	certID, trustID, chain, err := handleCert(scan.Target)
 	if err != nil {
 		db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 		log.WithFields(logrus.Fields{
@@ -225,10 +225,11 @@ func scan(scanID int64, cipherscan string) {
 		return
 	}
 	workerInput := worker.Input{
-		DBHandle:    db,
-		Scanid:      scanID,
-		Certificate: *cert,
-		Connection:  conn_info,
+		DBHandle:         db,
+		Scanid:           scanID,
+		Certificate:      *cert,
+		CertificateChain: chain,
+		Connection:       conn_info,
 	}
 	// launch workers that evaluate the results
 	resChan := make(chan worker.Result)

@@ -641,29 +641,3 @@ var allCertificateColumns = []string{
 	"signature_algo",
 	"raw_cert",
 }
-
-// GetAllCertsInChain returns the certificate chain of which endEntityID is the tip of,
-// which is to say it returns the certificate that signs endEntityID, and the
-// certificate that trusts that other certificate, etc.
-func (db *DB) GetAllCertsInChain(endEntityID int64) ([]certificate.Certificate, error) {
-	rows, err := db.Query(`
-WITH RECURSIVE parents AS (
-	SELECT * FROM trust WHERE cert_id=$1
-	UNION ALL
-	SELECT trust.* FROM trust JOIN parents ON trust.cert_id=parents.issuer_id WHERE trust.cert_id IS DISTINCT FROM trust.issuer_id
-)
-SELECT ` + strings.Join(allCertificateColumns, ", ")  + `
-FROM certificates INNER JOIN (SELECT $1 UNION ALL SELECT issuer_id FROM parents) p(cert_id) ON p.cert_id=certificates.id`, endEntityID)
-	if err != nil {
-		return nil, err
-	}
-	var certs []certificate.Certificate
-	for rows.Next() {
-		cert, err := db.scanCert(rows)
-		if err != nil {
-			return nil, err
-		}
-		certs = append(certs, cert)
-	}
-	return certs, nil
-}

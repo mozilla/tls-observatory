@@ -1,15 +1,17 @@
 package evCheckerWorker
 
 import (
-	"bytes"
-	"encoding/pem"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+
+	"encoding/base64"
+	"encoding/pem"
+
 	"github.com/mozilla/tls-observatory/logger"
 	"github.com/mozilla/tls-observatory/worker"
-	"io/ioutil"
-	"os/exec"
-	"os"
-	"encoding/json"
 )
 
 var workerName = "ev-checker"
@@ -25,12 +27,13 @@ func init() {
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(evWorker), Description: workerDesc})
 }
 
-type evWorker struct{
+type evWorker struct {
 	Binary string
 }
 
 type params struct {
-	OID string
+	OID             string
+	RootCertificate string
 }
 
 func (w evWorker) Run(in worker.Input, res chan worker.Result) {
@@ -39,7 +42,6 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 		w.error(res, "Could not get scan: %s", err)
 		return
 	}
-
 	out, err := json.Marshal(in.Params)
 	if err != nil {
 		w.error(res, "Could not marshal parameters to JSON: %s", err)
@@ -49,35 +51,25 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 	if err != nil {
 		w.error(res, "Could not map parameters to struct: %s", err)
 	}
-
-	certs, err := in.DBHandle.GetAllCertsInChain(in.Certificate.ID)
-	if err != nil {
-		w.error(res, "Could not get all certificates in chain: %s", err)
-		return
-	}
-	var buffer bytes.Buffer
-	// Iterate over the certificates in reverse because the root certificate
-	// has to be emitted last.
-	for i := len(certs) - 1; i >= 0; i-- {
-		cert, err := certs[i].ToX509()
-		if err != nil {
-			w.error(res, "Could not convert certificate to X509: %s", err)
-			return
-		}
-		err = pem.Encode(&buffer, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
-		if err != nil {
-			w.error(res, "Error PEM-encoding certificate", err)
-			return
-		}
-	}
 	file, err := ioutil.TempFile("", "")
+	for _, cert := range in.CertificateChain.Certs {
+		cert, err := base64.StdEncoding.DecodeString(cert)
+		if err != nil {
+			w.error(res, "Could not base64-decode certificate: %s", err)
+			return
+		}
+		err = pem.Encode(file, &pem.Block{Type: "CERTIFICATE", Bytes: cert})
+		if err != nil {
+			w.error(res, "Could not pem encode certificate: %s", err)
+			return
+		}
+	}
+	file.Write([]byte(params.RootCertificate))
 	if err != nil {
 		w.error(res, "Could not create temporary file to write certificates: %s", err)
 		return
 	}
 	defer file.Close()
-	defer os.Remove(file.Name())
-	_, err = buffer.WriteTo(file)
 	if err != nil {
 		w.error(res, "Could not write certificates to temporary file: %s", err)
 		return
@@ -85,9 +77,9 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 	cmd := exec.Command(EvCheckerBinaryName, "-o", params.OID, "-h", scan.Target, "-c", file.Name())
 	out, err = cmd.Output()
 	if exitErr, ok := err.(*exec.ExitError); ok {
-		w.error(res, "ev-checker did not exist successfully. %s, Stderr: %s", exitErr, string(exitErr.Stderr))
+		w.error(res, "ev-checker did not exit successfully. %s, Stderr: %s", exitErr, string(exitErr.Stderr))
 		return
-	} else	if err != nil {
+	} else if err != nil {
 		w.error(res, "Could not get output from ev-checker: %+v", err)
 		return
 	}
@@ -100,7 +92,7 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 	}
 }
 
-func (w evWorker) error(res chan worker.Result, messageFormat string,  args ...interface{}) {
+func (w evWorker) error(res chan worker.Result, messageFormat string, args ...interface{}) {
 	res <- worker.Result{
 		Success:    false,
 		WorkerName: workerName,
