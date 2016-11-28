@@ -70,7 +70,7 @@ function send() {
         result.innerHTML = "Scan started, waiting for result...";
         return checkResult(id).then(function(params) {
 	    if (params.success) {
-                result.innerHTML = "ev-checker reported success: " + params.result;
+                result.innerHTML = "ev-checker exited successfully: " + params.result;
                 result.style.color = "Green";
 	    } else {
                 result.innerHTML = "ev-checker reported failure: " + params.result;
