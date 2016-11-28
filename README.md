@@ -187,6 +187,7 @@ $ curl -X POST 'https://tls-observatory.services.mozilla.com/api/v1/scan?target=
 * `params` JSON object in which each key represents one of TLS Observatory's workers. The value under each key will be passed as the parameters to the corresponding worker. For example, `{"ev-checker": {"oid": "foo"}}` will pass `{"oid": "foo"}` to the ev-checker worker. The following workers accept parameters:
   * ev-checker: Expects a JSON object with the following keys:
     * oid: the oid of the EV policy to check
+    * rootCertificate: the root certificate to check against, in PEM format
 
 **Output**: a `json` document containing the Scan ID.
 
