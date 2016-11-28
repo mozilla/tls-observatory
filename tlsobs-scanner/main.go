@@ -274,10 +274,9 @@ func scan(scanID int64, cipherscan string) {
 					"worker_name": res.WorkerName,
 					"errors":      res.Errors,
 				}).Error("Worker returned with errors")
-				continue
 			}
-			_, err = db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)",
-				scanID, res.WorkerName, res.Result)
+			_, err = db.Exec("INSERT INTO analysis(scan_id,worker_name,output,success) VALUES($1,$2,$3,$4)",
+				scanID, res.WorkerName, res.Result, res.Success)
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"scan_id": scanID,

@@ -37,6 +37,7 @@ type Analysis struct {
 	ID       int64           `json:"id"`
 	Analyzer string          `json:"analyzer"`
 	Result   json.RawMessage `json:"result"`
+	Success  bool            `json:"success"`
 }
 
 func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, error) {
@@ -166,14 +167,14 @@ func (db *DB) GetScanByID(id int64) (Scan, error) {
 func (db *DB) GetAnalysisByScan(id int64) ([]Analysis, error) {
 
 	var ana []Analysis
-	rows, err := db.Query("SELECT id,worker_name,output FROM analysis WHERE scan_id=$1", id)
+	rows, err := db.Query("SELECT id,worker_name,output,success FROM analysis WHERE scan_id=$1", id)
 	if err != nil {
 		return ana, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		a := Analysis{}
-		if err := rows.Scan(&a.ID, &a.Analyzer, &a.Result); err != nil {
+		if err := rows.Scan(&a.ID, &a.Analyzer, &a.Result, &a.Success); err != nil {
 			return ana, err
 		}
 		ana = append(ana, a)

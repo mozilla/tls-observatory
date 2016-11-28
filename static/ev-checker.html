@@ -69,11 +69,11 @@ function send() {
         console.log("Scan started with id", id);
         result.innerHTML = "Scan started, waiting for result...";
         return checkResult(id).then(function(params) {
-	    if (params !== undefined) {
-                result.innerHTML = "ev-checker reported success";
+	    if (params.success) {
+                result.innerHTML = "ev-checker reported success: " + params.result;
                 result.style.color = "Green";
 	    } else {
-                result.innerHTML = "ev-checker reported failure";
+                result.innerHTML = "ev-checker reported failure: " + params.result;
                 result.style.color = "Red";
 	    }
         });

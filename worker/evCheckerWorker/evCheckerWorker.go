@@ -93,11 +93,10 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 }
 
 func (w evWorker) error(res chan worker.Result, messageFormat string, args ...interface{}) {
+	out, _ := json.Marshal(fmt.Sprintf(messageFormat, args...))
 	res <- worker.Result{
 		Success:    false,
 		WorkerName: workerName,
-		Errors: []string{
-			fmt.Sprintf(messageFormat, args...),
-		},
+		Result: out,
 	}
 }

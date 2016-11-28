@@ -84,6 +84,7 @@ CREATE TABLE analysis(
     id          serial primary key,
     scan_id     integer references scans(id),
     worker_name varchar NOT NULL,
+    success     bool NOT NULL,
     output      jsonb NULL
 );
 CREATE INDEX analysis_scan_id_idx ON analysis(scan_id);
