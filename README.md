@@ -184,6 +184,16 @@ $ curl -X POST 'https://tls-observatory.services.mozilla.com/api/v1/scan?target=
 
 * `target` is the FQDN of the target site. eg. `google.com`. Do not use protocol handlers or query strings.
 * `rescan` asks for a rescan of the target when set to true.
+* `params` JSON object in which each key represents one of TLS Observatory's workers. The value under each key will be passed as the parameters to the corresponding worker. For example, `{"ev-checker": {"oid": "foo"}}` will pass `{"oid": "foo"}` to the ev-checker worker. The following workers accept parameters:
+  * ev-checker: Expects a JSON object with the following keys:
+    * oid: the oid of the EV policy to check
+    * rootCertificate: the root certificate to check against, in PEM format
+
+For example, with curl:
+
+```
+curl -X POST "http://localhost:8083/api/v1/scan?target=mozilla.org&rescan=true&params=%7B%0A%20%20%22ev-checker%22%3A%20%7B%0A%20%20%22rootcertificate%22%3A%20%22-----BEGIN%20CERTIFICATE-----%5CnMIIDxTCCAq2gAwIBAgIQAqxcJmoLQJuPC3nyrkYldzANBgkqhkiG9w0BAQUFADBs%5CnMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3%5Cnd3cuZGlnaWNlcnQuY29tMSswKQYDVQQDEyJEaWdpQ2VydCBIaWdoIEFzc3VyYW5j%5CnZSBFViBSb290IENBMB4XDTA2MTExMDAwMDAwMFoXDTMxMTExMDAwMDAwMFowbDEL%5CnMAkGA1UEBhMCVVMxFTATBgNVBAoTDERpZ2lDZXJ0IEluYzEZMBcGA1UECxMQd3d3%5CnLmRpZ2ljZXJ0LmNvbTErMCkGA1UEAxMiRGlnaUNlcnQgSGlnaCBBc3N1cmFuY2Ug%5CnRVYgUm9vdCBDQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMbM5XPm%5Cn%2B9S75S0tMqbf5YE%2Fyc0lSbZxKsPVlDRnogocsF9ppkCxxLeyj9CYpKlBWTrT3JTW%5CnPNt0OKRKzE0lgvdKpVMSOO7zSW1xkX5jtqumX8OkhPhPYlG%2B%2BMXs2ziS4wblCJEM%5CnxChBVfvLWokVfnHoNb9Ncgk9vjo4UFt3MRuNs8ckRZqnrG0AFFoEt7oT61EKmEFB%5CnIk5lYYeBQVCmeVyJ3hlKV9Uu5l0cUyx%2BmM0aBhakaHPQNAQTXKFx01p8VdteZOE3%5CnhzBWBOURtCmAEvF5OYiiAhF8J2a3iLd48soKqDirCmTCv2ZdlYTBoSUeh10aUAsg%5CnEsxBu24LUTi4S8sCAwEAAaNjMGEwDgYDVR0PAQH%2FBAQDAgGGMA8GA1UdEwEB%2FwQF%5CnMAMBAf8wHQYDVR0OBBYEFLE%2Bw2kD%2BL9HAdSYJhoIAu9jZCvDMB8GA1UdIwQYMBaA%5CnFLE%2Bw2kD%2BL9HAdSYJhoIAu9jZCvDMA0GCSqGSIb3DQEBBQUAA4IBAQAcGgaX3Nec%5CnnzyIZgYIVyHbIUf4KmeqvxgydkAQV8GK83rZEWWONfqe%2FEW1ntlMMUu4kehDLI6z%5CneM7b41N5cdblIZQB2lWHmiRk9opmzN6cN82oNLFpmyPInngiK3BD41VHMWEZ71jF%5CnhS9OMPagMRYjyOfiZRYzy78aG6A9%2BMpeizGLYAiJLQwGXFK3xPkKmNEVX58Svnw2%5CnYzi9RKR%2F5CYrCsSXaQ3pjOLAEFe4yHYSkVXySGnYvCoCWw9E1CAx2%2FS6cCZdkGCe%5CnvEsXCS%2B0yx5DaMkHJ8HSXPfqIbloEpw8nL%2Be%2FIBcm2PN7EeqJSdnoDfzAIJ9VNep%5Cn%2BOkuE6N36B9K%5Cn-----END%20CERTIFICATE-----%22%2C%0A%20%20%22oid%22%3A%20%222.16.840.1.114412.22.1%22%0A%7D%0A%7D"
+```
 
 **Output**: a `json` document containing the Scan ID.
 

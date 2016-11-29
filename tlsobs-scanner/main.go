@@ -114,7 +114,6 @@ func scan(scanID int64, cipherscan string) {
 	log.WithFields(logrus.Fields{
 		"scan_id": scanID,
 	}).Info("Received new scan")
-
 	db.Exec("UPDATE scans SET attempts = attempts + 1 WHERE id=$1", scanID)
 
 	scan, err := db.GetScanByID(scanID)
@@ -128,7 +127,7 @@ func scan(scanID int64, cipherscan string) {
 	var completion int
 
 	// Retrieve the certificate from the target
-	certID, trustID, err := handleCert(scan.Target)
+	certID, trustID, chain, err := handleCert(scan.Target)
 	if err != nil {
 		db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 		log.WithFields(logrus.Fields{
@@ -226,15 +225,17 @@ func scan(scanID int64, cipherscan string) {
 		return
 	}
 	workerInput := worker.Input{
-		DBHandle:    db,
-		Scanid:      scanID,
-		Certificate: *cert,
-		Connection:  conn_info,
+		DBHandle:         db,
+		Scanid:           scanID,
+		Certificate:      *cert,
+		CertificateChain: chain,
+		Connection:       conn_info,
 	}
 	// launch workers that evaluate the results
 	resChan := make(chan worker.Result)
 	totalWorkers := 0
-	for _, wrkInfo := range worker.AvailableWorkers {
+	for k, wrkInfo := range worker.AvailableWorkers {
+		workerInput.Params, _ = scan.AnalysisParams[k]
 		go wrkInfo.Runner.(worker.Worker).Run(workerInput, resChan)
 		totalWorkers++
 	}
@@ -252,7 +253,6 @@ func scan(scanID int64, cipherscan string) {
 			}).Error("Analysis workers timed out after 30 seconds")
 			goto updatecompletion
 		case res := <-resChan:
-			endedWorkers += endedWorkers
 			completion = ((endedWorkers/totalWorkers)*60 + completion)
 			log.WithFields(logrus.Fields{
 				"scan_id":     scanID,
@@ -274,10 +274,9 @@ func scan(scanID int64, cipherscan string) {
 					"worker_name": res.WorkerName,
 					"errors":      res.Errors,
 				}).Error("Worker returned with errors")
-				continue
 			}
-			_, err = db.Exec("INSERT INTO analysis(scan_id,worker_name,output) VALUES($1,$2,$3)",
-				scanID, res.WorkerName, res.Result)
+			_, err = db.Exec("INSERT INTO analysis(scan_id,worker_name,output,success) VALUES($1,$2,$3,$4)",
+				scanID, res.WorkerName, res.Result, res.Success)
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"scan_id": scanID,

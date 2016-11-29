@@ -20,10 +20,12 @@ type Result struct {
 
 // Input holds all the info that is given as input to each scanner.
 type Input struct {
-	Certificate certificate.Certificate
-	Connection  connection.Stored
-	Scanid      int64
-	DBHandle    *database.DB
+	Certificate      certificate.Certificate
+	CertificateChain *certificate.Chain
+	Connection       connection.Stored
+	Scanid           int64
+	DBHandle         *database.DB
+	Params           interface{}
 }
 
 // Info represents the information that every worker gives about itself at the
