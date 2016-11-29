@@ -71,7 +71,8 @@ CREATE TABLE scans(
     validation_error varchar NOT NULL,
     conn_info        jsonb NOT NULL,
     ack              bool NOT NULL,
-    attempts         integer NULL
+    attempts         integer NULL,
+    analysis_params  jsonb NOT NULL
 );
 CREATE INDEX scans_completion_attempts_idx ON scans(completion_perc, attempts);
 CREATE INDEX scans_ack_idx ON scans(ack);
@@ -83,6 +84,7 @@ CREATE TABLE analysis(
     id          serial primary key,
     scan_id     integer references scans(id),
     worker_name varchar NOT NULL,
+    success     bool NOT NULL,
     output      jsonb NULL
 );
 CREATE INDEX analysis_scan_id_idx ON analysis(scan_id);

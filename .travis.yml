@@ -16,11 +16,11 @@ script:
 - make truststores cipherscan
 - make
 - docker build -t mozilla/tls-observatory .
+- docker build -t jvehent/tls-observatory-api -f tools/Dockerfile-api .
+- docker build -t jvehent/tls-observatory-scanner -f tools/Dockerfile-scanner .
+- docker build -t jvehent/tls-observatory-runner -f tools/Dockerfile-runner .
 - |
   if [ ! -z "$TRAVIS_TAG" ]; then
-    docker build -t jvehent/tls-observatory-api -f tools/Dockerfile-api .
-    docker build -t jvehent/tls-observatory-scanner -f tools/Dockerfile-scanner .
-    docker build -t jvehent/tls-observatory-runner -f tools/Dockerfile-runner .
     docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
     docker push jvehent/tls-observatory-api:latest
     docker push jvehent/tls-observatory-scanner:latest

@@ -24,7 +24,7 @@ func (f NoTLSCertsErr) Error() string {
 //HandleCert is the main function called to verify certificates.
 //It retrieves certificates and feeds them to handleCertChain. It then returns
 //its result.
-func handleCert(domain string) (int64, int64, error) {
+func handleCert(domain string) (int64, int64, *certificate.Chain, error) {
 
 	certs, ip, err := retrieveCertFromHost(domain, "443", true)
 
@@ -33,12 +33,12 @@ func handleCert(domain string) (int64, int64, error) {
 			"domain": domain,
 			"error":  err.Error(),
 		}).Warning("Could not retrieve certs")
-		return -1, -1, err
+		return -1, -1, nil, err
 	}
 
 	if certs == nil {
 		e := new(NoTLSCertsErr)
-		return -1, -1, e
+		return -1, -1, nil, e
 	}
 
 	var chain = certificate.Chain{}
@@ -53,8 +53,11 @@ func handleCert(domain string) (int64, int64, error) {
 
 	}
 
-	return handleCertChain(&chain)
-
+	rootCertId, trustId, err := handleCertChain(&chain)
+	if err != nil {
+		return -1, -1, nil, err
+	}
+	return rootCertId, trustId, &chain, nil
 }
 
 //retrieveCertFromHost checks the host connectivity and returns the certificate chain ( if any ) provided
