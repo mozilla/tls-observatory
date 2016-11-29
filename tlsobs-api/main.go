@@ -2,21 +2,25 @@ package main
 
 import (
 	"flag"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
 	"time"
 
-	_ "github.com/Sirupsen/logrus"
-
 	"github.com/mozilla/tls-observatory/config"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
+	"go.mozilla.org/mozlog"
 )
 
-func main() {
+func init() {
+	// initialize the logger
+	mozlog.Logger.LoggerName = "tlsobs-api"
+	log.SetFlags(0)
+}
 
-	log := logger.GetLogger()
+func main() {
 
 	router := NewRouter()
 
@@ -71,7 +75,15 @@ func main() {
 	scanRefreshRate = float64(conf.General.ScanRefreshRate)
 
 	// wait for clients
-	err = http.ListenAndServe(":8083", Adapt(router, AddDB(db)))
+	err = http.ListenAndServe(":8083",
+		HandleMiddlewares(
+			router,
+			addRequestID(),
+			addDB(db),
+			logRequest(),
+			setResponseHeaders(),
+		),
+	)
 
 	log.Fatal(err)
 }

@@ -391,6 +391,40 @@ func randString(n int) string {
 	return string(b)
 }
 
+type panicReader struct{}
+
+func (panicReader) Read([]byte) (int, error) { panic("unexpected Read") }
+func (panicReader) Close() error             { panic("unexpected Close") }
+
+func TestActualContentLength(t *testing.T) {
+	tests := []struct {
+		req  *http.Request
+		want int64
+	}{
+		// Verify we don't read from Body:
+		0: {
+			req:  &http.Request{Body: panicReader{}},
+			want: -1,
+		},
+		// nil Body means 0, regardless of ContentLength:
+		1: {
+			req:  &http.Request{Body: nil, ContentLength: 5},
+			want: 0,
+		},
+		// ContentLength is used if set.
+		2: {
+			req:  &http.Request{Body: panicReader{}, ContentLength: 5},
+			want: 5,
+		},
+	}
+	for i, tt := range tests {
+		got := actualContentLength(tt.req)
+		if got != tt.want {
+			t.Errorf("test[%d]: got %d; want %d", i, got, tt.want)
+		}
+	}
+}
+
 func TestTransportBody(t *testing.T) {
 	bodyTests := []struct {
 		body         string
@@ -398,8 +432,6 @@ func TestTransportBody(t *testing.T) {
 	}{
 		{body: "some message"},
 		{body: "some message", noContentLen: true},
-		{body: ""},
-		{body: "", noContentLen: true},
 		{body: strings.Repeat("a", 1<<20), noContentLen: true},
 		{body: strings.Repeat("a", 1<<20)},
 		{body: randString(16<<10 - 1)},
@@ -1915,8 +1947,17 @@ func TestTransportNewTLSConfig(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
+		// Ignore the session ticket keys part, which ends up populating
+		// unexported fields in the Config:
+		if tt.conf != nil {
+			tt.conf.SessionTicketsDisabled = true
+		}
+
 		tr := &Transport{TLSClientConfig: tt.conf}
 		got := tr.newTLSConfig(tt.host)
+
+		got.SessionTicketsDisabled = false
+
 		if !reflect.DeepEqual(got, tt.want) {
 			t.Errorf("%d. got %#v; want %#v", i, got, tt.want)
 		}
@@ -2647,5 +2688,60 @@ func TestClientConnPing(t *testing.T) {
 	}
 	if err = cc.Ping(testContext{}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Issue 16974: if the server sent a DATA frame after the user
+// canceled the Transport's Request, the Transport previously wrote to a
+// closed pipe, got an error, and ended up closing the whole TCP
+// connection.
+func TestTransportCancelDataResponseRace(t *testing.T) {
+	cancel := make(chan struct{})
+	clientGotError := make(chan bool, 1)
+
+	const msg = "Hello."
+	st := newServerTester(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/hello") {
+			time.Sleep(50 * time.Millisecond)
+			io.WriteString(w, msg)
+			return
+		}
+		for i := 0; i < 50; i++ {
+			io.WriteString(w, "Some data.")
+			w.(http.Flusher).Flush()
+			if i == 2 {
+				close(cancel)
+				<-clientGotError
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}, optOnlyServer)
+	defer st.Close()
+
+	tr := &Transport{TLSClientConfig: tlsConfigInsecure}
+	defer tr.CloseIdleConnections()
+
+	c := &http.Client{Transport: tr}
+	req, _ := http.NewRequest("GET", st.ts.URL, nil)
+	req.Cancel = cancel
+	res, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = io.Copy(ioutil.Discard, res.Body); err == nil {
+		t.Fatal("unexpected success")
+	}
+	clientGotError <- true
+
+	res, err = c.Get(st.ts.URL + "/hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	slurp, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(slurp) != msg {
+		t.Errorf("Got = %q; want %q", slurp, msg)
 	}
 }
