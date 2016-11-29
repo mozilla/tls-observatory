@@ -95,6 +95,8 @@ message MonitorState {
 enum Version {
   option (tls_enum_opts).max_value = 255;
   V1 = 0;
+  // RFC6962-bis
+  V2 = 1;
   // Not part of the I-D, and outside the valid range.
   UNKNOWN_VERSION = 256;
 }
@@ -232,4 +234,12 @@ message SignedCertificateTimestampList {
   repeated bytes sct_list = 1 [ (tls_opts).min_length = 1,
                                 (tls_opts).max_length = 0xffff,
                                 (tls_opts).max_total_length = 0xffff ];
+}
+
+message TreeHeadSignature {
+  optional Version version = 1 [ default = UNKNOWN_VERSION ];
+  optional SignatureType signature_type = 2 [ default = TREE_HASH ];
+  optional uint64 timestamp = 3;
+  optional uint64 tree_size = 4;
+  optional bytes sha256_root_hash = 5 [(tls_opts).fixed_length = 32];
 }

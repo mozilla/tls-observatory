@@ -15,6 +15,7 @@ import (
 	"time"
 
 	ct "github.com/google/certificate-transparency/go"
+	"github.com/google/certificate-transparency/go/jsonclient"
 	"golang.org/x/net/context"
 )
 
@@ -58,6 +59,12 @@ const (
 		"7VelXijfmGFSl62BWIsG8LRmxJGBq9XP8FxmszuT2Cg="
 		]
 	}`
+	GetRootsResp = `
+	{
+		"certificates":[
+		"MIIFLjCCAxagAwIBAgIQNgEiBHAkH6lLUWKp42Ob1DANBgkqhkiG9w0BAQ0FADAWMRQwEgYDVQQDEwtlc2lnbml0Lm9yZzAeFw0xNDA2MjAxODM3NTRaFw0zMDA2MjAxODQ3NDZaMBYxFDASBgNVBAMTC2VzaWduaXQub3JnMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAtylZx/zTLxRDsok14XO0Z3PvWMIY4HWro0YLgCF8dYv3tUaNkmN3ghlQvY8UcByH2LMOBGiQAcMHxgEJ53cnWRyc2DjoGhkDkiPdS2JttNEB0B/XTaGvaHwJh2CSgIBbpZpWTaqGywbe7AgJQ81L8h7tZ4E6W8ZM0vt4mnzqkPBT+BmyjTXG/McGhYTQAsmdsYZDBAdB2Y4X1/RAyL0e9MHdSboRofhg+8d5MeC0VEIgHXU/R4f4wz/pSw0FI9xxWJR3UUK/qOWqNsVYZfmCu6+ksDQtezxSTAuymoL094Dwn+hnXb8RS6dEbIQ+b0bIHxxpypcxH7rBMIpQcbZ8JSqNVDZPI9QahKNPQMQiuBE66KlqbnLOj7lGBxsbpU2Dx8QL8W96op6dTGtniFyXqhuYN2UxDMNI+fb1j9G7ENpoqvTVfjxa4RUU6uZ9ZygOiiOZD4P54vEQFteiu4OM+mWOm5Vll9yPXqHPc5oiCfyvCNVzfapqPoGbaCM6oQtcHdAca9VpE2eDTo36zfdFo31YYBOEjWNsfXwp8frNduS/L6gmWYrd91HeEoOVX2ZQKqBLp5ydW72xDSeCIr5kugqdY6whW80ugjLlc9mDd8/LEGQQKnrxzeeWdjiQG/WwcOse9GRktOzH2gvmkJ+vY82z1jhrZP4REoA6T+aYGR8CAwEAAaN4MHYwCwYDVR0PBAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFPOGsFKraD+/FoPAUXSf77qYfZHRMBIGCSsGAQQBgjcVAQQFAgMBAAEwIwYJKwYBBAGCNxUCBBYEFEq/BT//OC3eNeJ4wEfNqJXdZRNpMA0GCSqGSIb3DQEBDQUAA4ICAQBEvh2kzI+1uoUx/emM654QvpM6WtgQSJMubKwKeBY5UNgwwNpwmtswiEKzdZwBiGb1xEehPrAKz0d7aiIIEOonYEohIV6szl0+F56nN16813n1lPsCjdLSA8fjgf28jvlTKcrLRqeyCn4APadh6g7/FRiGcmIxEFPf/VNTUBZ7l4e2zzb06PxCq8oDaOsbAVYXQz8A0KX50KURZrdC2knUg1HX0J/orVpdaQ9UZYVNp2WAbe9vYTCCF5FdtzNU+nJDojpDxF5guMe9bifL3YTvd87YQwsH7+o+UbtHX4lG8VsSfmvvJulNBY6RtzZEpZvyRWIvQahM9qTrzFpsxl4wyPSBDPLDZ6YvVWsXvU4PqLOWTbPdq4BB24P9kFxeYjEe/rDQ8bd1/V/OFZTEM0rxdZDDN9vWnybzl8xL5VmNLDGl1u6JrOVvCzVAWP++L9l5UTusQI/BPSMebz6msd8vhTluD4jQIba1/6zOwfBraFgCIktCT3GEIiyt59x3rdSirLyjzmeQA9NkwoG/GqlFlSdWmQCK/sCL+z050rqjL0kEwIl/D6ncCXfBvhCpCmcrIlZFruyeOlsISZ410T1w/pLK8OXhbCr13Gb7A5jhv1nn811cQaR7XUXhcn6Wq/VV/oQZLunBYvoYOs3dc8wpBabPrrRhkdNmN6Rib6TvMg=="
+		]
+	}`
 )
 
 func b64(s string) []byte {
@@ -83,6 +90,8 @@ func CtServer(t *testing.T) *httptest.Server {
 			w.Write([]byte(AddJSONResp))
 		case r.URL.Path == "/ct/v1/get-proof-by-hash":
 			w.Write([]byte(ProofByHashResp))
+		case r.URL.Path == "/ct/v1/get-roots":
+			w.Write([]byte(GetRootsResp))
 		default:
 			t.Fatalf("Incorrect URL path: %s", r.URL.Path)
 		}
@@ -113,7 +122,10 @@ func TestGetEntriesWorks(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := New(ts.URL, &http.Client{})
+	client, err := New(ts.URL, &http.Client{}, jsonclient.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	leaves, err := client.GetEntries(0, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -134,8 +146,11 @@ func TestGetSTHWorks(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := New(ts.URL, &http.Client{})
-	sth, err := client.GetSTH()
+	client, err := New(ts.URL, &http.Client{}, jsonclient.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sth, err := client.GetSTH(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,26 +171,28 @@ func TestGetSTHWorks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't unmarshal DigitallySigned: %v", err)
 	}
-	if sth.TreeHeadSignature.HashAlgorithm != expectedDS.HashAlgorithm {
-		t.Fatalf("Invalid TreeHeadSignature.HashAlgorithm: expected %v, got %v", sth.TreeHeadSignature.HashAlgorithm, expectedDS.HashAlgorithm)
+	if sth.TreeHeadSignature.Algorithm.Hash != expectedDS.Algorithm.Hash {
+		t.Fatalf("Invalid TreeHeadSignature.Algorithm.Hash: expected %v, got %v", sth.TreeHeadSignature.Algorithm.Hash, expectedDS.Algorithm.Hash)
 	}
-	if sth.TreeHeadSignature.SignatureAlgorithm != expectedDS.SignatureAlgorithm {
-		t.Fatalf("Invalid TreeHeadSignature.SignatureAlgorithm: expected %v, got %v", sth.TreeHeadSignature.SignatureAlgorithm, expectedDS.SignatureAlgorithm)
+	if sth.TreeHeadSignature.Algorithm.Signature != expectedDS.Algorithm.Signature {
+		t.Fatalf("Invalid TreeHeadSignature.Algorithm.Signature: expected %v, got %v", sth.TreeHeadSignature.Algorithm.Signature, expectedDS.Algorithm.Signature)
 	}
 	if bytes.Compare(sth.TreeHeadSignature.Signature, expectedDS.Signature) != 0 {
 		t.Fatalf("Invalid TreeHeadSignature.Signature: expected %v, got %v", sth.TreeHeadSignature.Signature, expectedDS.Signature)
 	}
 }
 
-func TestAddChainWithContext(t *testing.T) {
+func TestAddChain(t *testing.T) {
 	retryAfter := 0
 	currentFailures := 0
 	failuresBeforeSuccess := 0
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if failuresBeforeSuccess > 0 && currentFailures < failuresBeforeSuccess {
 			currentFailures++
-			if retryAfter > 0 {
-				w.Header().Add("Retry-After", strconv.Itoa(retryAfter))
+			if retryAfter != 0 {
+				if retryAfter > 0 {
+					w.Header().Add("Retry-After", strconv.Itoa(retryAfter))
+				}
 				w.WriteHeader(503)
 				return
 			}
@@ -195,27 +212,32 @@ func TestAddChainWithContext(t *testing.T) {
 	}
 	chain := []ct.ASN1Cert{certBytes}
 
-	c := New(hs.URL, &http.Client{})
+	c, err := New(hs.URL, &http.Client{}, jsonclient.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	leeway := time.Millisecond * 100
 	instant := time.Millisecond
 	fiveSeconds := time.Second * 5
+	sevenSeconds := time.Second * 7 // = 1 + 2 + 4
 
 	testCases := []struct {
 		deadlineLength        int
 		expected              time.Duration
-		retryAfter            int
+		retryAfter            int // -1 indicates: generate 503 with no Retry-After
 		failuresBeforeSuccess int
 		success               bool
 	}{
 		{-1, instant, 0, 0, true},
+		{-1, sevenSeconds, -1, 3, true},
 		{6, fiveSeconds, 5, 1, true},
 		{5, fiveSeconds, 10, 1, false},
 		{10, fiveSeconds, 1, 5, true},
 		{1, instant * 10, 0, 10, true},
 	}
 
-	for _, tc := range testCases {
-		var deadline context.Context
+	for i, tc := range testCases {
+		deadline := context.Background()
 		if tc.deadlineLength >= 0 {
 			deadline, _ = context.WithDeadline(context.Background(), time.Now().Add(time.Duration(tc.deadlineLength)*time.Second))
 		}
@@ -224,18 +246,18 @@ func TestAddChainWithContext(t *testing.T) {
 		currentFailures = 0
 
 		started := time.Now()
-		sct, err := c.AddChainWithContext(deadline, chain)
+		sct, err := c.AddChain(deadline, chain)
 		took := time.Since(started)
 		if math.Abs(float64(took-tc.expected)) > float64(leeway) {
-			t.Fatalf("Submission took an unexpected length of time: %s, expected ~%s", took, tc.expected)
+			t.Errorf("#%d Submission took an unexpected length of time: %s, expected ~%s", i, took, tc.expected)
 		}
 		if tc.success && err != nil {
-			t.Fatalf("Failed to submit chain: %s", err)
+			t.Errorf("#%d Failed to submit chain: %s", i, err)
 		} else if !tc.success && err == nil {
-			t.Fatal("Expected AddChainWithContext to fail")
+			t.Errorf("#%d Expected AddChain to fail", i)
 		}
 		if tc.success && sct == nil {
-			t.Fatal("Nil SCT returned")
+			t.Errorf("#%d Nil SCT returned", i)
 		}
 	}
 }
@@ -249,7 +271,10 @@ func TestAddJSON(t *testing.T) {
 	}))
 	defer hs.Close()
 
-	c := New(hs.URL, &http.Client{})
+	c, err := New(hs.URL, &http.Client{}, jsonclient.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		success bool
@@ -259,7 +284,7 @@ func TestAddJSON(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		sct, err := c.AddJSON(tc.data)
+		sct, err := c.AddJSON(context.Background(), tc.data)
 		if tc.success && err != nil {
 			t.Fatalf("Failed to submit json: %s", err)
 		} else if !tc.success && err == nil {
@@ -277,7 +302,10 @@ func TestGetSTHConsistency(t *testing.T) {
 	}))
 	defer hs.Close()
 
-	c := New(hs.URL, &http.Client{})
+	c, err := New(hs.URL, &http.Client{}, jsonclient.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		first  uint64
@@ -303,7 +331,10 @@ func TestGetProofByHash(t *testing.T) {
 	hs := CtServer(t)
 	defer hs.Close()
 
-	c := New(hs.URL, &http.Client{})
+	c, err := New(hs.URL, &http.Client{}, jsonclient.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		hash     []byte
@@ -320,5 +351,22 @@ func TestGetProofByHash(t *testing.T) {
 		if got := len(resp.AuditPath); got < 1 {
 			t.Errorf("len(GetProofByHash(%v, %v)): %v, want > 1", tc.hash, tc.treesize, got)
 		}
+	}
+}
+
+func TestGetAcceptedRoots(t *testing.T) {
+	hs := CtServer(t)
+	defer hs.Close()
+	c, err := New(hs.URL, &http.Client{}, jsonclient.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	certs, err := c.GetAcceptedRoots(context.Background())
+	if err != nil {
+		t.Errorf("GetAcceptedRoots()=nil,%q", err.Error())
+	}
+	if len(certs) < 1 {
+		t.Errorf("len(GetAcceptedRoots())=0, want > 1")
 	}
 }
