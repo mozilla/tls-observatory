@@ -7,4 +7,4 @@ RUN go install github.com/mozilla/tls-observatory/tlsobs-runner
 RUN apt-get update -y
 RUN apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang -y
 RUN git clone https://github.com/mozkeeler/ev-checker.git
-RUN cd ev-checker && make && mv ./ev-checker /go/bin/ev-checker && cd .. && rm -rf ev-checker
+RUN cd ev-checker && make && mv ./ev-checker /go/ev-checker.bin && cd .. && rm -rf ev-checker && mv ev-checker.bin ev-checker

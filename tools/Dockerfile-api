@@ -3,6 +3,7 @@ MAINTAINER Julien Vehent
 ENV PROJECT=github.com/mozilla/tls-observatory
 
 ADD . /go/src/$PROJECT
+RUN mv /go/src/$PROJECT/static /go/
 
 RUN mkdir /etc/tls-observatory
 ADD conf/ /etc/tls-observatory/
@@ -15,4 +16,4 @@ RUN go install $PROJECT/tlsobs-api
 # the API listening port
 EXPOSE 8083
 
-ENTRYPOINT /go/bin/tlsobs-api
+CMD /go/bin/tlsobs-api
