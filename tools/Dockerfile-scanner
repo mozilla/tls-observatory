@@ -1,13 +1,10 @@
 FROM golang:1.7
 MAINTAINER Julien Vehent
 ENV PROJECT=github.com/mozilla/tls-observatory
+
+# Run as root
 RUN apt-get update -y
 RUN apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang -y
-
-RUN git clone https://github.com/mozkeeler/ev-checker.git
-RUN cd ev-checker && make && mv ./ev-checker /usr/local/bin/ && cd .. && rm -rf ev-checker
-
-ADD . /go/src/$PROJECT
 
 RUN mkdir /opt/cipherscan/
 ADD cipherscan/ /opt/cipherscan/
@@ -16,7 +13,15 @@ RUN mkdir /etc/tls-observatory
 ADD conf/ /etc/tls-observatory/
 
 RUN groupadd -r tlsobs && useradd -r -g tlsobs tlsobs
+
+ADD . /go/src/$PROJECT
+RUN chown tlsobs /go -R
+
+# switch to tlsobs user
 USER tlsobs
+
+RUN git clone https://github.com/mozkeeler/ev-checker.git
+RUN cd ev-checker && make && mv ./ev-checker /usr/local/bin/ && cd .. && rm -rf ev-checker
 
 RUN go generate $PROJECT/worker/mozillaGradingWorker
 
