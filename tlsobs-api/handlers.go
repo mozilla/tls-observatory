@@ -111,6 +111,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
+	w.Header().Set("Content-Type", "application/json")
 }
 
 // ResultHandler handles the results endpoint of the api.
@@ -164,6 +165,7 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
+	w.Header().Set("Content-Type", "application/json")
 }
 
 // CertificateHandler handles the /certificate endpoint of the api.
@@ -355,6 +357,7 @@ func PathsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(pathsJson)
+	w.Header().Set("Content-Type", "application/json")
 	return
 }
 
@@ -389,6 +392,7 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(certsJSON)
+		w.Header().Set("Content-Type", "application/json")
 	case "pem":
 		var buffer bytes.Buffer
 		for _, cert := range certs {
@@ -456,6 +460,7 @@ func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 		w.WriteHeader(http.StatusCreated)
 	}
 	w.Write(certJson)
+	w.Header().Set("Content-Type", "application/json")
 }
 
 func PreflightHandler(w http.ResponseWriter, r *http.Request) {
