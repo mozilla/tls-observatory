@@ -1,3 +1,7 @@
+window.onload = function() {
+    document.form.addEventListener("submit", send, false);
+}
+
 function checkResult(id) {
     return fetch("/api/v1/results?id=" + id)
 	.then(function(response) {
@@ -43,7 +47,8 @@ function startScan(target, oid, rootCertificate) {
 	});
 }
 
-function send() {
+function send(e) {
+    e.preventDefault();
     var target = document.getElementById("target").value;
     var oid = document.getElementById("oid").value;
     var rootCertificate = document.getElementById("rootCertificate").value;
