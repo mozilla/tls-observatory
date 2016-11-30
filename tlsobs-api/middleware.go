@@ -46,7 +46,7 @@ func setResponseHeaders() Middleware {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS, POST")
 			w.Header().Set("Access-Control-Max-Age", "86400")
-			w.Header().Add("Content-Security-Policy", "default-src 'self'; child-src 'self;")
+			w.Header().Add("Content-Security-Policy", "default-src 'self'; child-src 'self';")
 			w.Header().Add("X-Frame-Options", "SAMEORIGIN")
 			w.Header().Add("X-Content-Type-Options", "nosniff")
 			w.Header().Add("Strict-Transport-Security", "max-age=31536000;")
