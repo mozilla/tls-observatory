@@ -3,21 +3,25 @@
 </head>
 <body>
   <h1>EV-Readiness Check</h1>
+  <p id="result"/>
   <form name="form" class="pure-form pure-form-stacked">
     <fieldset>
-      <h2>TLS Server</h2>
-      <input id="target" placeholder="www.mozilla.org">
-      <br>
-      <h2>EV Policy OID</h2>
-      <input id="oid" placeholder="2.16.840.1.114412.2.1">
-      <br>
-      <h2>Root Certificate PEM</h2>
-      <textarea id="rootCertificate" placeholder="-----BEGIN CERTIFICATE-----" rows="35" cols="70"></textarea>
+      <table>
+        <tr>
+          <td><h4>TLS Server&nbsp;</h4></td>
+          <td><input id="target" placeholder="eg. www.mozilla.org"></td>
+        </tr>
+        <tr>
+          <td><h4>EV Policy OID&nbsp;</h4></td>
+          <td><input id="oid" placeholder="eg. 2.16.840.1.114412.2.1"></td>
+        <tr>
+      </table>
+      <h4>Root Certificate PEM</h4>
+      <textarea id="rootCertificate" placeholder="paste -----BEGIN CERTIFICATE----- block here" rows="20" cols="70"></textarea>
       <br>
       <button class="pure-button">Submit</button>
     </fieldset>
   </form>
-  <p id="result"/>
   <script src="ev-checker.js"></script>
   <p>Documentation: <a href="https://wiki.mozilla.org/PSM:EV_Testing_Easy_Version">Wiki - PSM:EV_Testing_Easy_Version</a></p>
 </body>
