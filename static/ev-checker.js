@@ -19,6 +19,18 @@ function checkResult(id) {
 }
 
 function startScan(target, oid, rootCertificate) {
+    result.style.color = "Blue";
+    if (!/^(([0-9]+)\.?)+$/.test(oid)) {
+        err = "Invalid OID format, must respect regular expression '^([0-9]+)\.?$'";
+        result.innerHTML = "Error: " + err;
+        result.style.color = "Red";
+        throw err;
+    }
+    if (!rootCertificate.startsWith("-----BEGIN CERTIFICATE-----") || !rootCertificate.endsWith("-----END CERTIFICATE-----")) {
+        err = "Invalid certificate format, must be PEM encoded";
+        result.innerHTML = "Error: " + err;
+        throw err;
+    }
     let params = {
 	"ev-checker": {
 	    "oid": oid,
@@ -27,7 +39,7 @@ function startScan(target, oid, rootCertificate) {
     };
     let queryParams = {
 	"rescan": true,
-	"target": target,
+	"target": hostname_from(target),
 	"params": JSON.stringify(params)
     };
     let query = Object.keys(queryParams)
@@ -70,4 +82,15 @@ function send(e) {
             result.innerHTML = "Error: " + err;
             result.style.color = "Red";
 	});
+}
+
+function hostname_from(target) {
+    // if target is a URI, extract hostname from it
+    if (target.startsWith("http") == true) {
+        let targetParser = document.createElement('a');
+        targetParser.href = target;
+        return targetParser.hostname;
+    } else {
+        return target;
+    }
 }
