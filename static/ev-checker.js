@@ -1,5 +1,6 @@
 window.onload = function() {
     document.form.addEventListener("submit", send, false);
+    document.form.addEventListener("change", readfile, false);
 }
 
 function checkResult(id) {
@@ -20,6 +21,12 @@ function checkResult(id) {
 
 function startScan(target, oid, rootCertificate) {
     result.style.color = "Blue";
+
+    // clean up leading and trailing whitespaces
+    target = target.trim();
+    oid = oid.trim();
+    rootCertificate = rootCertificate.trim();
+
     if (!/^(([0-9]+)\.?)+$/.test(oid)) {
         err = "Invalid OID format, must respect regular expression '^([0-9]+)\.?$'";
         result.innerHTML = "Error: " + err;
@@ -93,4 +100,12 @@ function hostname_from(target) {
     } else {
         return target;
     }
+}
+
+function readfile(e) {
+    var reader = new FileReader();
+    reader.addEventListener("loadend", function(event) {
+        document.getElementById("rootCertificate").value = event.target.result;
+    }, false);
+    reader.readAsText(e.target.files[0])
 }
