@@ -8,8 +8,6 @@ Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.or
   * [Developing](#developing)
     * [Create the database](#create-the-database)
     * [Starting the API and Scanner](#starting-the-api-and-scanner)
-* [ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory](#ln--s-$gopath/src/github.com/mozilla/tls-observatory/conf-/etc/tls-observatory)
-* [ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan](#ln--s-$gopath/src/github.com/mozilla/tls-observatory/cipherscan-/opt/cipherscan)
     * [Run a scan locally](#run-a-scan-locally)
     * [Configuration](#configuration)
       * [tlsobs-api](#tlsobs-api)
@@ -109,7 +107,7 @@ $ docker run -it mozilla/tls-observatory tlsobs accounts.firefox.com
 
 ## Developing
 
-You can using the `mozilla/tls-observatory` docker container for development:
+You can use the `mozilla/tls-observatory` docker container for development:
 ```bash
 $ docker pull mozilla/tls-observatory
 $ docker run -it mozilla/tls-observatory /bin/bash
@@ -120,7 +118,7 @@ However, even with the docker container, you will need to setup your own
 postgresql database. See below.
 
 To build a development environment from scratch, you will need Go 1.7 or above.
-You can set it up on your own machine or via the `golang:1/7` Docker
+You can set it up on your own machine or via the `golang:1.7` Docker
 container.
 
 Retrieve a copy of the source code using `go get`, to place it directly
@@ -136,22 +134,6 @@ package github.com/mozilla/tls-observatory: no buildable Go source files in /go/
 root@c63f11b8852b:/go# cd $GOPATH/src/github.com/mozilla/tls-observatory
 
 root@c63f11b8852b:/go/src/github.com/mozilla/tls-observatory# make
-GOOS=linux GOARCH=amd64 go test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
-ok  	github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker	0.236s
-GOOS=linux GOARCH=amd64 go test github.com/mozilla/tls-observatory/tlsobs-runner
-ok  	github.com/mozilla/tls-observatory/tlsobs-runner	0.168s
-echo building TLS Observatory Scanner for linux/amd64
-building TLS Observatory Scanner for linux/amd64
-GOOS=linux GOARCH=amd64 go build  -o /go/bin/tlsobs-scanner"" -ldflags "-X main.version=20161202+243256d.dev" github.com/mozilla/tls-observatory/tlsobs-scanner
-echo building tlsobs-api for linux/amd64
-building tlsobs-api for linux/amd64
-GOOS=linux GOARCH=amd64 go build  -o /go/bin/tlsobs-api"" -ldflags "-X main.version=20161202+243256d.dev" github.com/mozilla/tls-observatory/tlsobs-api
-echo building tlsobs client for linux/amd64
-building tlsobs client for linux/amd64
-GOOS=linux GOARCH=amd64 go build  -o /go/bin/tlsobs"" -ldflags "-X main.version=20161202+243256d.dev" github.com/mozilla/tls-observatory/tlsobs
-echo building tlsobs-runner for linux/amd64
-building tlsobs-runner for linux/amd64
-GOOS=linux GOARCH=amd64 go build  -o /go/bin/tlsobs-runner"" -ldflags "-X main.version=20161202+243256d.dev" github.com/mozilla/tls-observatory/tlsobs-runner
 ```
 
 `make` runs the tests and compiles the scanner, api, command line client
@@ -179,8 +161,8 @@ with the default configuration.
 First symlink the configuration to /etc/observatory and the cipherscan
 executable to /opt/cipherscan, as follows:
 ```bash
-# ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
-# ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
+root@c63f11b8852b:/# ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
+root@c63f11b8852b:/# ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
 ```
 Then start `tlsobs-api` and `tlsobs-scanner`. The API will listen on port 8083,
 on localhost (or 172.17.0.2 if you're running in Docker).
