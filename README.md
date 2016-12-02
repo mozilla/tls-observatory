@@ -2,6 +2,37 @@
 
 Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.org) !
 
+* [Mozilla TLS Observatory](#mozilla-tls-observatory)
+  * [Getting started](#getting-started)
+    * [Using the tlsobs client from Docker](#using-the-tlsobs-client-from-docker)
+  * [Developing](#developing)
+    * [Create the database](#create-the-database)
+    * [Starting the API and Scanner](#starting-the-api-and-scanner)
+* [ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory](#ln--s-$gopath/src/github.com/mozilla/tls-observatory/conf-/etc/tls-observatory)
+* [ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan](#ln--s-$gopath/src/github.com/mozilla/tls-observatory/cipherscan-/opt/cipherscan)
+    * [Run a scan locally](#run-a-scan-locally)
+    * [Configuration](#configuration)
+      * [tlsobs-api](#tlsobs-api)
+      * [tlsobs-scanner](#tlsobs-scanner)
+      * [tlsobs-runner](#tlsobs-runner)
+  * [API Endpoints](#api-endpoints)
+    * [POST /api/v1/scan](#post-/api/v1/scan)
+    * [GET /api/v1/results](#get-/api/v1/results)
+    * [GET /api/v1/certificate](#get-/api/v1/certificate)
+    * [POST /api/v1/certificate](#post-/api/v1/certificate)
+    * [GET /api/v1/paths](#get-/api/v1/paths)
+    * [GET /api/v1/truststore](#get-/api/v1/truststore)
+  * [Database Queries](#database-queries)
+    * [Find certificates signed by CAs identified by their SHA256 fingerprint](#find-certificates-signed-by-cas-identified-by-their-sha256-fingerprint)
+    * [List signature algorithms of trusted certs](#list-signature-algorithms-of-trusted-certs)
+    * [Show expiration dates of trusted SHA-1 certificates](#show-expiration-dates-of-trusted-sha-1-certificates)
+    * [List issuer, subject and SAN of Mozilla|Firefox certs not issued by Digicert](#list-issuer,-subject-and-san-of-mozilla|firefox-certs-not-issued-by-digicert)
+    * [Find count of targets that support the SEED-SHA ciphersuite](#find-count-of-targets-that-support-the-seed-sha-ciphersuite)
+    * [Find intermediate CA certs whose root is trusted by Mozilla](#find-intermediate-ca-certs-whose-root-is-trusted-by-mozilla)
+    * [Find CA certs treated as EV in Firefox](#find-ca-certs-treated-as-ev-in-firefox)
+  * [Core contributors](#core-contributors)
+  * [License](#license)
+
 ## Getting started
 
 You can use the TLS Observatory to compare your site against the mozilla guidelines.
