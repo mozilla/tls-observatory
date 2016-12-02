@@ -21,83 +21,53 @@ $ go get github.com/mozilla/tls-observatory/tlsobs
 ```
 And scan using our hosted service:
 ```bash
-$ tlsobs twitter.com
-Scanning twitter.com (id 12302241)
-Retrieving cached results from 35m44.249807364s ago. To run a new scan, use '-r'.
+$ tlsobs tls-observatory.services.mozilla.com
+Scanning tls-observatory.services.mozilla.com (id 13528951)
+Retrieving cached results from 20h33m1.379461888s ago. To run a new scan, use '-r'.
 
 --- Certificate ---
-Subject  C=US, O=Twitter, Inc., OU=Twitter Security, CN=twitter.com
+Subject  C=US, O=Mozilla Corporation, CN=tls-observatory.services.mozilla.com
 SubjectAlternativeName
-- twitter.com
-- www.twitter.com
-Validity 2016-03-09T00:00:00Z to 2018-03-14T12:00:00Z
-CA       false
-SHA1     235A79B3270D790505E0BEA2CF5C149F9038821B
-SHA256   334105950462AEAB4EAE05B74DF693FA6D73250ED152204778A2B7BD9CF5FD6A
-SigAlg   SHA256WithRSA
-Key      RSA 2048bits 
+- tls-observatory.services.mozilla.com
+Validity 2016-01-20T00:00:00Z to 2017-01-24T12:00:00Z
+SHA1     FECA3CA0F4B726D062A76F47635DD94A37985105
+SHA256   315A8212CBDC76FF87AEB2161EDAA86E322F7C18B27152B5CB9206297F3D3A5D
+SigAlg   ECDSAWithSHA256
+Key      ECDSA 384bits P-384
+ID       1281826
 
 --- Trust ---
 Mozilla Microsoft Apple Android
    ✓        ✓       ✓      ✓
 
 --- Chain of trust ---
-0:	C=US, O=Twitter, Inc., OU=Twitter Security, CN=twitter.com
-	issuer: C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert SHA2 Extended Validation Server CA
-	type: end entity
-	key: RSA 2048bits 
-	pin-sha256: PS12nvydU5dSxolqCn3V11wWF5Z12JRhXT2dhyawT4M=
-
-1:	C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert SHA2 Extended Validation Server CA
-	issuer: C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert High Assurance EV Root CA
-	type: intermediate CA
-	key: RSA 2048bits 
-	pin-sha256: RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=
-
-2:	C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert High Assurance EV Root CA
-	issuer: C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert High Assurance EV Root CA
-	type: root CA
-	key: RSA 2048bits 
-	pin-sha256: WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=
+C=US, O=Mozilla Corporation, CN=tls-observatory.services.mozilla.com (id=1281826)
+└──C=US, O=DigiCert Inc, CN=DigiCert ECC Secure Server CA (id=5922)
+   └──C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert Global Root CA (id=41)
 
 
 
 --- Ciphers Evaluation ---
-prio cipher                      protocols             pfs                curves
-1    ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2               ECDH,P-256,256bits prime256v1
-2    ECDHE-RSA-AES128-SHA256     TLSv1.2               ECDH,P-256,256bits prime256v1
-3    ECDHE-RSA-AES128-SHA        TLSv1,TLSv1.1,TLSv1.2 ECDH,P-256,256bits prime256v1
-4    ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2               ECDH,P-256,256bits prime256v1
-5    ECDHE-RSA-AES256-SHA384     TLSv1.2               ECDH,P-256,256bits prime256v1
-6    ECDHE-RSA-AES256-SHA        TLSv1,TLSv1.1,TLSv1.2 ECDH,P-256,256bits prime256v1
-7    AES128-GCM-SHA256           TLSv1.2               None               
-8    AES128-SHA256               TLSv1.2               None               
-9    AES128-SHA                  TLSv1,TLSv1.1,TLSv1.2 None               
-10   AES256-GCM-SHA384           TLSv1.2               None               
-11   AES256-SHA256               TLSv1.2               None               
-12   AES256-SHA                  TLSv1,TLSv1.1,TLSv1.2 None               
-13   ECDHE-RSA-DES-CBC3-SHA      TLSv1,TLSv1.1,TLSv1.2 ECDH,P-256,256bits prime256v1
-14   DES-CBC3-SHA                TLSv1,TLSv1.1,TLSv1.2 None               
+prio cipher                        protocols pfs                curves
+1    ECDHE-ECDSA-AES128-GCM-SHA256 TLSv1.2   ECDH,P-256,256bits prime256v1
+2    ECDHE-ECDSA-AES256-GCM-SHA384 TLSv1.2   ECDH,P-256,256bits prime256v1
 OCSP Stapling        false
 Server Side Ordering true
 Curves Fallback      false
 
 --- Analyzers ---
-Measured level "intermediate" does not match target level "modern"
-* Mozilla evaluation: intermediate
-  - for modern level: remove ciphersuites ECDHE-RSA-AES128-SHA, ECDHE-RSA-AES256-SHA, AES128-GCM-SHA256, AES128-SHA256, AES128-SHA, AES256-GCM-SHA384, AES256-SHA256, AES256-SHA, ECDHE-RSA-DES-CBC3-SHA, DES-CBC3-SHA
-  - for modern level: consider adding ciphers ECDHE-ECDSA-AES256-GCM-SHA384, ECDHE-ECDSA-CHACHA20-POLY1305, ECDHE-RSA-CHACHA20-POLY1305, ECDHE-ECDSA-AES128-GCM-SHA256, ECDHE-ECDSA-AES256-SHA384, ECDHE-ECDSA-AES128-SHA256
-  - for modern level: remove protocols TLSv1, TLSv1.1
+* Mozilla evaluation: modern
+  - for modern level: consider adding ciphers ECDHE-RSA-AES256-GCM-SHA384, ECDHE-ECDSA-CHACHA20-POLY1305, ECDHE-RSA-CHACHA20-POLY1305, ECDHE-RSA-AES128-GCM-SHA256, ECDHE-ECDSA-AES256-SHA384, ECDHE-RSA-AES256-SHA384, ECDHE-ECDSA-AES128-SHA256, ECDHE-RSA-AES128-SHA256
   - for modern level: consider enabling OCSP stapling
-  - for modern level: use a certificate of type ecdsa, not RSA
-  - oldest clients: Firefox 1, Chrome 1, IE 7, Opera 5, Safari 1, Windows XP IE8, Android 2.3, Java 7
-* Grade: A (92/100)
-
+  - for modern level: increase priority of ECDHE-ECDSA-AES256-GCM-SHA384 over ECDHE-ECDSA-AES128-GCM-SHA256
+  - for modern level: fix ciphersuite ordering, use recommended modern ciphersuite
+  - oldest clients: Firefox 27, Chrome 30, IE 11 on Windows 7, Edge 1, Opera 17, Safari 9, Android 5.0, Java 8
+* Grade: A (93/100)
 ```
 
 The analysis at the end tell you what need to be changed to reach the old, intermediate or modern level. We recommend to target the intermediate level by default, and modern if you don't care about old clients.
 
-### Using Docker
+### Using the tlsobs client from Docker
 
 A docker container also exists that contains the CLI, API, Scanner and Runner.
 Fetch is from `docker pull mozilla/tls-observatory`.
@@ -106,73 +76,130 @@ $ docker pull mozilla/tls-observatory
 $ docker run -it mozilla/tls-observatory tlsobs accounts.firefox.com
 ```
 
-## Contributing
-### Clone this repository
+## Developing
+
+You can using the `mozilla/tls-observatory` docker container for development:
+```bash
+$ docker pull mozilla/tls-observatory
+$ docker run -it mozilla/tls-observatory /bin/bash
+root@05676e6789dd:~# cd $GOPATH/src/github.com/mozilla/tls-observatory
+root@05676e6789dd:/go/src/github.com/mozilla/tls-observatory# make
+```
+However, even with the docker container, you will need to setup your own
+postgresql database. See below.
+
+To build a development environment from scratch, you will need Go 1.7 or above.
+You can set it up on your own machine or via the `golang:1/7` Docker
+container.
+
+Retrieve a copy of the source code using `go get`, to place it directly
+under `$GOPATH/src/github.com/mozilla/tls-observatory`, then use `make`
+to build all components.
 
 ```bash
-$ git clone git@github.com:mozilla/tls-observatory.git
-$ cd tls-observatory
-$ git submodule update --init --recursive
-$ git submodule update
+$ docker run -it golang:1.7
+
+root@c63f11b8852b:/go# go get github.com/mozilla/tls-observatory 
+package github.com/mozilla/tls-observatory: no buildable Go source files in /go/src/github.com/mozilla/tls-observatory
+
+root@c63f11b8852b:/go# cd $GOPATH/src/github.com/mozilla/tls-observatory
+
+root@c63f11b8852b:/go/src/github.com/mozilla/tls-observatory# make
+GOOS=linux GOARCH=amd64 go test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
+ok  	github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker	0.236s
+GOOS=linux GOARCH=amd64 go test github.com/mozilla/tls-observatory/tlsobs-runner
+ok  	github.com/mozilla/tls-observatory/tlsobs-runner	0.168s
+echo building TLS Observatory Scanner for linux/amd64
+building TLS Observatory Scanner for linux/amd64
+GOOS=linux GOARCH=amd64 go build  -o /go/bin/tlsobs-scanner"" -ldflags "-X main.version=20161202+243256d.dev" github.com/mozilla/tls-observatory/tlsobs-scanner
+echo building tlsobs-api for linux/amd64
+building tlsobs-api for linux/amd64
+GOOS=linux GOARCH=amd64 go build  -o /go/bin/tlsobs-api"" -ldflags "-X main.version=20161202+243256d.dev" github.com/mozilla/tls-observatory/tlsobs-api
+echo building tlsobs client for linux/amd64
+building tlsobs client for linux/amd64
+GOOS=linux GOARCH=amd64 go build  -o /go/bin/tlsobs"" -ldflags "-X main.version=20161202+243256d.dev" github.com/mozilla/tls-observatory/tlsobs
+echo building tlsobs-runner for linux/amd64
+building tlsobs-runner for linux/amd64
+GOOS=linux GOARCH=amd64 go build  -o /go/bin/tlsobs-runner"" -ldflags "-X main.version=20161202+243256d.dev" github.com/mozilla/tls-observatory/tlsobs-runner
 ```
 
-### Build
+`make` runs the tests and compiles the scanner, api, command line client
+and runner. The resulting binaries are placed under `$GOPATH/bin`.
 
-Requires Go 1.7.
+### Create the database
+
+TLS Observatory uses PostgreSQL > 9.4. To create a database, use the
+schema in `database/schema.sql`.
 
 ```bash
-go install github.com/mozilla/tls-observatory/tlsobs-scanner
-go install github.com/mozilla/tls-observatory/tlsobs-api
-go install github.com/mozilla/tls-observatory/tlsobs-runner
-go install github.com/mozilla/tls-observatory/tlsobs
+postgres=# create database observatory;
+CREATE DATABASE
+
+postgres=# \c observatory
+You are now connected to database "observatory" as user "postgres".
+
+postgres=# \i /go/src/github.com/mozilla/tls-observatory/database/schema.sql 
 ```
+This automatically creates all tables, indexes, users and grants to work
+with the default configuration.
 
-### Deployment
+### Starting the API and Scanner
 
-Create the Postgres database using the schema in `database/schema.sql`.
-
-Then create two configuration files for the api and the scanner using the templates in `conf/`.
-
-For AWS deployment, you can use the ElasticBeanstalk environment creation script
-in `tools/aws-create-env.sh`. The script creates an RDS database and an EB
-application with two environment, one for the api, one for the scanner.
-
+First symlink the configuration to /etc/observatory and the cipherscan
+executable to /opt/cipherscan, as follows:
 ```bash
-$ assume-aws-role moz-dev <mfa-token>
-aws$ bash aws-create-env.sh
+# ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
+# ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
 ```
-Once the environment created, log into the web console and create two
-applications versions: one for the api, and one for the scanner. Use the JSON
-templates provided in `tools/tls-observatory-api-elasticbeanstalk.json` and
-`tools/tls-observatory-scanner-elasticbeanstalk.json`. 
+Then start `tlsobs-api` and `tlsobs-scanner`. The API will listen on port 8083,
+on localhost (or 172.17.0.2 if you're running in Docker).
+
+### Run a scan locally
+
+To run a scan using the local scanner, set the `-observatory` flag of the `tlsobs`
+client to use the local API, as follows:
+```bash
+$ tlsobs -observatory http://172.17.0.2:8083 ulfr.io
+```
 
 ### Configuration
 
 #### tlsobs-api
 
-Customize the configuration file under `conf/api.cfg`.
+Customize the configuration file under `conf/api.cfg` and using the following
+environment variables:
+* `TLSOBS_API_ENABLE` set to `on` or `off` to enable or disable the API
+* `TLSOBS_POSTGRES` is the hostname or IP of the database server (eg. `mypostgresdb.example.net`)
+* `TLSOBS_POSTGRESDB` is the name of the database (eg. `observatory`)
+* `TLSOBS_POSTGRESUSER` is the database user (eg. `tlsobsapi`)
+* `TLSOBS_POSTGRESPASS` is the database user password (eg. `mysecretpassphrase`)
 
 #### tlsobs-scanner
 
-Customize the configuration file under `conf/scanner.cfg`.
+Customize the configuration file under `conf/scanner.cfg` and using the
+following environment variables:
+* `TLSOBS_SCANNER_ENABLE` set to `on` or `off` to enable or disable the scabber
+* `TLSOBS_POSTGRES` is the hostname or IP of the database server (eg. `mypostgresdb.example.net`)
+* `TLSOBS_POSTGRESDB` is the name of the database (eg. `observatory`)
+* `TLSOBS_POSTGRESUSER` is the database user (eg. `tlsobsscanner`)
+* `TLSOBS_POSTGRESPASS` is the database user password (eg. `mysecretpassphrase`)
 
 #### tlsobs-runner
 
 Runs regular tests against target sites and sends notifications.
 
-See `conf/runnel.yaml` for an example of configuration. The configuration can
-also be provided by environment variables:
+See `conf/runnel.yaml` for an example of configuration. Some configuration
+parameters can also be provided through environment variables:
 
-* TLSOBS_RUNNER_SMTP_HOST, TLSOBS_RUNNER_SMTP_PORT, TLSOBS_RUNNER_SMTP_FROM,
-  TLSOBS_RUNNER_SMTP_AUTH_USER and TLSOBS_RUNNER_SMTP_AUTH_PASS can be set to
-  define specific SMTP settings that override both local conf and
-  TLSOBS_RUNNER_CONF.
+* `TLSOBS_RUNNER_SMTP_HOST` is the hostname of the smtp server (eg. `mypostfix.example.net`)
+* `TLSOBS_RUNNER_SMTP_PORT` is the port of the smtp server (eg. `587`)
+* `TLSOBS_RUNNER_SMTP_FROM` is the from address of email notifications sent by the runner (eg. `mynotification@tlsobservatory.example.net`)
+* `TLSOBS_RUNNER_SMTP_AUTH_USER` is the smtp authenticated username (eg `tlsobsrunner`)
+* `TLSOBS_RUNNER_SMTP_AUTH_PASS` is the smtp user password (eg. `mysecretpassphrase`)
 
-## Development
+## API Endpoints
 
-### API Endpoints
-
-#### POST /api/v1/scan
+### POST /api/v1/scan
 
 Schedule a scan of a given target.
 
@@ -201,7 +228,7 @@ curl -X POST "http://localhost:8083/api/v1/scan?target=mozilla.org&rescan=true&p
 
 **Rate Limits**: Each target can only be scanned every 3 minutes with `rescan=true`.
 
-#### GET /api/v1/results
+### GET /api/v1/results
 
 Retrieve scan results by its ID.
 
@@ -215,7 +242,7 @@ curl https://tls-observatory.services.mozilla.com/api/v1/results?id=12302333
 
 **Output**: a `json` document containing the scan results and the ID of the end-entity certificate.
 
-#### GET /api/v1/certificate
+### GET /api/v1/certificate
 
 Retrieve a certificate by its ID.
 
@@ -231,7 +258,7 @@ curl https://tls-observatory.services.mozilla.com/api/v1/certificate?id=1
 
 **Output**: a `json` document containing the parsed certificate and its raw X509 version encoded with base64.
 
-#### POST /api/v1/certificate
+### POST /api/v1/certificate
 
 Publish a certificate.
 
@@ -247,7 +274,7 @@ curl -X POST -F certificate=@example.pem https://tls-observatory.services.mozill
 
 **Caching**: Certificates are only stored once. The database uses the SHA256 hash of the DER (binary) certificate to identify duplicates. Posting a certificate already stored in database returns the stored version. 
 
-#### GET /api/v1/paths
+### GET /api/v1/paths
 
 Retrieve the paths from a certificate to one of multiple roots.
 
@@ -263,7 +290,7 @@ curl https://tls-observatory.services.mozilla.com/api/v1/paths?id=1
 
 **Output**: a `json` document containing the paths document. Each entry in the path contains the current certificate and an array of parents, if any exist.
 
-#### GET /api/v1/truststore
+### GET /api/v1/truststore
 
 Retrieve all the certificates in a given truststore.
 
@@ -278,7 +305,7 @@ curl https://tls-observatory.services.mozilla.com/api/v1/truststore?store=mozill
 
 **Output**: if `format` is pem, a series of PEM-format certificates. If `format` is json, a json array of certificate objects, each with the same format of `/api/v1/certificate`.
 
-### Database Queries
+## Database Queries
 
 ### Find certificates signed by CAs identified by their SHA256 fingerprint
 
@@ -395,10 +422,11 @@ WHERE jsonb_typeof(x509_certificatePolicies) != 'null'
                '2.16.840.1.114413.1.7.23.3','2.16.840.1.114414.1.7.23.3')
   AND is_ca='true';
 ```
-## Authors
+## Core contributors
 
- * Dimitris Bachtis
- * Julien Vehent
+ * Julien Vehent (lead maintainer)
+ * Dimitris Bachtis (original dev)
+ * Adrian Utrilla
 
 ## License
 
