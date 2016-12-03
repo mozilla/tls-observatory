@@ -36,14 +36,10 @@ var modern, intermediate, old Configuration
 var log = logger.GetLogger()
 
 func init() {
-
 	err := getConffromURL(sstlsURL)
-
 	if err != nil {
-
 		log.Error(err)
 		log.Error("Could not get tls confs from url - fallback to locally saved configurations")
-
 		// Try to continue with the locally hosted TLS configurations
 		err = json.Unmarshal([]byte(ServerSideTLSConfiguration), &sstls)
 		if err != nil {
@@ -52,7 +48,6 @@ func init() {
 			return
 		}
 	}
-
 	modern = sstls.Configurations["modern"]
 	intermediate = sstls.Configurations["intermediate"]
 	old = sstls.Configurations["old"]
