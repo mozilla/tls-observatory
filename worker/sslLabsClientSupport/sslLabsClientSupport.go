@@ -4,7 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
+	"github.com/mozilla/tls-observatory/connection"
+	"github.com/mozilla/tls-observatory/constants"
 	"github.com/mozilla/tls-observatory/logger"
 	"github.com/mozilla/tls-observatory/worker"
 )
@@ -24,12 +28,6 @@ func init() {
 		return
 	}
 	runner.Clients = cs
-
-	err = json.Unmarshal([]byte(OpenSSLCiphersuites), &runner.CipherSuites)
-	if err != nil {
-		log.Printf("Could not load OpenSSL ciphersuites: %v", err)
-		return
-	}
 	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
 
@@ -45,8 +43,7 @@ func getConffromURL(url string) (cs []Client, err error) {
 }
 
 type slabscrunner struct {
-	Clients      []Client
-	CipherSuites map[string]CipherSuite
+	Clients []Client
 }
 
 // Client is a definition of a TLS client with all the parameters it supports
@@ -100,22 +97,45 @@ type Encryption struct {
 }
 
 type ClientSupport struct {
-	IsSupported               bool   `json:"isSupported"`
-	NegotiatedCiphersuite     string `json:"negotiatedCiphersuite,omitempty"`
-	NegotiatedCiphersuiteCode int    `json:"negotiatedCiphersuiteCode,omitempty"`
+	IsSupported bool   `json:"is_supported"`
+	Ciphersuite string `json:"ciphersuite,omitempty"`
+	Code        int    `json:"code,omitempty"`
+	Curve       string `json:"curve,omitempty"`
+	Protocol    string `json:"protocol,omitempty"`
 }
 
 func (w slabscrunner) Run(in worker.Input, res chan worker.Result) {
 	ClientsSupport := make(map[string]ClientSupport)
+	// Loop over every client defined in the sslLabs document and check if they can
+	// negotiate one of the ciphersuite measured on the server
 	for _, client := range w.Clients {
 		var cs ClientSupport
 		for _, clientCiphersuite := range client.SuiteIds {
 			for _, serverCiphersuite := range in.Connection.CipherSuite {
-				serverCiphersuiteCode := w.CipherSuites[serverCiphersuite.Cipher].Code
+				serverCiphersuiteCode := constants.CipherSuites[serverCiphersuite.Cipher].Code
 				if clientCiphersuite == int(serverCiphersuiteCode) {
+					// if the ciphersuite is DHE, verify that the client support the DH size
+					if strings.HasPrefix(serverCiphersuite.Cipher, "DHE-") &&
+						client.MaxDhBits > 0 &&
+						!clientSupportsDHE(client, serverCiphersuite) {
+						continue
+					}
+					// if the ciphersuite is ECDHE, verify that the client supports the curve
+					if strings.HasPrefix(serverCiphersuite.Cipher, "ECDHE-") && len(client.EllipticCurves) > 0 {
+						cs.Curve = findClientCurve(client, serverCiphersuite)
+						if cs.Curve == "" {
+							continue
+						}
+					}
+					cs.Protocol = findClientProtocol(client, serverCiphersuite)
+					if cs.Protocol == "" {
+						continue
+					}
+					// if we reached this point, the client is able to establish a connection
+					// to the server. we flag it as supported and go to the next client.
 					cs.IsSupported = true
-					cs.NegotiatedCiphersuite = serverCiphersuite.Cipher
-					cs.NegotiatedCiphersuiteCode = clientCiphersuite
+					cs.Ciphersuite = serverCiphersuite.Cipher
+					cs.Code = clientCiphersuite
 					goto nextClient
 				}
 			}
@@ -133,6 +153,57 @@ func (w slabscrunner) Run(in worker.Input, res chan worker.Result) {
 		Errors:     nil,
 		Result:     out,
 	}
+}
+
+func clientSupportsDHE(client Client, serverCiphersuite connection.Ciphersuite) bool {
+	// extract the dhe bits from the pfs string
+	split := strings.Split(serverCiphersuite.PFS, ",")
+	if len(split) < 2 {
+		return false
+	}
+	split = strings.Split(split[1], "b")
+	if len(split) < 2 {
+		return false
+	}
+	dhsize, err := strconv.Atoi(split[0])
+	if err != nil {
+		return false
+	}
+	if client.MaxDhBits < dhsize {
+		return false
+	}
+	return true
+}
+
+func findClientCurve(client Client, serverCiphersuite connection.Ciphersuite) string {
+	for _, code := range client.EllipticCurves {
+		// convert curve code to name
+		for _, curveRef := range constants.Curves {
+			if int(curveRef.Code) == code {
+				for _, serverCurves := range serverCiphersuite.Curves {
+					if curveRef.Name == serverCurves || curveRef.OpenSSLName == serverCurves {
+						return curveRef.Name
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func findClientProtocol(client Client, serverCiphersuite connection.Ciphersuite) string {
+	for _, serverProto := range serverCiphersuite.Protocols {
+		var spcode int
+		for _, proto := range constants.Protocols {
+			if proto.OpenSSLName == serverProto {
+				spcode = proto.Code
+			}
+		}
+		if client.LowestProtocol <= spcode && client.HighestProtocol >= spcode {
+			return serverProto
+		}
+	}
+	return ""
 }
 
 func (w slabscrunner) error(res chan worker.Result, messageFormat string, args ...interface{}) {
