@@ -1,6 +1,9 @@
 package mozillaGradingWorker
 
-import "github.com/mozilla/tls-observatory/connection"
+import (
+	"github.com/mozilla/tls-observatory/connection"
+	"github.com/mozilla/tls-observatory/constants"
+)
 
 func gradeCiphers(connInfo connection.Stored) (categoryResults, error) {
 	res := categoryResults{}
@@ -12,7 +15,7 @@ func gradeCiphers(connInfo connection.Stored) (categoryResults, error) {
 
 		cipher := cs.Cipher
 
-		if c, ok := opensslciphersuites[cipher]; ok {
+		if c, ok := constants.CipherSuites[cipher]; ok {
 			if c.Enc.Bits > best {
 				best = c.Enc.Bits
 			}

@@ -10,8 +10,7 @@ import (
 )
 
 var workerName = "mozillaGradingWorker"
-var workerDesc = `The grading worker provides an SSLabs-like grade for the TLS configuration of
-the audited target`
+var workerDesc = `The grading worker provides an SSLabs-like grade for the TLS configuration of the audited target`
 
 // EvaluationResults contains the results of the mozillaEvaluationWorker
 type EvaluationResults struct {
@@ -26,38 +25,12 @@ type categoryResults struct {
 	Remarks        []string
 }
 
-// CipherSuite represent a ciphersuite generated and recognised by OpenSSL
-type CipherSuite struct {
-	IANAName   string     `json:"iana_name"`
-	GnuTLSName string     `json:"gnutls_name"`
-	NSSName    string     `json:"nss_name"`
-	Proto      string     `json:"proto"`
-	Kx         string     `json:"kx"`
-	Au         string     `json:"au"`
-	Enc        Encryption `json:"encryption"`
-	Mac        string     `json:"mac"`
-	Code       uint64     `json:"code"`
-}
-
-//Encryption represents the encryption aspects of a Ciphersuite
-type Encryption struct {
-	Cipher string `json:"cipher"`
-	Bits   int    `json:"key"`
-}
-
 type eval struct {
 }
 
-var opensslciphersuites = make(map[string]CipherSuite)
 var log = logger.GetLogger()
 
 func init() {
-	err := json.Unmarshal([]byte(OpenSSLCiphersuites), &opensslciphersuites)
-	if err != nil {
-		log.Error(err)
-		log.Error("Could not load OpenSSL ciphersuites. Grading Worker not available")
-		return
-	}
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
 }
 
