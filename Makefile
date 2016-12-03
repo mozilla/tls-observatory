@@ -23,7 +23,7 @@ GOLDFLAGS	:= -ldflags "-X main.version=$(BUILDREV)"
 
 all: test tlsobs-scanner tlsobs-api tlsobs tlsobs-runner
 
-tlsobs-scanner:
+tlsobs-scanner: worker-generation
 	echo building TLS Observatory Scanner for $(OS)/$(ARCH)
 	$(GO) build $(GOOPTS) -o $(GOPATH)/bin/tlsobs-scanner$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-scanner
 
@@ -45,6 +45,10 @@ vendor:
 test:
 	$(GO) test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
 	$(GO) test github.com/mozilla/tls-observatory/tlsobs-runner
+
+worker-generation:
+	$(GO) generate github.com/mozilla/tls-observatory/worker/mozillaGradingWorker 
+	$(GO) generate github.com/mozilla/tls-observatory/worker/sslLabsClientSupport
 
 truststores:
 	cd truststores && git pull origin master && cd ..

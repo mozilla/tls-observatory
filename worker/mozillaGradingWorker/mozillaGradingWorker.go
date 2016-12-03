@@ -28,11 +28,15 @@ type categoryResults struct {
 
 // CipherSuite represent a ciphersuite generated and recognised by OpenSSL
 type CipherSuite struct {
-	Proto string     `json:"proto"`
-	Kx    string     `json:"kx"`
-	Au    string     `json:"au"`
-	Enc   Encryption `json:"encryption"`
-	Mac   string     `json:"mac"`
+	IANAName   string     `json:"iana_name"`
+	GnuTLSName string     `json:"gnutls_name"`
+	NSSName    string     `json:"nss_name"`
+	Proto      string     `json:"proto"`
+	Kx         string     `json:"kx"`
+	Au         string     `json:"au"`
+	Enc        Encryption `json:"encryption"`
+	Mac        string     `json:"mac"`
+	Code       uint64     `json:"code"`
 }
 
 //Encryption represents the encryption aspects of a Ciphersuite
@@ -57,7 +61,6 @@ func init() {
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
 }
 
-//go:generate  go run /go/src/$PROJECT/tools/extractCiphersuites.go
 // Run implements the worker interface.It is called to get the worker results.
 func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
