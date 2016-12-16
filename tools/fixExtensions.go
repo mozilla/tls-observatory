@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"os"
 
+	"github.com/lib/pq"
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/database"
 )
@@ -28,8 +30,6 @@ func main() {
 		fmt.Printf("\nProcessing batch %d to %d: ", batch, batch+100)
 		rows, err := db.Query(`SELECT id, raw_cert
 					FROM certificates
-					WHERE x509_certificatepolicies IS NULL OR x509_certificatepolicies='null'
-					   OR permitted_names IS NULL OR permitted_names='null'
 					ORDER BY id ASC
 					LIMIT 100`)
 		if rows != nil {
@@ -65,20 +65,41 @@ func main() {
 				log.Printf("error while marshalling policies for cert %d: %v", id, err)
 				continue
 			}
-			permittednames, err := json.Marshal(cert.X509v3Extensions.PermittedNames)
 			if err != nil {
 				log.Printf("error while marshalling permitted names for cert %d: %v", id, err)
 				continue
 			}
-			log.Printf("id=%d, subject=%s, policies=%s, permittednames=%s", id, cert.Subject.String(), policies, permittednames)
+			ipNetSliceToStringSlice := func(in []net.IPNet) []string {
+				out := make([]string, 0)
+				for _, ipnet := range in {
+					out = append(out, ipnet.String())
+				}
+				return out
+			}
+			permittedIPAddresses := ipNetSliceToStringSlice(cert.X509v3Extensions.PermittedIPAddresses)
+			excludedIPAddresses := ipNetSliceToStringSlice(cert.X509v3Extensions.ExcludedIPAddresses)
+			if cert.X509v3Extensions.PermittedDNSDomains == nil {
+				cert.X509v3Extensions.PermittedDNSDomains = make([]string, 0)
+			}
+			if cert.X509v3Extensions.ExcludedDNSDomains == nil {
+				cert.X509v3Extensions.ExcludedDNSDomains = make([]string, 0)
+			}
+			log.Printf("id=%d, subject=%s, policies=%s, is_technically_constrained=%t", id, cert.Subject.String(),
+				policies, cert.X509v3Extensions.IsTechnicallyConstrained)
 			_, err = db.Exec(`UPDATE certificates
 						SET x509_certificatepolicies=$1,
-						    permitted_names=$2,
-						    is_name_constrained=$3
-						WHERE id=$4`,
+						    permitted_dns_domains=$2,
+						    permitted_ip_addresses=$3,
+						    excluded_dns_domains=$4,
+						    excluded_ip_addresses=$5,
+						    is_technically_constrained=$6
+						WHERE id=$7`,
 				policies,
-				permittednames,
-				cert.X509v3Extensions.IsNameConstrained,
+				pq.Array(&cert.X509v3Extensions.PermittedDNSDomains),
+				pq.Array(&permittedIPAddresses),
+				pq.Array(&cert.X509v3Extensions.ExcludedDNSDomains),
+				pq.Array(&excludedIPAddresses),
+				cert.X509v3Extensions.IsTechnicallyConstrained,
 				id)
 			if err != nil {
 				fmt.Println("error while updating cert", id, "in database:", err)

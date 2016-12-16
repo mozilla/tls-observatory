@@ -94,8 +94,6 @@ type Extensions struct {
 	SubjectAlternativeName   []string    `json:"subjectAlternativeName,omitempty"`
 	CRLDistributionPoints    []string    `json:"crlDistributionPoint,omitempty"`
 	PolicyIdentifiers        []string    `json:"policyIdentifiers,omitempty"`
-	IsNameConstrained        bool        `json:"isNameConstrained,omitempty"`
-	PermittedNames           []string    `json:"permittedNames,omitempty"`
 	PermittedDNSDomains      []string    `json:"permittedDNSNames,omitempty"`
 	PermittedIPAddresses     []net.IPNet `json:"permittedIPAddresses,omitempty"`
 	ExcludedDNSDomains       []string    `json:"excludedDNSNames,omitempty"`
@@ -365,8 +363,6 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 	san = append(san, cert.DNSNames...)
 	crld := make([]string, 0)
 	crld = append(crld, cert.CRLDistributionPoints...)
-	pnames := make([]string, 0)
-	pnames = append(pnames, cert.PermittedDNSDomains...)
 	constraints, _ := certconstraints.Get(cert)
 	ext := Extensions{
 		AuthorityKeyId:           base64.StdEncoding.EncodeToString(cert.AuthorityKeyId),
@@ -376,15 +372,11 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 		PolicyIdentifiers:        getPolicyIdentifiers(cert),
 		SubjectAlternativeName:   san,
 		CRLDistributionPoints:    crld,
-		PermittedNames:           pnames,
 		PermittedDNSDomains:      constraints.PermittedDNSDomains,
 		ExcludedDNSDomains:       constraints.ExcludedDNSDomains,
 		PermittedIPAddresses:     constraints.PermittedIPAddresses,
 		ExcludedIPAddresses:      constraints.ExcludedIPAddresses,
 		IsTechnicallyConstrained: certconstraints.IsTechnicallyConstrained(cert),
-	}
-	if len(ext.PermittedNames) > 0 {
-		ext.IsNameConstrained = true
 	}
 	return ext
 }

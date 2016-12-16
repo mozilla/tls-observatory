@@ -46,11 +46,6 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		return -1, err
 	}
 
-	permittednames, err := json.Marshal(cert.X509v3Extensions.PermittedNames)
-	if err != nil {
-		return -1, err
-	}
-
 	issuer, err := json.Marshal(cert.Issuer)
 	if err != nil {
 		return -1, err
@@ -164,8 +159,6 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		keyusage,
 		subaltname,
 		policies,
-		cert.X509v3Extensions.IsNameConstrained,
-		permittednames,
 		cert.SignatureAlgorithm,
 		domainstr,
 		cert.Raw,
@@ -307,13 +300,13 @@ type Scannable interface {
 func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	cert := certificate.Certificate{}
 
-	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, permittednames, issuer, subject, key []byte
+	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, issuer, subject, key []byte
 	var permittedIPAddresses, excludedIPAddresses []string
 	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
 		&issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
-		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies, &cert.X509v3Extensions.IsNameConstrained, &permittednames,
+		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies,
 		&cert.SignatureAlgorithm, &cert.Raw,
 		pq.Array(&cert.X509v3Extensions.PermittedDNSDomains),
 		pq.Array(&permittedIPAddresses),
@@ -360,11 +353,6 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	}
 
 	err = json.Unmarshal(policies, &cert.X509v3Extensions.PolicyIdentifiers)
-	if err != nil {
-		return cert, err
-	}
-
-	err = json.Unmarshal(permittednames, &cert.X509v3Extensions.PermittedNames)
 	if err != nil {
 		return cert, err
 	}
