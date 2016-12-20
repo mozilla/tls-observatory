@@ -1,42 +1,77 @@
+// Copyright (c) 2016, Sean Treadway, SoundCloud Ltd.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+// Source code and contact info at http://github.com/streadway/amqp
+
+// +build integration
+
 package amqp
 
 import (
-	"log"
+	"net"
+	"sync"
 	"testing"
 )
 
 func TestChannelOpenOnAClosedConnectionFails(t *testing.T) {
-	conn, err := Dial("amqp://guest:guest@localhost:5672/")
-	if err != nil {
-		log.Fatalf("Could't connect to amqp server, err = %s", err)
-	}
+	conn := integrationConnection(t, "channel on close")
+
 	conn.Close()
 
-	if !conn.IsClosed() {
-		log.Fatalf("connection %s is expected to be closed", conn)
-	}
-
-	_, err = conn.Channel()
-	if err != ErrClosed {
-		log.Fatalf("channel.open on a closed connection %s is expected to fail", conn)
+	if _, err := conn.Channel(); err != ErrClosed {
+		t.Fatalf("channel.open on a closed connection %#v is expected to fail", conn)
 	}
 }
 
 func TestQueueDeclareOnAClosedConnectionFails(t *testing.T) {
-	conn, err := Dial("amqp://guest:guest@localhost:5672/")
-	if err != nil {
-		log.Fatalf("Could't connect to amqp server, err = %s", err)
-	}
+	conn := integrationConnection(t, "queue declare on close")
 	ch, _ := conn.Channel()
 
 	conn.Close()
 
-	if !conn.IsClosed() {
-		log.Fatalf("connection %s is expected to be closed", conn)
+	if _, err := ch.QueueDeclare("an example", false, false, false, false, nil); err != ErrClosed {
+		t.Fatalf("queue.declare on a closed connection %#v is expected to return ErrClosed, returned: %#v", conn, err)
 	}
+}
 
-	_, err = ch.QueueDeclare("an example", false, false, false, false, nil)
-	if err != ErrClosed {
-		log.Fatalf("queue.declare on a closed connection %s is expected to fail", conn)
+func TestConcurrentClose(t *testing.T) {
+	const concurrency = 32
+
+	conn := integrationConnection(t, "concurrent close")
+	defer conn.Close()
+
+	wg := sync.WaitGroup{}
+	wg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+
+			err := conn.Close()
+
+			if err == nil {
+				t.Log("first concurrent close was successful")
+				return
+			}
+
+			if err == ErrClosed {
+				t.Log("later concurrent close were successful and returned ErrClosed")
+				return
+			}
+
+			// BUG(st) is this really acceptable? we got a net.OpError before the
+			// connection was marked as closed means a race condition between the
+			// network connection and handshake state. It should be a package error
+			// returned.
+			if _, neterr := err.(*net.OpError); neterr {
+				t.Logf("unknown net.OpError during close, ignoring: %+v", err)
+				return
+			}
+
+			// A different/protocol error occurred indicating a race or missed condition
+			if _, other := err.(*Error); other {
+				t.Fatalf("Expected no error, or ErrClosed, or a net.OpError from conn.Close(), got %#v (%s) of type %T", err, err, err)
+			}
+		}()
 	}
+	wg.Wait()
 }
