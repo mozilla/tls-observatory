@@ -273,7 +273,7 @@ func (w slabscrunner) AnalysisPrinter(r []byte, printAll interface{}) (results [
 	if printAll != nil && printAll.(bool) == true {
 		results = append(results, "* SSLLabs Client Support: showing all clients compatibility")
 	} else {
-		results = append(results, "* SSLLabs Client Support: showing most recent compatible clients")
+		results = append(results, "* SSLLabs Client Support: showing oldest known clients")
 	}
 	var productsSupport = make(map[string]ClientSupport)
 	// sort the list of clients, it's nicer to display
