@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/mozilla/scribe"
 	"github.com/mozilla/tls-observatory/connection"
@@ -261,8 +261,7 @@ func (w slabscrunner) error(res chan worker.Result, messageFormat string, args .
 	}
 }
 
-type eval struct {
-}
+var number = regexp.MustCompile(`^[0-9]+$`)
 
 func (w slabscrunner) AnalysisPrinter(r []byte, printAll interface{}) (results []string, err error) {
 	var cs ClientsSupport
@@ -310,19 +309,14 @@ func (w slabscrunner) AnalysisPrinter(r []byte, printAll interface{}) (results [
 		prevClient := productsSupport[client.Name]
 
 		// FIXME: scribe doesn't like single number versions, so add a ".0" to work around it
+
 		cVersion := client.Version
-		if len(cVersion) > 0 && unicode.IsDigit(rune(cVersion[0])) {
-			_, err = strconv.Atoi(cVersion)
-			if err == nil {
-				cVersion += ".0"
-			}
+		if number.MatchString(cVersion) {
+			cVersion += ".0"
 		}
 		pVersion := prevClient.Version
-		if len(pVersion) > 0 && unicode.IsDigit(rune(pVersion[0])) {
-			_, err = strconv.Atoi(pVersion)
-			if err == nil {
-				pVersion += ".0"
-			}
+		if number.MatchString(pVersion) {
+			pVersion += ".0"
 		}
 		// compare the version of the previous and current clients,
 		// if the current client is older, store it instead of the previous one
