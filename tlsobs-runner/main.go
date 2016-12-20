@@ -90,7 +90,9 @@ func (r Run) start(id int) {
 	for {
 		cexpr, err := cronexpr.Parse(r.Cron)
 		if err != nil {
-			panic(err)
+			log.Printf("Failed to parse cron expression %q: %v", r.Cron, err)
+			time.Sleep(time.Minute)
+			continue
 		}
 		// sleep until the next run is scheduled to happen
 		nrun := cexpr.Next(time.Now())
@@ -126,10 +128,10 @@ type scan struct {
 func (r Run) scan(target string) (id int64, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("scan(target=%q) -> %v", e)
+			err = fmt.Errorf("scan(target=%q) -> %v", target, e)
 		}
 	}()
-	resp, err := http.Post(observatory+"/api/v1/scan?rescan=true&target="+target, "application/json", nil)
+	resp, err := http.Post(observatory+"/api/v1/scan?target="+target, "application/json", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -137,6 +139,9 @@ func (r Run) scan(target string) (id int64, err error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("Scan failed. HTTP %d: %s", resp.StatusCode, body))
 	}
 	var s scan
 	err = json.Unmarshal(body, &s)
@@ -177,7 +182,7 @@ func (r Run) evaluate(id int64, notifchan chan Notification, wg *sync.WaitGroup)
 			panic(err)
 		}
 		if results.Complperc >= 100 {
-			debugprint("scan id %s completed", id)
+			debugprint("scan id %d completed", id)
 			break
 		}
 		time.Sleep(5 * time.Second)
