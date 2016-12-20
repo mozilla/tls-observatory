@@ -686,8 +686,16 @@ func (e eval) AnalysisPrinter(r []byte, targetLevel interface{}) (results []stri
 	}
 	results = append(results, fmt.Sprintf("* Mozilla evaluation: %s", eval.Level))
 	levels := []string{"bad", "old", "intermediate", "modern"}
-	if targetLevel.(string) == "old" || targetLevel.(string) == "intermediate" || targetLevel.(string) == "modern" {
-		levels = []string{"bad", targetLevel.(string)}
+	if targetLevel == nil || targetLevel.(string) == "" {
+		levels = []string{"bad", "modern"}
+	} else {
+		switch targetLevel.(string) {
+		case "old", "intermediate", "modern":
+			levels = []string{"bad", targetLevel.(string)}
+		default:
+			err = fmt.Errorf("Invalid target level %q. Must be old, intermediate or modern.", targetLevel.(string))
+			return
+		}
 	}
 	for _, lvl := range levels {
 		if _, ok := eval.Failures[lvl]; ok && len(eval.Failures[lvl]) > 0 {
@@ -713,7 +721,7 @@ func (e eval) AnalysisPrinter(r []byte, targetLevel interface{}) (results []stri
 			fmt.Sprintf("  - oldest clients: %s", strings.Join(sstls.Configurations[eval.Level].OldestClients, ", ")))
 	}
 	if targetLevel.(string) != "" && eval.Level != targetLevel.(string) {
-		err = fmt.Errorf("Measured level %q does not match target level %q",
+		err = fmt.Errorf("  - measured level is %q and does not match target level %q",
 			eval.Level, targetLevel.(string))
 	}
 	return
