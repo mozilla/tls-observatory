@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/mozilla/scribe"
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/constants"
 	"github.com/mozilla/tls-observatory/logger"
@@ -50,6 +52,7 @@ type slabscrunner struct {
 type Client struct {
 	ID                       int      `json:"id"`
 	Name                     string   `json:"name"`
+	Platform                 string   `json:"platform"`
 	Version                  string   `json:"version"`
 	HandshakeFormat          string   `json:"handshakeFormat"`
 	LowestProtocol           int      `json:"lowestProtocol"`
@@ -97,23 +100,51 @@ type Encryption struct {
 }
 
 type ClientSupport struct {
-	IsSupported bool   `json:"is_supported"`
-	Ciphersuite string `json:"ciphersuite,omitempty"`
-	Code        int    `json:"code,omitempty"`
-	Curve       string `json:"curve,omitempty"`
-	Protocol    string `json:"protocol,omitempty"`
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	Platform        string `json:"platform"`
+	IsSupported     bool   `json:"is_supported"`
+	Ciphersuite     string `json:"ciphersuite,omitempty"`
+	CiphersuiteCode uint64 `json:"ciphersuite_code,omitempty"`
+	Curve           string `json:"curve,omitempty"`
+	CurveCode       uint64 `json:"curve_code"`
+	Protocol        string `json:"protocol,omitempty"`
+	ProtocolCode    int    `json:"protocol_code"`
+}
+
+type ClientsSupport []ClientSupport
+
+func (slice ClientsSupport) Len() int {
+	return len(slice)
+}
+
+func (slice ClientsSupport) Less(i, j int) bool {
+	return slice[i].Name < slice[j].Name
+}
+
+func (slice ClientsSupport) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 func (w slabscrunner) Run(in worker.Input, res chan worker.Result) {
-	ClientsSupport := make(map[string]ClientSupport)
+	var clients ClientsSupport
+	dedupClients := make(map[string]bool)
 	// Loop over every client defined in the sslLabs document and check if they can
 	// negotiate one of the ciphersuite measured on the server
 	for _, client := range w.Clients {
-		var cs ClientSupport
+		// if we already processed a client with this name, version and platform, skip it
+		if _, ok := dedupClients[fmt.Sprintf("%s%s%s", client.Name, client.Version, client.Platform)]; ok {
+			continue
+		}
 		for _, clientCiphersuite := range client.SuiteIds {
 			for _, serverCiphersuite := range in.Connection.CipherSuite {
 				serverCiphersuiteCode := constants.CipherSuites[serverCiphersuite.Cipher].Code
 				if clientCiphersuite == int(serverCiphersuiteCode) {
+					var (
+						curve, protocol string
+						curveCode       uint64
+						protocolCode    int
+					)
 					// if the ciphersuite is DHE, verify that the client support the DH size
 					if strings.HasPrefix(serverCiphersuite.Cipher, "DHE-") &&
 						client.MaxDhBits > 0 &&
@@ -122,28 +153,42 @@ func (w slabscrunner) Run(in worker.Input, res chan worker.Result) {
 					}
 					// if the ciphersuite is ECDHE, verify that the client supports the curve
 					if strings.HasPrefix(serverCiphersuite.Cipher, "ECDHE-") && len(client.EllipticCurves) > 0 {
-						cs.Curve = findClientCurve(client, serverCiphersuite)
-						if cs.Curve == "" {
+						curve, curveCode = findClientCurve(client, serverCiphersuite)
+						if curve == "" {
 							continue
 						}
 					}
-					cs.Protocol = findClientProtocol(client, serverCiphersuite)
-					if cs.Protocol == "" {
+					protocol, protocolCode = findClientProtocol(client, serverCiphersuite)
+					if protocol == "" {
 						continue
 					}
 					// if we reached this point, the client is able to establish a connection
 					// to the server. we flag it as supported and go to the next client.
-					cs.IsSupported = true
-					cs.Ciphersuite = serverCiphersuite.Cipher
-					cs.Code = clientCiphersuite
+					clients = append(clients, ClientSupport{
+						Name:            client.Name,
+						Version:         client.Version,
+						Platform:        client.Platform,
+						IsSupported:     true,
+						Ciphersuite:     serverCiphersuite.Cipher,
+						CiphersuiteCode: serverCiphersuite.Code,
+						Curve:           curve,
+						CurveCode:       curveCode,
+						Protocol:        protocol,
+						ProtocolCode:    protocolCode,
+					})
 					goto nextClient
 				}
 			}
 		}
+		// if we reach this point, it means no support was found for this client
+		clients = append(clients, ClientSupport{
+			Name:        client.Name,
+			Version:     client.Version,
+			IsSupported: false,
+		})
 	nextClient:
-		ClientsSupport[fmt.Sprintf("%s %s", client.Name, client.Version)] = cs
 	}
-	out, err := json.Marshal(ClientsSupport)
+	out, err := json.Marshal(clients)
 	if err != nil {
 		w.error(res, "Failed to marshal results: %v", err)
 	}
@@ -175,23 +220,23 @@ func clientSupportsDHE(client Client, serverCiphersuite connection.Ciphersuite) 
 	return true
 }
 
-func findClientCurve(client Client, serverCiphersuite connection.Ciphersuite) string {
+func findClientCurve(client Client, serverCiphersuite connection.Ciphersuite) (string, uint64) {
 	for _, code := range client.EllipticCurves {
 		// convert curve code to name
 		for _, curveRef := range constants.Curves {
 			if int(curveRef.Code) == code {
 				for _, serverCurves := range serverCiphersuite.Curves {
 					if curveRef.Name == serverCurves || curveRef.OpenSSLName == serverCurves {
-						return curveRef.Name
+						return curveRef.Name, curveRef.Code
 					}
 				}
 			}
 		}
 	}
-	return ""
+	return "", 0
 }
 
-func findClientProtocol(client Client, serverCiphersuite connection.Ciphersuite) string {
+func findClientProtocol(client Client, serverCiphersuite connection.Ciphersuite) (string, int) {
 	for _, serverProto := range serverCiphersuite.Protocols {
 		var spcode int
 		for _, proto := range constants.Protocols {
@@ -200,10 +245,10 @@ func findClientProtocol(client Client, serverCiphersuite connection.Ciphersuite)
 			}
 		}
 		if client.LowestProtocol <= spcode && client.HighestProtocol >= spcode {
-			return serverProto
+			return serverProto, spcode
 		}
 	}
-	return ""
+	return "", 0
 }
 
 func (w slabscrunner) error(res chan worker.Result, messageFormat string, args ...interface{}) {
@@ -213,4 +258,88 @@ func (w slabscrunner) error(res chan worker.Result, messageFormat string, args .
 		WorkerName: workerName,
 		Result:     out,
 	}
+}
+
+type eval struct {
+}
+
+func (w slabscrunner) AnalysisPrinter(r []byte, printAll interface{}) (results []string, err error) {
+	var cs ClientsSupport
+	err = json.Unmarshal(r, &cs)
+	if err != nil {
+		err = fmt.Errorf("SSLLabs Client Support: failed to parse results: %v", err)
+		return
+	}
+	if printAll != nil && printAll.(bool) == true {
+		results = append(results, "* SSLLabs Client Support: showing all clients compatibility")
+	} else {
+		results = append(results, "* SSLLabs Client Support: showing most recent compatible clients")
+	}
+	var productsSupport = make(map[string]ClientSupport)
+	// sort the list of clients, it's nicer to display
+	sort.Sort(cs)
+	for _, client := range cs {
+		// if we want all clients, store the result and go to next entry
+		if printAll != nil && printAll.(bool) == true {
+			result := fmt.Sprintf("  - %s %s", client.Name, client.Version)
+			if client.Platform != "" {
+				result += fmt.Sprintf(" (%s)", client.Platform)
+			}
+			if client.IsSupported {
+				result += fmt.Sprintf(": yes, %s %s %s", client.Protocol, client.Ciphersuite, client.Curve)
+			} else {
+				result += fmt.Sprintf(": no")
+			}
+			results = append(results, result)
+			continue
+		}
+		// Once we reach this point, we only want supported clients
+		if !client.IsSupported {
+			continue
+		}
+		// if we only want the oldest compatible client, some dark magic is required
+		// to parse the version of each client, which varies in format, and figure out
+		// the oldest
+		if _, ok := productsSupport[client.Name]; !ok {
+			// this is the first supported client of this name that we encounter,
+			// no comparison needed, simply store it
+			productsSupport[client.Name] = client
+			continue
+		}
+		prevClient := productsSupport[client.Name]
+		// FIXME: scribe doesn't like single number versions, so add a ".0" to work around it
+		cVersion := client.Version
+		_, err = strconv.Atoi(cVersion)
+		if err == nil {
+			cVersion += ".0"
+		}
+		pVersion := prevClient.Version
+		_, err = strconv.Atoi(pVersion)
+		if err == nil {
+			pVersion += ".0"
+		}
+		// compare the version of the previous and current clients,
+		// if the current client is older, store it instead of the previous one
+		isOlder, err := scribe.TestEvrCompare(scribe.EVROP_LESS_THAN, cVersion, pVersion)
+		if err != nil {
+			log.Printf("Failed to compare version %s with version %s for client %s: %v",
+				pVersion, cVersion, client.Name, err)
+		}
+		if isOlder {
+			productsSupport[client.Name] = client
+		}
+	}
+	if printAll != nil && printAll.(bool) == true {
+		// if we just want to print all clients, return here
+		return
+	}
+	// if we only want the oldest client, build the list here
+	var supportedClients []string
+	for _, clientName := range []string{"Firefox", "Chrome", "Edge", "IE", "Safari", "Opera", "Android", "OpenSSL", "Java"} {
+		client := productsSupport[clientName]
+		result := fmt.Sprintf("%s %s", client.Name, client.Version)
+		supportedClients = append(supportedClients, result)
+	}
+	results = append(results, fmt.Sprintf("  - %s", strings.Join(supportedClients, ", ")))
+	return
 }
