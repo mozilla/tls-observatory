@@ -83,7 +83,12 @@ func evrExtract(s string) (evr, error) {
 	}
 
 	if idx >= len(s) {
-		return ret, fmt.Errorf("evrExtract: all digits")
+		// The entire version string is a digit; in this case just set the
+		// version value to s
+		ret.epoch = "0"
+		ret.version = s
+		ret.release = ""
+		return ret, nil
 	}
 
 	if s[idx] == ':' {

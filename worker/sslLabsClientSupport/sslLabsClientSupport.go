@@ -307,23 +307,12 @@ func (w slabscrunner) AnalysisPrinter(r []byte, printAll interface{}) (results [
 			continue
 		}
 		prevClient := productsSupport[client.Name]
-
-		// FIXME: scribe doesn't like single number versions, so add a ".0" to work around it
-
-		cVersion := client.Version
-		if number.MatchString(cVersion) {
-			cVersion += ".0"
-		}
-		pVersion := prevClient.Version
-		if number.MatchString(pVersion) {
-			pVersion += ".0"
-		}
 		// compare the version of the previous and current clients,
 		// if the current client is older, store it instead of the previous one
-		isOlder, err := scribe.TestEvrCompare(scribe.EVROP_LESS_THAN, cVersion, pVersion)
+		isOlder, err := scribe.TestEvrCompare(scribe.EVROP_LESS_THAN, client.Version, prevClient.Version)
 		if err != nil {
 			log.Printf("Failed to compare version %s with version %s for client %s: %v",
-				pVersion, cVersion, client.Name, err)
+				client.Version, prevClient.Version, client.Name, err)
 		}
 		if isOlder {
 			productsSupport[client.Name] = client
