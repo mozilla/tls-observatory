@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -156,6 +157,9 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("Failed to find scan id %d in database", id))
 		return
 	}
+
+	// display the analysis results in alphabetical order of worker name
+	sort.Sort(scan.AnalysisResults)
 
 	jsScan, err := json.Marshal(scan)
 	if err != nil {
