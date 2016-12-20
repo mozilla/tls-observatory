@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/mozilla/scribe"
 	"github.com/mozilla/tls-observatory/connection"
@@ -307,16 +308,21 @@ func (w slabscrunner) AnalysisPrinter(r []byte, printAll interface{}) (results [
 			continue
 		}
 		prevClient := productsSupport[client.Name]
+
 		// FIXME: scribe doesn't like single number versions, so add a ".0" to work around it
 		cVersion := client.Version
-		_, err = strconv.Atoi(cVersion)
-		if err == nil {
-			cVersion += ".0"
+		if len(cVersion) > 0 && unicode.IsDigit(rune(cVersion[0])) {
+			_, err = strconv.Atoi(cVersion)
+			if err == nil {
+				cVersion += ".0"
+			}
 		}
 		pVersion := prevClient.Version
-		_, err = strconv.Atoi(pVersion)
-		if err == nil {
-			pVersion += ".0"
+		if len(pVersion) > 0 && unicode.IsDigit(rune(pVersion[0])) {
+			_, err = strconv.Atoi(pVersion)
+			if err == nil {
+				pVersion += ".0"
+			}
 		}
 		// compare the version of the previous and current clients,
 		// if the current client is older, store it instead of the previous one
