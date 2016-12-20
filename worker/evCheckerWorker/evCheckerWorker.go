@@ -97,6 +97,6 @@ func (w evWorker) error(res chan worker.Result, messageFormat string, args ...in
 	res <- worker.Result{
 		Success:    false,
 		WorkerName: workerName,
-		Result: out,
+		Result:     out,
 	}
 }

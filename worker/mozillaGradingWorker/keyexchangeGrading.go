@@ -7,6 +7,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/mozilla/tls-observatory/connection"
+	"github.com/mozilla/tls-observatory/constants"
 )
 
 //ECCRSAKeySize is used to translate ECC keys length to their corresponding RSA ones
@@ -55,7 +56,7 @@ func getBitsForPubKey(cs connection.Ciphersuite) float64 {
 
 	cipher := cs.Cipher
 
-	if c, ok := opensslciphersuites[cipher]; ok {
+	if c, ok := constants.CipherSuites[cipher]; ok {
 		if c.Au == "ECDSA" {
 			if b, ok := ECCRSAKeySize[cs.PubKey]; ok {
 				return b

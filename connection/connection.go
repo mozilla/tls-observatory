@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strconv"
 	"time"
+
+	"github.com/mozilla/tls-observatory/constants"
 )
 
 //following two structs represent cipherscan output
@@ -41,6 +43,7 @@ type Stored struct {
 
 type Ciphersuite struct {
 	Cipher       string   `json:"cipher,omitempty"`
+	Code         uint64   `json:"code"`
 	Protocols    []string `json:"protocols,omitempty"`
 	PubKey       float64  `json:"pubkey,omitempty"`
 	SigAlg       string   `json:"sigalg,omitempty"`
@@ -134,6 +137,7 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 		newcipher := Ciphersuite{}
 
 		newcipher.Cipher = cipher.Cipher
+		newcipher.Code = constants.CipherSuites[cipher.Cipher].Code
 		newcipher.OCSPStapling = stringtoBool(cipher.OCSPStapling)
 		newcipher.PFS = cipher.PFS
 
