@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"strconv"
@@ -441,7 +440,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.IPs = make([]string, 0)
 
 	stored.Version = cert.Version
-	stored.Serial = strings.ToUpper(hex.EncodeToString(cert.SerialNumber.Bytes()))
+	stored.Serial = fmt.Sprintf("%X", cert.SerialNumber)
 	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
 
 	stored.Key, err = getPublicKeyInfo(cert)
