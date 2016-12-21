@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"os"
 
 	"github.com/lib/pq"
@@ -69,15 +68,6 @@ func main() {
 				log.Printf("error while marshalling permitted names for cert %d: %v", id, err)
 				continue
 			}
-			ipNetSliceToStringSlice := func(in []net.IPNet) []string {
-				out := make([]string, 0)
-				for _, ipnet := range in {
-					out = append(out, ipnet.String())
-				}
-				return out
-			}
-			permittedIPAddresses := ipNetSliceToStringSlice(cert.X509v3Extensions.PermittedIPAddresses)
-			excludedIPAddresses := ipNetSliceToStringSlice(cert.X509v3Extensions.ExcludedIPAddresses)
 			if cert.X509v3Extensions.PermittedDNSDomains == nil {
 				cert.X509v3Extensions.PermittedDNSDomains = make([]string, 0)
 			}
@@ -96,9 +86,9 @@ func main() {
 						WHERE id=$7`,
 				policies,
 				pq.Array(&cert.X509v3Extensions.PermittedDNSDomains),
-				pq.Array(&permittedIPAddresses),
+				pq.Array(&cert.X509v3Extensions.PermittedIPAddresses),
 				pq.Array(&cert.X509v3Extensions.ExcludedDNSDomains),
-				pq.Array(&excludedIPAddresses),
+				pq.Array(&cert.X509v3Extensions.ExcludedIPAddresses),
 				cert.X509v3Extensions.IsTechnicallyConstrained,
 				id)
 			if err != nil {

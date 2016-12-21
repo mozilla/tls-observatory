@@ -95,9 +95,9 @@ type Extensions struct {
 	CRLDistributionPoints    []string    `json:"crlDistributionPoint,omitempty"`
 	PolicyIdentifiers        []string    `json:"policyIdentifiers,omitempty"`
 	PermittedDNSDomains      []string    `json:"permittedDNSNames,omitempty"`
-	PermittedIPAddresses     []net.IPNet `json:"permittedIPAddresses,omitempty"`
+	PermittedIPAddresses     []string `json:"permittedIPAddresses,omitempty"`
 	ExcludedDNSDomains       []string    `json:"excludedDNSNames,omitempty"`
-	ExcludedIPAddresses      []net.IPNet `json:"excludedIPAddresses,omitempty"`
+	ExcludedIPAddresses      []string `json:"excludedIPAddresses,omitempty"`
 	IsTechnicallyConstrained bool        `json:"isTechnicallyConstrained"`
 }
 
@@ -364,6 +364,15 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 	crld := make([]string, 0)
 	crld = append(crld, cert.CRLDistributionPoints...)
 	constraints, _ := certconstraints.Get(cert)
+	ipNetSliceToStringSlice := func (in []net.IPNet) ([]string) {
+		out := make([]string, 0)
+		for _, ipnet := range in {
+			out = append(out, ipnet.String())
+		}
+		return out
+	}
+	permittedIPAddresses := ipNetSliceToStringSlice(constraints.PermittedIPAddresses)
+	excludedIPAddresses := ipNetSliceToStringSlice(constraints.ExcludedIPAddresses)
 	ext := Extensions{
 		AuthorityKeyId:           base64.StdEncoding.EncodeToString(cert.AuthorityKeyId),
 		SubjectKeyId:             base64.StdEncoding.EncodeToString(cert.SubjectKeyId),
@@ -374,8 +383,8 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 		CRLDistributionPoints:    crld,
 		PermittedDNSDomains:      constraints.PermittedDNSDomains,
 		ExcludedDNSDomains:       constraints.ExcludedDNSDomains,
-		PermittedIPAddresses:     constraints.PermittedIPAddresses,
-		ExcludedIPAddresses:      constraints.ExcludedIPAddresses,
+		PermittedIPAddresses:     permittedIPAddresses,
+		ExcludedIPAddresses:      excludedIPAddresses,
 		IsTechnicallyConstrained: certconstraints.IsTechnicallyConstrained(cert),
 	}
 	return ext

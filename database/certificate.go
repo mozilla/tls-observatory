@@ -11,7 +11,6 @@ import (
 
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/lib/pq"
-	"net"
 )
 
 // InsertCertificate inserts a x509 certificate to the database.
@@ -81,15 +80,6 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 
 		domainstr = strings.Join(domains, ",")
 	}
-	ipNetSliceToStringSlice := func (in []net.IPNet) ([]string) {
-		out := make([]string, 0)
-		for _, ipnet := range in {
-			out = append(out, ipnet.String())
-		}
-		return out
-	}
-	permittedIPAddresses := ipNetSliceToStringSlice(cert.X509v3Extensions.PermittedIPAddresses)
-	excludedIPAddresses := ipNetSliceToStringSlice(cert.X509v3Extensions.ExcludedIPAddresses)
 
 	// We want to store an empty array, not NULL
 	if cert.X509v3Extensions.PermittedDNSDomains == nil {
@@ -122,8 +112,6 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        x509_keyUsage,
                                        x509_subjectAltName,
                                        x509_certificatePolicies,
-                                       is_name_constrained,
-                                       permitted_names,
                                        signature_algo,
                                        domains,
                                        raw_cert,
@@ -134,7 +122,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        is_technically_constrained
                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
                                         $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-                                        $27, $28, $29, $30, $31, $32, $33)
+                                        $27, $28, $29, $30, $31)
                                         RETURNING id`,
 		cert.Serial,
 		cert.Hashes.SHA1,
@@ -163,9 +151,9 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		domainstr,
 		cert.Raw,
 		pq.Array(cert.X509v3Extensions.PermittedDNSDomains),
-		pq.Array(permittedIPAddresses),
+		pq.Array(cert.X509v3Extensions.PermittedIPAddresses),
 		pq.Array(cert.X509v3Extensions.ExcludedDNSDomains),
-		pq.Array(excludedIPAddresses),
+		pq.Array(cert.X509v3Extensions.ExcludedIPAddresses),
 		cert.X509v3Extensions.IsTechnicallyConstrained,
 	).Scan(&id)
 	if err != nil {
@@ -301,7 +289,6 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	cert := certificate.Certificate{}
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, issuer, subject, key []byte
-	var permittedIPAddresses, excludedIPAddresses []string
 	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
 		&issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
@@ -309,28 +296,14 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies,
 		&cert.SignatureAlgorithm, &cert.Raw,
 		pq.Array(&cert.X509v3Extensions.PermittedDNSDomains),
-		pq.Array(&permittedIPAddresses),
+		pq.Array(&cert.X509v3Extensions.PermittedIPAddresses),
 		pq.Array(&cert.X509v3Extensions.ExcludedDNSDomains),
-		pq.Array(&excludedIPAddresses),
+		pq.Array(&cert.X509v3Extensions.ExcludedIPAddresses),
 		&cert.X509v3Extensions.IsTechnicallyConstrained,
 	)
 	if err != nil {
 		return cert, err
 	}
-
-	stringSliceToIPNetSlice := func(in []string) (out []net.IPNet) {
-		for _, s := range in {
-			ip, ipnet, err := net.ParseCIDR(s)
-			if err != nil {
-				continue
-			}
-			ipnet.IP = ip
-			out = append(out, *ipnet)
-		}
-		return
-	}
-	cert.X509v3Extensions.PermittedIPAddresses = stringSliceToIPNetSlice(permittedIPAddresses)
-	cert.X509v3Extensions.ExcludedIPAddresses = stringSliceToIPNetSlice(excludedIPAddresses)
 
 	err = json.Unmarshal(crl_dist_points, &cert.X509v3Extensions.CRLDistributionPoints)
 	if err != nil {
@@ -672,8 +645,6 @@ var allCertificateColumns = []string{
 	"x509_keyUsage",
 	"x509_subjectAltName",
 	"x509_certificatePolicies",
-	"is_name_constrained",
-	"permitted_names",
 	"signature_algo",
 	"raw_cert",
 	"permitted_dns_domains",
