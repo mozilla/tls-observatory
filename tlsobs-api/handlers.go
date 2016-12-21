@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -109,9 +110,9 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("Failed to convert scan ID %d to JSON: %v", scan.ID, err))
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
-	w.Header().Set("Content-Type", "application/json")
 }
 
 // ResultHandler handles the results endpoint of the api.
@@ -157,15 +158,18 @@ func ResultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// display the analysis results in alphabetical order of worker name
+	sort.Sort(scan.AnalysisResults)
+
 	jsScan, err := json.Marshal(scan)
 	if err != nil {
 		httpError(w, r, http.StatusInternalServerError,
 			fmt.Sprintf("Failed to convert scan data into JSON: %v", err))
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(jsScan))
-	w.Header().Set("Content-Type", "application/json")
 }
 
 // CertificateHandler handles the /certificate endpoint of the api.
@@ -355,9 +359,9 @@ func PathsHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("Could not convert certificate paths to JSON: %v", err))
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(pathsJson)
-	w.Header().Set("Content-Type", "application/json")
 	return
 }
 
@@ -389,10 +393,9 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 			httpError(w, r, http.StatusInternalServerError, "Could not marshal certificates")
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
 		w.Write(certsJSON)
-		w.Header().Set("Content-Type", "application/json")
 	case "pem":
 		var buffer bytes.Buffer
 		for _, cert := range certs {
@@ -453,6 +456,7 @@ func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 			fmt.Sprintf("Could not convert certificate to JSON: %v", err))
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
 		w.WriteHeader(http.StatusOK)
@@ -460,7 +464,6 @@ func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 		w.WriteHeader(http.StatusCreated)
 	}
 	w.Write(certJson)
-	w.Header().Set("Content-Type", "application/json")
 }
 
 func PreflightHandler(w http.ResponseWriter, r *http.Request) {

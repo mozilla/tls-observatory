@@ -103,7 +103,7 @@ const (
             "tree_size": 8285192,
             "timestamp": 1441360035224,
             "sha256_root_hash": "5g2CdT06dF6YcEDPYO50jQWqRvnGwi5BcgGYY10e3+I=",
-            "tree_head_signature": "BAMARLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAHBLAH",
+            "tree_head_signature": "BAMASDBGAiEAnGFvHwZJsSMkj7nd+Hshd9lOcWQvi1HIA2t1D47I1W4CIQCGu7+aVm0y/hxWGk+HcFIqoA9DptQkdxUdgIrdq5LRQX==",
             "log_id": "aPaY+B9kgr46jO65KB1M/HFRXWeT1ETRCmesu09P+8Q="
           }
         ]
@@ -194,7 +194,7 @@ func expectStorageHasFeedback(t *testing.T, s *Storage, chain []string, sct stri
 func mustGet(t *testing.T, f func() (int64, error)) int64 {
 	v, err := f()
 	if err != nil {
-		t.Fatalf("Got error while calling %v: %v", f, err)
+		t.Fatalf("Got error while calling %p: %v", f, err)
 	}
 	return v
 }

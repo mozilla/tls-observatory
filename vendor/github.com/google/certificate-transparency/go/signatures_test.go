@@ -1,7 +1,6 @@
 package ct
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/dsa"
 	"crypto/ecdsa"
@@ -11,6 +10,8 @@ import (
 	"encoding/hex"
 	mrand "math/rand"
 	"testing"
+
+	"github.com/google/certificate-transparency/go/tls"
 )
 
 const (
@@ -139,17 +140,17 @@ func mustDehex(t *testing.T, h string) []byte {
 }
 
 func sigTestSCTWithSignature(t *testing.T, sig, keyID string) SignedCertificateTimestamp {
-	ds, err := UnmarshalDigitallySigned(bytes.NewReader(mustDehex(t, sig)))
-	if err != nil {
+	var ds DigitallySigned
+	if _, err := tls.Unmarshal(mustDehex(t, sig), &ds); err != nil {
 		t.Fatalf("Failed to unmarshal sigTestCertSCTSignatureEC: %v", err)
 	}
-	var id SHA256Hash
-	copy(id[:], mustDehex(t, keyID))
+	var id LogID
+	copy(id.KeyID[:], mustDehex(t, keyID))
 	return SignedCertificateTimestamp{
 		SCTVersion: V1,
 		LogID:      id,
 		Timestamp:  sigTestSCTTimestamp,
-		Signature:  *ds,
+		Signature:  ds,
 	}
 }
 
@@ -191,18 +192,18 @@ func sigTestCertLogEntry(t *testing.T) LogEntry {
 		Leaf: MerkleTreeLeaf{
 			Version:  V1,
 			LeafType: TimestampedEntryLeafType,
-			TimestampedEntry: TimestampedEntry{
+			TimestampedEntry: &TimestampedEntry{
 				Timestamp: sigTestSCTTimestamp,
 				EntryType: X509LogEntryType,
-				X509Entry: mustDehex(t, sigTestDERCertString),
+				X509Entry: &ASN1Cert{Data: mustDehex(t, sigTestDERCertString)},
 			},
 		},
 	}
 }
 
 func sigTestDefaultSTH(t *testing.T) SignedTreeHead {
-	ds, err := UnmarshalDigitallySigned(bytes.NewReader(mustDehex(t, sigTestDefaultSTHSignature)))
-	if err != nil {
+	var ds DigitallySigned
+	if _, err := tls.Unmarshal(mustDehex(t, sigTestDefaultSTHSignature), &ds); err != nil {
 		t.Fatalf("Failed to unmarshal sigTestCertSCTSignatureEC: %v", err)
 	}
 	var rootHash SHA256Hash
@@ -212,7 +213,7 @@ func sigTestDefaultSTH(t *testing.T) SignedTreeHead {
 		Timestamp:         sigTestDefaultSTHTimestamp,
 		TreeSize:          sigTestDefaultTreeSize,
 		SHA256RootHash:    rootHash,
-		TreeHeadSignature: *ds,
+		TreeHeadSignature: ds,
 	}
 }
 
@@ -273,13 +274,13 @@ func TestVerifySCTSignatureFailsForUnknownHashAlgorithm(t *testing.T) {
 
 func testVerifySCTSignatureFailsForIncorrectLeafBytes(t *testing.T, sct SignedCertificateTimestamp, sv SignatureVerifier) {
 	entry := sigTestCertLogEntry(t)
-	for i := range entry.Leaf.TimestampedEntry.X509Entry {
-		old := entry.Leaf.TimestampedEntry.X509Entry[i]
-		corruptByteAt(entry.Leaf.TimestampedEntry.X509Entry, i)
+	for i := range entry.Leaf.TimestampedEntry.X509Entry.Data {
+		old := entry.Leaf.TimestampedEntry.X509Entry.Data[i]
+		corruptByteAt(entry.Leaf.TimestampedEntry.X509Entry.Data, i)
 		if err := sv.VerifySCTSignature(sct, entry); err == nil {
 			t.Fatalf("Incorrectly verfied signature over corrupted leaf data, uncovered byte at %d?", i)
 		}
-		entry.Leaf.TimestampedEntry.X509Entry[i] = old
+		entry.Leaf.TimestampedEntry.X509Entry.Data[i] = old
 	}
 	// Ensure we were only corrupting one byte at a time, should be correct again now.
 	if err := sv.VerifySCTSignature(sct, entry); err != nil {

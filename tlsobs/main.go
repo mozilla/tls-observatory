@@ -19,6 +19,7 @@ import (
 	"github.com/mozilla/tls-observatory/worker"
 	_ "github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
 	_ "github.com/mozilla/tls-observatory/worker/mozillaGradingWorker"
+	_ "github.com/mozilla/tls-observatory/worker/sslLabsClientSupport"
 )
 
 func usage() {
@@ -36,7 +37,8 @@ var (
 	scanid      = flag.Int64("scanid", 0, "View results from a previous scan instead of starting a new one. eg `1234`")
 	rescan      = flag.Bool("r", false, "Force a rescan instead of retrieving latest results")
 	printRaw    = flag.Bool("raw", false, "Print raw JSON coming from the API")
-	targetLevel = flag.String("targetLevel", "modern", "Evaluate target against a given configuration level. eg `old`, intermediate, modern or all.")
+	targetLevel = flag.String("targetLevel", "", "Evaluate target against a given configuration level. eg `old`, `intermediate`, `modern` or `all`.")
+	allClients  = flag.Bool("allClients", false, "Print compatibility status all clients, instead of listing only oldest supported ones.")
 )
 
 // exitCode is zero by default and non-zero if targetLevel isn't met
@@ -244,22 +246,24 @@ func printAnalysis(ars []database.Analysis) {
 			err     error
 		)
 		if _, ok := worker.AvailableWorkers[a.Analyzer]; !ok {
-			fmt.Fprintf(os.Stderr, "analyzer %q not found\n", a.Analyzer)
+			//fmt.Fprintf(os.Stderr, "analyzer %q not found\n", a.Analyzer)
 			continue
 		}
 		runner := worker.AvailableWorkers[a.Analyzer].Runner
 		switch a.Analyzer {
 		case "mozillaEvaluationWorker":
 			results, err = runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result), *targetLevel)
+		case "sslLabsClientSupport":
+			results, err = runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result), *allClients)
 		default:
 			results, err = runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result), nil)
+		}
+		for _, result := range results {
+			fmt.Println(result)
 		}
 		if err != nil {
 			fmt.Println(err)
 			exitCode = 10
-		}
-		for _, result := range results {
-			fmt.Println(result)
 		}
 	}
 }

@@ -1,5 +1,6 @@
 window.onload = function() {
     document.form.addEventListener("submit", send, false);
+    document.form.addEventListener("change", readfile, false);
 }
 
 function checkResult(id) {
@@ -19,6 +20,24 @@ function checkResult(id) {
 }
 
 function startScan(target, oid, rootCertificate) {
+    result.style.color = "Blue";
+
+    // clean up leading and trailing whitespaces
+    target = target.trim();
+    oid = oid.trim();
+    rootCertificate = rootCertificate.trim();
+
+    if (!/^(([0-9]+)\.?)+$/.test(oid)) {
+        err = "Invalid OID format, must respect regular expression '^([0-9]+)\.?$'";
+        result.innerHTML = "Error: " + err;
+        result.style.color = "Red";
+        throw err;
+    }
+    if (!rootCertificate.startsWith("-----BEGIN CERTIFICATE-----") || !rootCertificate.endsWith("-----END CERTIFICATE-----")) {
+        err = "Invalid certificate format, must be PEM encoded";
+        result.innerHTML = "Error: " + err;
+        throw err;
+    }
     let params = {
 	"ev-checker": {
 	    "oid": oid,
@@ -27,7 +46,7 @@ function startScan(target, oid, rootCertificate) {
     };
     let queryParams = {
 	"rescan": true,
-	"target": target,
+	"target": hostname_from(target),
 	"params": JSON.stringify(params)
     };
     let query = Object.keys(queryParams)
@@ -70,4 +89,23 @@ function send(e) {
             result.innerHTML = "Error: " + err;
             result.style.color = "Red";
 	});
+}
+
+function hostname_from(target) {
+    // if target is a URI, extract hostname from it
+    if (target.startsWith("http") == true) {
+        let targetParser = document.createElement('a');
+        targetParser.href = target;
+        return targetParser.hostname;
+    } else {
+        return target;
+    }
+}
+
+function readfile(e) {
+    var reader = new FileReader();
+    reader.addEventListener("loadend", function(event) {
+        document.getElementById("rootCertificate").value = event.target.result;
+    }, false);
+    reader.readAsText(e.target.files[0])
 }
