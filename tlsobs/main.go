@@ -39,6 +39,7 @@ var (
 	printRaw    = flag.Bool("raw", false, "Print raw JSON coming from the API")
 	targetLevel = flag.String("targetLevel", "", "Evaluate target against a given configuration level. eg `old`, `intermediate`, `modern` or `all`.")
 	allClients  = flag.Bool("allClients", false, "Print compatibility status all clients, instead of listing only oldest supported ones.")
+	hidePaths   = flag.Bool("hidePaths", false, "Don't display the certificate paths to trusted roots.")
 )
 
 // exitCode is zero by default and non-zero if targetLevel isn't met
@@ -206,8 +207,9 @@ Mozilla Microsoft Apple Android
    %s        %s       %s      %s
 `, moztrust, microtrust, appletrust, androtrust)
 
-	// Print chain of trust
-	fmt.Printf("\n--- Chain of trust ---\n%s\n", getPaths(cert.ID).String())
+	if !*hidePaths {
+		fmt.Printf("\n--- Trust paths ---\n%s\n", getPaths(cert.ID).String())
+	}
 }
 
 func printConnection(c connection.Stored) {
