@@ -11,9 +11,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	certconstraints "github.com/mozilla/tls-observatory/certificate/constraints"
 )
 
 const (
@@ -83,15 +86,18 @@ type SubjectPublicKeyInfo struct {
 
 //Currently exporting extensions that are already decoded into the x509 Certificate structure
 type Extensions struct {
-	AuthorityKeyId         string   `json:"authorityKeyId,omitempty"`
-	SubjectKeyId           string   `json:"subjectKeyId,omitempty"`
-	KeyUsage               []string `json:"keyUsage,omitempty"`
-	ExtendedKeyUsage       []string `json:"extendedKeyUsage,omitempty"`
-	SubjectAlternativeName []string `json:"subjectAlternativeName,omitempty"`
-	CRLDistributionPoints  []string `json:"crlDistributionPoint,omitempty"`
-	PolicyIdentifiers      []string `json:"policyIdentifiers,omitempty"`
-	IsNameConstrained      bool     `json:"isNameConstrained,omitempty"`
-	PermittedNames         []string `json:"permittedNames,omitempty"`
+	AuthorityKeyId           string      `json:"authorityKeyId,omitempty"`
+	SubjectKeyId             string      `json:"subjectKeyId,omitempty"`
+	KeyUsage                 []string    `json:"keyUsage,omitempty"`
+	ExtendedKeyUsage         []string    `json:"extendedKeyUsage,omitempty"`
+	SubjectAlternativeName   []string    `json:"subjectAlternativeName,omitempty"`
+	CRLDistributionPoints    []string    `json:"crlDistributionPoint,omitempty"`
+	PolicyIdentifiers        []string    `json:"policyIdentifiers,omitempty"`
+	PermittedDNSDomains      []string    `json:"permittedDNSNames,omitempty"`
+	PermittedIPAddresses     []string `json:"permittedIPAddresses,omitempty"`
+	ExcludedDNSDomains       []string    `json:"excludedDNSNames,omitempty"`
+	ExcludedIPAddresses      []string `json:"excludedIPAddresses,omitempty"`
+	IsTechnicallyConstrained bool        `json:"isTechnicallyConstrained"`
 }
 
 type X509v3BasicConstraints struct {
@@ -356,20 +362,29 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 	san = append(san, cert.DNSNames...)
 	crld := make([]string, 0)
 	crld = append(crld, cert.CRLDistributionPoints...)
-	pnames := make([]string, 0)
-	pnames = append(pnames, cert.PermittedDNSDomains...)
-	ext := Extensions{
-		AuthorityKeyId:         base64.StdEncoding.EncodeToString(cert.AuthorityKeyId),
-		SubjectKeyId:           base64.StdEncoding.EncodeToString(cert.SubjectKeyId),
-		KeyUsage:               getKeyUsages(cert),
-		ExtendedKeyUsage:       getExtKeyUsages(cert),
-		PolicyIdentifiers:      getPolicyIdentifiers(cert),
-		SubjectAlternativeName: san,
-		CRLDistributionPoints:  crld,
-		PermittedNames:         pnames,
+	constraints, _ := certconstraints.Get(cert)
+	ipNetSliceToStringSlice := func (in []net.IPNet) ([]string) {
+		out := make([]string, 0)
+		for _, ipnet := range in {
+			out = append(out, ipnet.String())
+		}
+		return out
 	}
-	if len(ext.PermittedNames) > 0 {
-		ext.IsNameConstrained = true
+	permittedIPAddresses := ipNetSliceToStringSlice(constraints.PermittedIPAddresses)
+	excludedIPAddresses := ipNetSliceToStringSlice(constraints.ExcludedIPAddresses)
+	ext := Extensions{
+		AuthorityKeyId:           base64.StdEncoding.EncodeToString(cert.AuthorityKeyId),
+		SubjectKeyId:             base64.StdEncoding.EncodeToString(cert.SubjectKeyId),
+		KeyUsage:                 getKeyUsages(cert),
+		ExtendedKeyUsage:         getExtKeyUsages(cert),
+		PolicyIdentifiers:        getPolicyIdentifiers(cert),
+		SubjectAlternativeName:   san,
+		CRLDistributionPoints:    crld,
+		PermittedDNSDomains:      constraints.PermittedDNSDomains,
+		ExcludedDNSDomains:       constraints.ExcludedDNSDomains,
+		PermittedIPAddresses:     permittedIPAddresses,
+		ExcludedIPAddresses:      excludedIPAddresses,
+		IsTechnicallyConstrained: certconstraints.IsTechnicallyConstrained(cert),
 	}
 	return ext
 }

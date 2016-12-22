@@ -36,7 +36,12 @@ CREATE TABLE certificates(
     in_android_root_store       bool NULL,
     is_revoked                  bool NULL,
     revoked_at                  timestamp NULL,
-    raw_cert                    varchar NOT NULL
+    raw_cert                    varchar NOT NULL,
+    permitted_dns_domains       varchar[] NOT NULL DEFAULT '{}',
+    permitted_ip_addresses      varchar[] NOT NULL DEFAULT '{}',
+    excluded_dns_domains        varchar[] NOT NULL DEFAULT '{}',
+    excluded_ip_addresses       varchar[] NOT NULL DEFAULT '{}',
+    is_technically_constrained  bool NOT NULL DEFAULT false
 );
 CREATE INDEX certificates_sha256_fingerprint_idx ON certificates(sha256_fingerprint);
 CREATE INDEX certificates_subject_idx ON certificates(subject);
