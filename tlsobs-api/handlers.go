@@ -224,14 +224,14 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 	_, certHeader, err := r.FormFile("certificate")
 	if err != nil {
 		httpError(w, r, http.StatusBadRequest,
-			fmt.Sprintf("Could not read certificate from form data: %v", err))
+			fmt.Sprintf("Could not read certificate from request: %v", err))
 		return
 	}
 
 	certReader, err := certHeader.Open()
 	if err != nil {
 		httpError(w, r, http.StatusBadRequest,
-			fmt.Sprintf("Could not read certificate from form data: %v", err))
+			fmt.Sprintf("Could not open certificate from form data: %v", err))
 		return
 	}
 

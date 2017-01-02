@@ -29,25 +29,25 @@ const (
 
 type Certificate struct {
 	ID                     int64                     `json:"id"`
-	Serial                 string                    `json:"serialNumber,omitempty"`
+	Serial                 string                    `json:"serialNumber"`
 	ScanTarget             string                    `json:"scanTarget,omitempty"`
 	IPs                    []string                  `json:"ips,omitempty"`
-	Version                int                       `json:"version,omitempty"`
-	SignatureAlgorithm     string                    `json:"signatureAlgorithm,omitempty"`
-	Issuer                 Subject                   `json:"issuer,omitempty"`
-	Validity               Validity                  `json:"validity,omitempty"`
-	Subject                Subject                   `json:"subject,omitempty"`
-	Key                    SubjectPublicKeyInfo      `json:"key,omitempty"`
-	X509v3Extensions       Extensions                `json:"x509v3Extensions,omitempty"`
-	X509v3BasicConstraints string                    `json:"x509v3BasicConstraints,omitempty"`
-	CA                     bool                      `json:"ca,omitempty"`
+	Version                int                       `json:"version"`
+	SignatureAlgorithm     string                    `json:"signatureAlgorithm"`
+	Issuer                 Subject                   `json:"issuer"`
+	Validity               Validity                  `json:"validity"`
+	Subject                Subject                   `json:"subject"`
+	Key                    SubjectPublicKeyInfo      `json:"key"`
+	X509v3Extensions       Extensions                `json:"x509v3Extensions"`
+	X509v3BasicConstraints string                    `json:"x509v3BasicConstraints"`
+	CA                     bool                      `json:"ca"`
 	Analysis               interface{}               `json:"analysis,omitempty"` //for future use...
 	ParentSignature        []string                  `json:"parentSignature,omitempty"`
-	ValidationInfo         map[string]ValidationInfo `json:"validationInfo,omitempty"`
+	ValidationInfo         map[string]ValidationInfo `json:"validationInfo"`
 	FirstSeenTimestamp     time.Time                 `json:"firstSeenTimestamp"`
 	LastSeenTimestamp      time.Time                 `json:"lastSeenTimestamp"`
-	Hashes                 Hashes                    `json:"hashes,omitempty"`
-	Raw                    string                    `json:"Raw,omitempty"`
+	Hashes                 Hashes                    `json:"hashes"`
+	Raw                    string                    `json:"Raw"`
 	Anomalies              string                    `json:"anomalies,omitempty"`
 }
 
@@ -86,22 +86,22 @@ type SubjectPublicKeyInfo struct {
 
 //Currently exporting extensions that are already decoded into the x509 Certificate structure
 type Extensions struct {
-	AuthorityKeyId           string      `json:"authorityKeyId,omitempty"`
-	SubjectKeyId             string      `json:"subjectKeyId,omitempty"`
-	KeyUsage                 []string    `json:"keyUsage,omitempty"`
-	ExtendedKeyUsage         []string    `json:"extendedKeyUsage,omitempty"`
-	SubjectAlternativeName   []string    `json:"subjectAlternativeName,omitempty"`
-	CRLDistributionPoints    []string    `json:"crlDistributionPoint,omitempty"`
-	PolicyIdentifiers        []string    `json:"policyIdentifiers,omitempty"`
-	PermittedDNSDomains      []string    `json:"permittedDNSNames,omitempty"`
+	AuthorityKeyId           string   `json:"authorityKeyId"`
+	SubjectKeyId             string   `json:"subjectKeyId"`
+	KeyUsage                 []string `json:"keyUsage"`
+	ExtendedKeyUsage         []string `json:"extendedKeyUsage"`
+	SubjectAlternativeName   []string `json:"subjectAlternativeName"`
+	CRLDistributionPoints    []string `json:"crlDistributionPoint"`
+	PolicyIdentifiers        []string `json:"policyIdentifiers,omitempty"`
+	PermittedDNSDomains      []string `json:"permittedDNSNames,omitempty"`
 	PermittedIPAddresses     []string `json:"permittedIPAddresses,omitempty"`
-	ExcludedDNSDomains       []string    `json:"excludedDNSNames,omitempty"`
+	ExcludedDNSDomains       []string `json:"excludedDNSNames,omitempty"`
 	ExcludedIPAddresses      []string `json:"excludedIPAddresses,omitempty"`
-	IsTechnicallyConstrained bool        `json:"isTechnicallyConstrained"`
+	IsTechnicallyConstrained bool     `json:"isTechnicallyConstrained"`
 }
 
 type X509v3BasicConstraints struct {
-	CA       bool        `json:"ca,omitempty"`
+	CA       bool        `json:"ca"`
 	Analysis interface{} `json:"analysis,omitempty"`
 }
 
@@ -363,7 +363,7 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 	crld := make([]string, 0)
 	crld = append(crld, cert.CRLDistributionPoints...)
 	constraints, _ := certconstraints.Get(cert)
-	ipNetSliceToStringSlice := func (in []net.IPNet) ([]string) {
+	ipNetSliceToStringSlice := func(in []net.IPNet) []string {
 		out := make([]string, 0)
 		for _, ipnet := range in {
 			out = append(out, ipnet.String())
