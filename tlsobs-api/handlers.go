@@ -25,6 +25,10 @@ type scanResponse struct {
 	ID int64 `json:"scan_id"`
 }
 
+func IndexHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/static/index.html", http.StatusFound)
+}
+
 // ScanHandler handles the /scans endpoint of the api
 // It initiates new scans and returns created scans ids to be used against other endpoints.
 func ScanHandler(w http.ResponseWriter, r *http.Request) {

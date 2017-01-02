@@ -37,6 +37,12 @@ type Routes []Route
 
 var routes = Routes{
 	Route{
+		"Index",
+		"GET",
+		"/",
+		IndexHandler,
+	},
+	Route{
 		"Scan",
 		"POST",
 		"/api/v1/scan",
