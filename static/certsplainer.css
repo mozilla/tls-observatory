@@ -1,0 +1,17 @@
+#cy {
+    width: 100%;
+    height: 50%;
+    left: 0;
+    top: 0;
+    float: right;
+}
+
+#main {
+    float: left;
+    width: 50%;
+}
+
+#side{
+    width: 50%;
+    float: right;
+}

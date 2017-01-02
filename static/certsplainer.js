@@ -2,6 +2,7 @@
 window.onload = function() {
     document.form.addEventListener("change", readfile, false);
     document.form.addEventListener("submit", send, false);
+    var logs = document.getElementById("logs");
 	let certid = getParameterByName('id');
 	let certsha256 = getParameterByName('sha256');
 	if (certid || certsha256) {
@@ -85,14 +86,17 @@ function clearExtensions() {
     }
 }
 
-function formatCommonName(name, id) {
-    let result = '<a href="/static/certsplainer.html?id=' + id + '">';
+function formatHTMLCommonName(name, id) {
+    return '<a href="/static/certsplainer.html?id=' + id + '">' + formatCommonName(name) + '</a>';
+}
+
+function formatCommonName(name) {
+    let result = "";
     Object.keys(name).forEach((key) => {
         if (key != "id") {
             result += `/${key.toUpperCase()}=${name[key]}`;
         }
     });
-	result += '</a>';
     return result;
 }
 
@@ -121,10 +125,10 @@ function setFieldsFromJSON(properties) {
 
     setField("version", properties.version);
     setField("serialNumber", properties.serialNumber.toLowerCase());
-    setField("issuer", formatCommonName(properties.issuer, properties.issuer.id));
+    setField("issuer", formatHTMLCommonName(properties.issuer, properties.issuer.id));
     setField("notBefore", properties.validity.notBefore);
     setField("notAfter", properties.validity.notAfter);
-    setField("subject", formatCommonName(properties.subject, properties.id));
+    setField("subject", formatHTMLCommonName(properties.subject, properties.id));
     setField("signatureAlgorithm", properties.signatureAlgorithm); // TODO technically there are two fields here...
     if (properties.key.alg == "RSA") {
         setField("keySize", properties.key.size);
@@ -206,9 +210,94 @@ function setFieldsFromJSON(properties) {
         document.getElementById("trusttable").remove();
     }
 
-
 	setField("permalink", 'Displaying information for CN=' + properties.subject.cn + ' [<a href="/static/certsplainer.html?id=' + properties.id + '">permanent link</a>]');
     setField("title", 'certsplained ' + properties.subject.cn);
+}
+
+function addParentToCertPaths(cy, current, parent, depth) {
+	console.log("current="+formatCommonName(current.certificate.subject), "parent="+formatCommonName(parent.certificate.subject));
+	eles = cy.add(
+        [
+            {
+                group: "nodes",
+                data: { id: formatCommonName(parent.certificate.subject)},
+                position: { x: 100*depth+50, y: 100*depth+50 }
+            },
+            {
+                group: "edges",
+                data: { source: formatCommonName(current.certificate.subject),
+                        target: formatCommonName(parent.certificate.subject) }
+            }
+        ]);
+	current = parent;
+    if (current.parents) {
+        for (var i = 0; i < current.parents.length; i++) {
+            addParentToCertPaths(cy, current, current.parents[i], i+depth+1);
+        }
+    }
+}
+
+function drawCertPaths(json) {
+	console.log("Drawing certificate paths");
+	var cy = window.cy = cytoscape({
+		container: document.getElementById('cy'),
+		boxSelectionEnabled: false,
+		autounselectify: true,
+		layout: {
+			name: 'grid'
+		},
+		style: [
+			{
+				selector: 'node',
+				style: {
+					'content': 'data(id)',
+					'text-opacity': 0.7,
+					'text-valign': 'center',
+					'text-halign': 'right',
+					'background-color': '#11479e'
+				}
+			},
+			{
+				selector: 'edge',
+				style: {
+					'width': 4,
+					'target-arrow-shape': 'triangle',
+					'line-color': '#9dbaea',
+					'target-arrow-color': '#9dbaea',
+					'curve-style': 'bezier'
+				}
+			}
+		]
+	});
+	let current = json;
+	cy.add({group: "nodes", data: {id: formatCommonName(current.certificate.subject)}, position: { x: 50, y: 50 }});
+    if (current.parents) {
+	    for (var i = 0; i < current.parents.length; i++) {
+		    addParentToCertPaths(cy, current, current.parents[i], i+1);
+    	}
+    }
+}
+
+function getCertPaths(id) {
+    let req = new Request("/api/v1/paths?id=" + id);
+    return fetch(req)
+        .then(function(response) {
+            if (!response.ok) {
+                logs.innerHTML = "Error: " + response.status + " " + response.statusText;
+                logs.style.color = "Red";
+                throw "Server error. Status: " + response.status + " " + response.statusText;
+            }
+            return response.json().then(function(json) {
+				console.log(json);
+                drawCertPaths(json);
+            });
+        })
+        .catch(function(err) {
+            logs.innerHTML = "Error when retrieving certificate paths: " + err;
+            logs.style.color = "Red";
+            throw "Could not retrieve certificate paths: " + err;
+        });
+
 }
 
 function loadCert(id, sha256) {
@@ -225,19 +314,19 @@ function loadCert(id, sha256) {
             }
             return response.json().then(function(json) {
             	setFieldsFromJSON(json);
+                getCertPaths(json.id);
 				logs.remove();
             });
         })
         .catch(function(err) {
-            logs.innerHTML = "Error when posting certificate: " + err;
+            logs.innerHTML = "Error when loading certificate: " + err;
             logs.style.color = "Red";
-            throw "Could not post certificate: " + err;
+            throw "Could not load certificate: " + err;
         });
 }
 	
 function send(e) {
     e.preventDefault();
-    var logs = document.getElementById("logs");
     logs.style.color = "Blue";
     logs.innerHTML = "Certificate posted, waiting for result...";
     console.log("Posting certificate for analysis");
@@ -254,6 +343,7 @@ function send(e) {
     return postCertificate(certificate).
     then(function(certJson) {
             setFieldsFromJSON(certJson);
+            getCertPaths(json.id);
 			logs.remove();
         })
         .catch(function(err) {
