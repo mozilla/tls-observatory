@@ -171,7 +171,7 @@ function setFieldsFromJSON(properties) {
         extensionsTable.appendChild(tr);
     }
 
-    if (properties.x509v3Extensions.subjectAlternativeName) {
+    if (properties.x509v3Extensions.subjectAlternativeName && properties.x509v3Extensions.subjectAlternativeName.length > 0) {
         let sanTable = document.getElementById("santable");
         Object.keys(properties.x509v3Extensions.subjectAlternativeName).forEach((sanID) => {
             let tr = document.createElement("tr");
@@ -184,6 +184,28 @@ function setFieldsFromJSON(properties) {
         document.getElementById("sanheader").remove();
         document.getElementById("santable").remove();
     }
+
+    if (properties.ca && (properties.subject.cn == properties.issuer.cn)) {
+        let trustTable = document.getElementById("trusttable");
+        Object.keys(properties.validationInfo).forEach((trustStore) => {
+            let tr = document.createElement("tr");
+            let tdName = document.createElement("td");
+            tdName.textContent = trustStore;
+            tr.appendChild(tdName);
+            let tdValue = document.createElement("td");
+            if (properties.validationInfo[trustStore].isValid) {
+                tdValue.innerHTML = '<img alt="true" src="/static/img/green-checkmark.png" width="50%" />';
+            } else {
+                tdValue.innerHTML = '<img alt="false" src="/static/img/red-checkmark.png" width="50%" />';
+            }
+            tr.appendChild(tdValue);
+            trustTable.appendChild(tr);
+        });
+    } else {
+        document.getElementById("trustheader").remove();
+        document.getElementById("trusttable").remove();
+    }
+
 
 	setField("permalink", 'Displaying information for CN=' + properties.subject.cn + ' [<a href="/static/certsplainer.html?id=' + properties.id + '">permanent link</a>]');
     setField("title", 'certsplained ' + properties.subject.cn);
