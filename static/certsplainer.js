@@ -223,12 +223,12 @@ function setFieldsFromJSON(properties) {
     setField('title', 'certsplained ' + properties.subject.cn);
 }
 
-function addParentToCertPaths(cy, current, parent, depth) {
+function addParentToCertPaths(cy, current, parent, x, y) {
     cy.add([
         {
             group: 'nodes',
             data: { id: formatCommonName(parent.certificate.subject)},
-            position: { x: 100*depth+50, y: 100*depth+50 }
+            position: { x: x, y: y}
         },
         {
             group: 'edges',
@@ -238,8 +238,10 @@ function addParentToCertPaths(cy, current, parent, depth) {
     ]);
     current = parent;
     if (current.parents) {
+        y += 150;
         for (var i = 0; i < current.parents.length; i++) {
-            addParentToCertPaths(cy, current, current.parents[i], i+depth+1);
+            y += 20;
+            addParentToCertPaths(cy, current, current.parents[i], x + i*100 + 70, y);
         }
     }
 }
@@ -257,7 +259,7 @@ function drawCertPaths(json) {
                 selector: 'node',
                 style: {
                     'content': 'data(id)',
-                    'text-opacity': 0.7,
+                    'text-opacity': 1,
                     'text-valign': 'center',
                     'text-halign': 'right',
                     'background-color': '#11479e'
@@ -266,7 +268,7 @@ function drawCertPaths(json) {
             {
                 selector: 'edge',
                 style: {
-                    'width': 4,
+                    'width': 2,
                     'target-arrow-shape': 'triangle',
                     'line-color': '#9dbaea',
                     'target-arrow-color': '#9dbaea',
@@ -278,8 +280,10 @@ function drawCertPaths(json) {
     let current = json;
     cy.add({group: 'nodes', data: {id: formatCommonName(current.certificate.subject)}, position: { x: 50, y: 50 }});
     if (current.parents) {
+        let y = 200;
         for (var i = 0; i < current.parents.length; i++) {
-            addParentToCertPaths(cy, current, current.parents[i], i+1);
+            y += 20;
+            addParentToCertPaths(cy, current, current.parents[i], i*100 + 70, y);
         }
     }
 }
