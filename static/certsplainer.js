@@ -114,7 +114,11 @@ function formatExtension(extensionName, extension) {
         let bin = atob(extension);
         let hexStr = '';
         for (let i = 0; i < bin.length; i++) {
-            hexStr += bin.charCodeAt(i).toString(16).padStart(2, '0');
+            let comp = bin.charCodeAt(i).toString(16);
+            if (comp.length === 1) {
+                comp = '0' + comp;
+            }
+            hexStr += comp;
         }
         return hexStr;
     }
@@ -241,7 +245,7 @@ function addParentToCertPaths(cy, current, parent, depth) {
 }
 
 function drawCertPaths(json) {
-    var cy = window.cy = cytoscape({
+    let cy = window.cy = cytoscape({
         container: document.getElementById('cy'),
         boxSelectionEnabled: false,
         autounselectify: true,
