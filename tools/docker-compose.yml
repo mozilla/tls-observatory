@@ -15,7 +15,7 @@ services:
     links: 
       - postgres
     ports:
-      - 8083:8083
+      - 8083
     depends_on:
       - postgres
     restart: unless-stopped
@@ -38,6 +38,16 @@ services:
       dockerfile: Dockerfile-sample_app
     ports:
       - 443
+
+  test:
+    image: mozilla/tls-observatory
+    command: tlsobs --targetLevel intermediate --observatory http://api:8083 sampleapp
+    links:
+      - api
+    depends_on:
+      - api
+      - sampleapp
+
   runner:
     build:
       context: ../
