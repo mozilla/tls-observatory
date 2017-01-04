@@ -95,6 +95,13 @@ function clearExtensions() {
     }
 }
 
+function clearSAN() {
+    let sanTable = document.getElementById('santable');
+    while (sanTable.children.length > 0) {
+        sanTable.children[0].remove();
+    }
+}
+
 function formatHTMLCommonName(name, id) {
     return '<a href="/static/certsplainer.html?id=' + id + '">' + formatCommonName(name) + '</a>';
 }
@@ -129,6 +136,7 @@ function formatExtension(extensionName, extension) {
 function setFieldsFromJSON(properties) {
     clearFields();
     clearExtensions();
+    clearSAN();
     if (!properties) {
         return;
     }
@@ -186,6 +194,8 @@ function setFieldsFromJSON(properties) {
 
     if (properties.x509v3Extensions.subjectAlternativeName && properties.x509v3Extensions.subjectAlternativeName.length > 0) {
         let sanTable = document.getElementById('santable');
+        sanTable.style.display = 'block';
+        document.getElementById('sanheader').style.display = 'block';
         Object.keys(properties.x509v3Extensions.subjectAlternativeName).forEach((sanID) => {
             let tr = document.createElement('tr');
             let tdValue = document.createElement('td');
@@ -194,12 +204,14 @@ function setFieldsFromJSON(properties) {
             sanTable.appendChild(tr);
         });
     } else {
-        document.getElementById('sanheader').remove();
-        document.getElementById('santable').remove();
+        document.getElementById('sanheader').style.display = 'none';
+        document.getElementById('santable').style.display = 'none';
     }
 
     if (properties.ca && (properties.subject.cn === properties.issuer.cn)) {
         let trustTable = document.getElementById('trusttable');
+        trustTable.style.display = 'block';
+        document.getElementById('trustheader').style.display = 'block';
         Object.keys(properties.validationInfo).forEach((trustStore) => {
             let tr = document.createElement('tr');
             let tdName = document.createElement('td');
@@ -215,16 +227,16 @@ function setFieldsFromJSON(properties) {
             trustTable.appendChild(tr);
         });
     } else {
-        document.getElementById('trustheader').remove();
-        document.getElementById('trusttable').remove();
+        document.getElementById('trustheader').style.display = 'none';
+        document.getElementById('trusttable').style.display = 'none';
     }
 
     setField('permalink', 'Displaying information for CN=' + properties.subject.cn + ' [<a href="/static/certsplainer.html?id=' + properties.id + '">permanent link</a>]');
     setField('title', 'certsplained ' + properties.subject.cn);
 }
 
-function addParentToCertPaths(cy, current, parent, x, y) {
-    cy.add([
+function addParentToCertPaths(current, parent, x, y) {
+    let eles = cy.add([
         {
             group: 'nodes',
             data: { id: formatCommonName(parent.certificate.subject)},
@@ -236,18 +248,27 @@ function addParentToCertPaths(cy, current, parent, x, y) {
                 target: formatCommonName(parent.certificate.subject) }
         }
     ]);
+    if (parent.certificate.ca) {
+        if (parent.certificate.subject.cn === parent.certificate.issuer.cn) {
+            // this is a root CA, show it red
+            eles.style({'background-color': '#bd0000'});
+        } else {
+            // intermediate, use green
+            eles.style({'background-color': '#009600'});
+        }
+    }
     current = parent;
     if (current.parents) {
         y += 150;
         for (var i = 0; i < current.parents.length; i++) {
             y += 20;
-            addParentToCertPaths(cy, current, current.parents[i], x + i*100 + 70, y);
+            addParentToCertPaths(current, current.parents[i], x + i*100 + 70, y);
         }
     }
 }
 
 function drawCertPaths(json) {
-    let cy = window.cy = cytoscape({
+    var cy = window.cy = cytoscape({
         container: document.getElementById('cy'),
         boxSelectionEnabled: false,
         autounselectify: true,
@@ -272,18 +293,24 @@ function drawCertPaths(json) {
                     'target-arrow-shape': 'triangle',
                     'line-color': '#9dbaea',
                     'target-arrow-color': '#9dbaea',
-                    'curve-style': 'bezier'
+                    'curve-style': 'unbundled-bezier'
                 }
             }
         ]
     });
+    // legend
+    cy.add([
+        {group: 'nodes', data: {id: 'end entity'}, position: { x: 500, y: 50 }, style: {'background-color': '#11479e'}},
+        {group: 'nodes', data: {id: 'intermediate'}, position: { x: 500, y: 80 }, style: {'background-color': '#009600'}},
+        {group: 'nodes', data: {id: 'root'}, position: { x: 500, y: 110 }, style: {'background-color': '#bd0000'}}
+    ]);
     let current = json;
     cy.add({group: 'nodes', data: {id: formatCommonName(current.certificate.subject)}, position: { x: 50, y: 50 }});
     if (current.parents) {
         let y = 200;
         for (var i = 0; i < current.parents.length; i++) {
             y += 20;
-            addParentToCertPaths(cy, current, current.parents[i], i*100 + 70, y);
+            addParentToCertPaths(current, current.parents[i], i*100 + 70, y);
         }
     }
 }
@@ -323,7 +350,7 @@ function loadCert(id, sha256) {
             return response.json().then(function(json) {
                 setFieldsFromJSON(json);
                 getCertPaths(json.id);
-                logs.remove();
+                logs.textContent = '';
             });
         })
         .catch(function(err) {
@@ -351,7 +378,7 @@ function send(e) {
     .then(function(certJson) {
         setFieldsFromJSON(certJson);
         getCertPaths(certJson.id);
-        logs.remove();
+        logs.textContent = '';
     })
         .catch(function(err) {
             logs.textContent = 'Error: ' + err;
