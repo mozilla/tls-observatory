@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/lib/pq"
+	"github.com/mozilla/tls-observatory/certificate"
 )
 
 // InsertCertificate inserts a x509 certificate to the database.
@@ -352,7 +352,7 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 // GetCertByID fetches a certain certificate from the database.
 // It returns a pointer to a Certificate struct and any errors that occur.
 func (db *DB) GetCertByID(certID int64) (*certificate.Certificate, error) {
-	row := db.QueryRow(`SELECT ` + strings.Join(allCertificateColumns, ", ") + `
+	row := db.QueryRow(`SELECT `+strings.Join(allCertificateColumns, ", ")+`
 		FROM certificates WHERE id=$1`, certID)
 	cert, err := db.scanCert(row)
 	return &cert, err
@@ -369,7 +369,7 @@ func (db *DB) GetAllCertsInStore(store string) (out []certificate.Certificate, e
 		"apple",
 		"microsoft",
 		"ubuntu":
-		query := fmt.Sprintf(`SELECT ` + strings.Join(allCertificateColumns, ", ") + `
+		query := fmt.Sprintf(`SELECT `+strings.Join(allCertificateColumns, ", ")+`
                     FROM certificates WHERE in_%s_root_store=true`, store)
 		rows, err := db.Query(query)
 		if err != nil {
@@ -582,6 +582,10 @@ func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Pat
 			xparent *x509.Certificate
 		)
 		curPath.Cert = parent
+		if parent.Validity.NotAfter.Before(time.Now()) || parent.Validity.NotBefore.After(time.Now()) {
+			// certificate is not valid, skip it
+			continue
+		}
 		xparent, err = parent.ToX509()
 		if err != nil {
 			return
@@ -602,7 +606,6 @@ func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Pat
 		}
 		paths.Parents = append(paths.Parents, curPath)
 	}
-
 	return
 }
 
@@ -623,7 +626,7 @@ func (db *DB) IsTrustValid(id int64) (bool, error) {
 
 var allCertificateColumns = []string{
 	"id",
- 	"serial_number",
+	"serial_number",
 	"sha1_fingerprint",
 	"sha256_fingerprint",
 	"sha256_subject_spki",
