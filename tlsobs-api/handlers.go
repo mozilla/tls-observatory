@@ -25,6 +25,10 @@ type scanResponse struct {
 	ID int64 `json:"scan_id"`
 }
 
+func IndexHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/static/index.html", http.StatusFound)
+}
+
 // ScanHandler handles the /scans endpoint of the api
 // It initiates new scans and returns created scans ids to be used against other endpoints.
 func ScanHandler(w http.ResponseWriter, r *http.Request) {
@@ -224,14 +228,14 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 	_, certHeader, err := r.FormFile("certificate")
 	if err != nil {
 		httpError(w, r, http.StatusBadRequest,
-			fmt.Sprintf("Could not read certificate from form data: %v", err))
+			fmt.Sprintf("Could not read certificate from request: %v", err))
 		return
 	}
 
 	certReader, err := certHeader.Open()
 	if err != nil {
 		httpError(w, r, http.StatusBadRequest,
-			fmt.Sprintf("Could not read certificate from form data: %v", err))
+			fmt.Sprintf("Could not open certificate from form data: %v", err))
 		return
 	}
 
