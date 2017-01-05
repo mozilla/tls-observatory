@@ -109,10 +109,6 @@ function setField(field, value) {
     }
 }
 
-function setFieldRaw(field, value) {
-    document.getElementById(field).innerHTML = value;
-}
-
 function clearFields() {
     for (let id of ['version', 'serialNumber', 'issuer', 'notBefore', 'notAfter',
         'subject', 'signatureAlgorithm', 'keySize', 'exponent', 'curve',
