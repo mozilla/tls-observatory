@@ -200,9 +200,8 @@ function setFieldsFromJSON(properties) {
     setField('sha256hash', properties.hashes.sha256.toLowerCase());
     setField('sha256_subject_spki', properties.hashes.sha256_subject_spki.toLowerCase());
     setField('pin-sha256', properties.hashes['pin-sha256'].toLowerCase());
+    setField('id', permanentLink(properties.id, properties.id));
     setField('certificate', "-----BEGIN CERTIFICATE-----\n" + properties.Raw.replace(/(\S{64}(?!$))/g, "$1\n") + "\n-----END CERTIFICATE-----" );
-
-    setFieldRaw('id', '<a href="/api/v1/certificate?id=' + properties.id + '">' + properties.id + '</a>');
 
     let extensionsTable = document.getElementById('extensions');
     Object.keys(properties.x509v3Extensions).forEach((extensionName) => {
@@ -273,7 +272,13 @@ function setFieldsFromJSON(properties) {
         document.getElementById('trusttable').style.display = 'none';
     }
 
-    setFieldRaw('permalink', 'Displaying information for CN=' + properties.subject.cn + ' [<a href="/static/certsplainer.html?id=' + properties.id + '">permanent link</a>]');
+    let permalink = permanentLink(properties.id, 'permanent link');
+    let permatext = document.createElement(null);
+    permatext.appendChild(document.createTextNode('Displaying information for CN=' + properties.subject.cn + ' ['));
+    permatext.appendChild(permalink);
+    permatext.appendChild(document.createTextNode(']'));
+
+    setField('permalink',  permatext);
     setField('title', 'certsplained ' + properties.subject.cn);
 	window.history.replaceState({}, "", [location.protocol, '//', location.host, location.pathname].join('') + '?id=' + properties.id);
 }
