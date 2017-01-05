@@ -90,7 +90,23 @@ function postCertificate(certificate) {
 }
 
 function setField(field, value) {
-    document.getElementById(field).textContent = value;
+    let node = document.getElementById(field);
+
+    switch (typeof value) {
+    case 'string':
+	// Setting textContent removes all child nodes
+	node.textContent = value;
+	break;
+
+    case 'object':
+	let newNode = node.cloneNode(false);
+	newNode.addChild(value);
+	node.parentNode.replaceChild(newNode, node);
+	break;
+
+    default:
+	console.log("setField(): Unexpected type '" + typeof(value) + "'");
+    }
 }
 
 function setFieldRaw(field, value) {
