@@ -31,12 +31,30 @@ function getParameterByName(name, url) {
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
 
+// if the cert is DER encoded (doesn't start with PEM header), base64 encode
+// it and add the header and footer
+function possiblyBinaryToPEM(possiblyBinary) {
+    if (!possiblyBinary.startsWith("-----BEGIN CERTIFICATE-----")) {
+        return "-----BEGIN CERTIFICATE-----\n" + btoa(possiblyBinary).replace(/(\S{64}(?!$))/g, "$1\n") + "\n-----END CERTIFICATE-----";
+    }
+    return possiblyBinary;
+}
+
 function readfile(e) {
     let reader = new FileReader();
     reader.addEventListener('loadend', function(event) {
-        document.getElementById('certificate').value = event.target.result;
+        let buffer = new Uint8Array(event.target.result);
+        let data = "";
+        for (let i = 0; i < buffer.length; i++) {
+            data += String.fromCharCode(buffer[i]);
+        }
+        let pem = possiblyBinaryToPEM(data);
+        document.getElementById('certificate').value = pem;
+        // dispatch event to form submit
+        var submitEvent = new Event('submit');
+        send(submitEvent);
     }, false);
-    reader.readAsText(e.target.files[0]);
+    reader.readAsArrayBuffer(e.target.files[0]);
 }
 
 function postCertificate(certificate) {
@@ -88,17 +106,10 @@ function clearFields() {
     document.getElementById('exponentRow').classList.remove('hidden');
 }
 
-function clearExtensions() {
-    let extensionsTable = document.getElementById('extensions');
-    while (extensionsTable.children.length > 0) {
-        extensionsTable.children[0].remove();
-    }
-}
-
-function clearSAN() {
-    let sanTable = document.getElementById('santable');
-    while (sanTable.children.length > 0) {
-        sanTable.children[0].remove();
+function clearTable(name) {
+    let tb = document.getElementById(name);
+    while (tb.children.length > 0) {
+        tb.children[0].remove();
     }
 }
 
@@ -135,8 +146,9 @@ function formatExtension(extensionName, extension) {
 
 function setFieldsFromJSON(properties) {
     clearFields();
-    clearExtensions();
-    clearSAN();
+    clearTable('extensions');
+    clearTable('santable');
+    clearTable('trusttable');
     if (!properties) {
         return;
     }
@@ -161,6 +173,7 @@ function setFieldsFromJSON(properties) {
     setField('sha256_subject_spki', properties.hashes.sha256_subject_spki.toLowerCase());
     setField('pin-sha256', properties.hashes['pin-sha256'].toLowerCase());
     setField('id', '<a href="/api/v1/certificate?id=' + properties.id + '">' + properties.id + '</a>');
+    setField('certificate', "-----BEGIN CERTIFICATE-----\n" + properties.Raw.replace(/(\S{64}(?!$))/g, "$1\n") + "\n-----END CERTIFICATE-----" );
 
     let extensionsTable = document.getElementById('extensions');
     Object.keys(properties.x509v3Extensions).forEach((extensionName) => {
@@ -233,6 +246,7 @@ function setFieldsFromJSON(properties) {
 
     setField('permalink', 'Displaying information for CN=' + properties.subject.cn + ' [<a href="/static/certsplainer.html?id=' + properties.id + '">permanent link</a>]');
     setField('title', 'certsplained ' + properties.subject.cn);
+	window.history.replaceState({}, "", [location.protocol, '//', location.host, location.pathname].join('') + '?id=' + properties.id);
 }
 
 function addParentToCertPaths(current, parent, x, y) {
@@ -305,7 +319,16 @@ function drawCertPaths(json) {
         {group: 'nodes', data: {id: 'root'}, position: { x: 500, y: 110 }, style: {'background-color': '#bd0000'}}
     ]);
     let current = json;
-    cy.add({group: 'nodes', data: {id: formatCommonName(current.certificate.subject)}, position: { x: 50, y: 50 }});
+    let eles = cy.add({group: 'nodes', data: {id: formatCommonName(current.certificate.subject)}, position: { x: 50, y: 50 }});
+    if (current.certificate.ca) {
+        if (current.certificate.subject.cn === current.certificate.issuer.cn) {
+            // this is a root CA, show it red
+            eles.style({'background-color': '#bd0000'});
+        } else {
+            // intermediate, use green
+            eles.style({'background-color': '#009600'});
+        }
+    }
     if (current.parents) {
         let y = 200;
         for (var i = 0; i < current.parents.length; i++) {
@@ -325,6 +348,7 @@ function getCertPaths(id) {
                 throw 'Server error. Status: ' + response.status + ' ' + response.statusText;
             }
             return response.json().then(function(json) {
+                document.getElementById('cy').textContent = '';
                 drawCertPaths(json);
             });
         })
@@ -362,12 +386,14 @@ function loadCert(id, sha256) {
 
 function send(e) {
     e.preventDefault();
+    document.getElementById('cy').innerHTML = '<img src="img/spinner.gif" />';
     logs.style.color = 'Blue';
     logs.textContent = 'Certificate posted, waiting for result...';
 
     var certificate = document.getElementById('certificate').value;
     certificate = certificate.trim();
     if (!certificate.startsWith('-----BEGIN CERTIFICATE-----') || !certificate.endsWith('-----END CERTIFICATE-----')) {
+        console.log(certificate);
         let err = 'Invalid certificate format, must be PEM encoded';
         logs.textContent= 'Error: ' + err;
         logs.style.color = 'Red';
@@ -375,11 +401,11 @@ function send(e) {
     }
 
     return postCertificate(certificate)
-    .then(function(certJson) {
-        setFieldsFromJSON(certJson);
-        getCertPaths(certJson.id);
-        logs.textContent = '';
-    })
+        .then(function(certJson) {
+            setFieldsFromJSON(certJson);
+            getCertPaths(certJson.id);
+            logs.textContent = '';
+        })
         .catch(function(err) {
             logs.textContent = 'Error: ' + err;
             logs.style.color = 'Red';
