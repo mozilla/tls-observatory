@@ -134,11 +134,15 @@ function clearTable(name) {
     }
 }
 
-function formatHTMLCommonName(name, id) {
+function permanentLink(id, text) {
     let link = document.createElement('a');
     link.setAttribute('href', "/static/certsplainer.html?id=" + id);
-    link.textContent = formatCommonName(name);
+    link.textContent = text;
     return link;
+}
+
+function formatHTMLCommonName(name, id) {
+    return permanentLink(id, formatCommonName(name));
 }
 
 function formatCommonName(name) {
