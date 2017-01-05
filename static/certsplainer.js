@@ -101,9 +101,10 @@ function clearFields() {
     ]) {
         setField(id, '');
     }
-    document.getElementById('curveRow').classList.remove('hidden');
-    document.getElementById('keySizeRow').classList.remove('hidden');
-    document.getElementById('exponentRow').classList.remove('hidden');
+
+    for (let id of ['curveRow', 'keySizeRow', 'exponentRow']) {
+	document.getElementById(id).classList.remove('hidden');
+    }
 }
 
 function clearTable(name) {
