@@ -135,7 +135,10 @@ function clearTable(name) {
 }
 
 function formatHTMLCommonName(name, id) {
-    return '<a href="/static/certsplainer.html?id=' + id + '">' + formatCommonName(name) + '</a>';
+    let link = document.createElement('a');
+    link.setAttribute('href', "/static/certsplainer.html?id=" + id);
+    link.textContent = formatCommonName(name);
+    return link;
 }
 
 function formatCommonName(name) {
@@ -175,8 +178,10 @@ function setFieldsFromJSON(properties) {
     }
     setField('version', properties.version);
     setField('serialNumber', properties.serialNumber.toLowerCase());
+    setField('issuer', formatHTMLCommonName(properties.issuer, properties.issuer.id));
     setField('notBefore', properties.validity.notBefore);
     setField('notAfter', properties.validity.notAfter);
+    setField('subject', formatHTMLCommonName(properties.subject, properties.id));
     setField('signatureAlgorithm', properties.signatureAlgorithm);
     if (properties.key.alg === 'RSA') {
         setField('keySize', properties.key.size);
@@ -194,8 +199,6 @@ function setFieldsFromJSON(properties) {
     setField('certificate', "-----BEGIN CERTIFICATE-----\n" + properties.Raw.replace(/(\S{64}(?!$))/g, "$1\n") + "\n-----END CERTIFICATE-----" );
 
     setFieldRaw('id', '<a href="/api/v1/certificate?id=' + properties.id + '">' + properties.id + '</a>');
-    setFieldRaw('issuer',  formatHTMLCommonName(properties.issuer, properties.issuer.id));
-    setFieldRaw('subject', formatHTMLCommonName(properties.subject, properties.id));
 
     let extensionsTable = document.getElementById('extensions');
     Object.keys(properties.x509v3Extensions).forEach((extensionName) => {
