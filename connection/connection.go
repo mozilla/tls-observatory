@@ -29,28 +29,28 @@ type CipherscanCiphersuite struct {
 	TicketHint   string   `json:"ticket_hint"`
 	OCSPStapling string   `json:"ocsp_stapling"`
 	PFS          string   `json:"pfs"`
-	Curves       []string `json:"curves,omitempty"`
+	Curves       []string `json:"curves"`
 }
 
 //the following structs represent the output we want to provide to DB.
 
 type Stored struct {
 	ScanIP         string        `json:"scanIP"`
-	ServerSide     bool          `json:"serverside,omitempty"`
-	CipherSuite    []Ciphersuite `json:"ciphersuite,omitempty"`
-	CurvesFallback bool          `json:"curvesFallback,omitempty"`
+	ServerSide     bool          `json:"serverside"`
+	CipherSuite    []Ciphersuite `json:"ciphersuite"`
+	CurvesFallback bool          `json:"curvesFallback"`
 }
 
 type Ciphersuite struct {
-	Cipher       string   `json:"cipher,omitempty"`
+	Cipher       string   `json:"cipher"`
 	Code         uint64   `json:"code"`
-	Protocols    []string `json:"protocols,omitempty"`
-	PubKey       float64  `json:"pubkey,omitempty"`
-	SigAlg       string   `json:"sigalg,omitempty"`
-	TicketHint   string   `json:"ticket_hint,omitempty"`
-	OCSPStapling bool     `json:"ocsp_stapling,omitempty"`
-	PFS          string   `json:"pfs,omitempty"`
-	Curves       []string `json:"curves,omitempty"`
+	Protocols    []string `json:"protocols"`
+	PubKey       float64  `json:"pubkey"`
+	SigAlg       string   `json:"sigalg"`
+	TicketHint   string   `json:"ticket_hint"`
+	OCSPStapling bool     `json:"ocsp_stapling"`
+	PFS          string   `json:"pfs"`
+	Curves       []string `json:"curves"`
 }
 
 func stringtoBool(s string) bool {
