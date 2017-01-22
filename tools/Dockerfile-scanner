@@ -3,7 +3,7 @@ MAINTAINER Julien Vehent
 ENV PROJECT=github.com/mozilla/tls-observatory
 
 # Run as root
-RUN apt-get update -y && apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang -y && rm -f /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang -y
 
 RUN mkdir /opt/cipherscan/
 ADD cipherscan/ /opt/cipherscan/
