@@ -93,6 +93,7 @@ function setField(field, value) {
     let node = document.getElementById(field);
 
     switch (typeof value) {
+    case 'number':
     case 'string':
 	// Setting textContent removes all child nodes
 	node.textContent = value;
@@ -100,7 +101,7 @@ function setField(field, value) {
 
     case 'object':
 	let newNode = node.cloneNode(false);
-	newNode.addChild(value);
+	newNode.appendChild(value);
 	node.parentNode.replaceChild(newNode, node);
 	break;
 
