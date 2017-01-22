@@ -2,6 +2,7 @@ package mozillaEvaluationWorker
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/mozilla/tls-observatory/certificate"
@@ -13,6 +14,19 @@ type testParams struct {
 	expectedFailures []string
 	cipherscan       string
 	certificate      string
+}
+
+func TestMain(m *testing.M) {
+	err := json.Unmarshal([]byte(ServerSideTLSConfiguration), &sstls)
+	if err != nil {
+		log.Fatal("Could not load Server Side TLS configuration. Evaluation Worker not available")
+	}
+	modern = sstls.Configurations["modern"]
+	intermediate = sstls.Configurations["intermediate"]
+	old = sstls.Configurations["old"]
+
+	r := m.Run()
+	os.Exit(r)
 }
 
 func TestLevels(t *testing.T) {
