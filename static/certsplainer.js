@@ -90,7 +90,24 @@ function postCertificate(certificate) {
 }
 
 function setField(field, value) {
-    document.getElementById(field).innerHTML = value;
+    let node = document.getElementById(field);
+
+    switch (typeof value) {
+    case 'number':
+    case 'string':
+	// Setting textContent removes all child nodes
+	node.textContent = value;
+	break;
+
+    case 'object':
+	let newNode = node.cloneNode(false);
+	newNode.appendChild(value);
+	node.parentNode.replaceChild(newNode, node);
+	break;
+
+    default:
+	console.log("setField(): Unexpected type '" + typeof(value) + "'");
+    }
 }
 
 function clearFields() {
@@ -101,9 +118,10 @@ function clearFields() {
     ]) {
         setField(id, '');
     }
-    document.getElementById('curveRow').classList.remove('hidden');
-    document.getElementById('keySizeRow').classList.remove('hidden');
-    document.getElementById('exponentRow').classList.remove('hidden');
+
+    for (let id of ['curveRow', 'keySizeRow', 'exponentRow']) {
+	document.getElementById(id).classList.remove('hidden');
+    }
 }
 
 function clearTable(name) {
@@ -113,8 +131,15 @@ function clearTable(name) {
     }
 }
 
+function permanentLink(id, text) {
+    let link = document.createElement('a');
+    link.setAttribute('href', "/static/certsplainer.html?id=" + id);
+    link.textContent = text;
+    return link;
+}
+
 function formatHTMLCommonName(name, id) {
-    return '<a href="/static/certsplainer.html?id=' + id + '">' + formatCommonName(name) + '</a>';
+    return permanentLink(id, formatCommonName(name));
 }
 
 function formatCommonName(name) {
@@ -172,7 +197,7 @@ function setFieldsFromJSON(properties) {
     setField('sha256hash', properties.hashes.sha256.toLowerCase());
     setField('sha256_subject_spki', properties.hashes.sha256_subject_spki.toLowerCase());
     setField('pin-sha256', properties.hashes['pin-sha256'].toLowerCase());
-    setField('id', '<a href="/api/v1/certificate?id=' + properties.id + '">' + properties.id + '</a>');
+    setField('id', permanentLink(properties.id, properties.id));
     setField('certificate', "-----BEGIN CERTIFICATE-----\n" + properties.Raw.replace(/(\S{64}(?!$))/g, "$1\n") + "\n-----END CERTIFICATE-----" );
 
     let extensionsTable = document.getElementById('extensions');
@@ -244,7 +269,13 @@ function setFieldsFromJSON(properties) {
         document.getElementById('trusttable').style.display = 'none';
     }
 
-    setField('permalink', 'Displaying information for CN=' + properties.subject.cn + ' [<a href="/static/certsplainer.html?id=' + properties.id + '">permanent link</a>]');
+    let permalink = permanentLink(properties.id, 'permanent link');
+    let permatext = document.createElement(null);
+    permatext.appendChild(document.createTextNode('Displaying information for CN=' + properties.subject.cn + ' ['));
+    permatext.appendChild(permalink);
+    permatext.appendChild(document.createTextNode(']'));
+
+    setField('permalink',  permatext);
     setField('title', 'certsplained ' + properties.subject.cn);
 	window.history.replaceState({}, "", [location.protocol, '//', location.host, location.pathname].join('') + '?id=' + properties.id);
 }
