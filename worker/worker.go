@@ -49,6 +49,11 @@ func RegisterWorker(name string, info Info) {
 	AvailableWorkers[name] = info
 }
 
+// RemoveWorker is called in case any worker needs to make itself unavailable ( due to unrecoverable errors ).
+func RemoveWorker(name string) {
+	delete(AvailableWorkers, name)
+}
+
 // Worker is the interface that is used to provide transparent running of any type of worker
 // from the main application.
 type Worker interface {
