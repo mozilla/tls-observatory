@@ -78,6 +78,12 @@ var routes = Routes{
 		"/api/v1/truststore",
 		TruststoreHandler,
 	},
+	Route{
+		"Truststore",
+		"GET",
+		"/api/v1/issuerStatus",
+		IssuerStatusHandler,
+	},
 	// CORS preflight endpoints
 	Route{
 		"CORS Preflight",
@@ -107,6 +113,12 @@ var routes = Routes{
 		"CORS Preflight",
 		"OPTIONS",
 		"/api/v1/truststore",
+		PreflightHandler,
+	},
+	Route{
+		"CORS Preflight",
+		"OPTIONS",
+		"/api/v1/issuerStatus",
 		PreflightHandler,
 	},
 	Route{

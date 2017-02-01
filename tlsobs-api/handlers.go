@@ -439,6 +439,38 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// IssuerStatusHandler handles the /issuerStatus endpoint of the api.
+// It queries the database for a list of end-entity cert_ids which chain via the
+// given certificate.
+// It takes the following HTTP parameter:
+//     fingerprint - a base64 encoded sha256 certificate fingerprint
+func IssuerStatusHandler(w http.ResponseWriter, r *http.Request) {
+	val := r.Context().Value(ctxDBKey)
+	if val == nil {
+		httpError(w, r, http.StatusInternalServerError,
+			fmt.Sprintf("Could not find database handler in request context"))
+		return
+	}
+	db := val.(*pg.DB)
+	certIDs, err := db.GetAllCertIDsIssuedBy(r.FormValue("fingerprint"));
+
+	if err != nil {
+	httpError(w, r, http.StatusInternalServerError,
+			fmt.Sprintf("Unable to obtain a certificate for the given hash"))
+	}
+
+	certIDsJson, marshalErr := json.Marshal(certIDs)
+
+	if marshalErr != nil {
+	httpError(w, r, http.StatusInternalServerError,
+			fmt.Sprintf("Unable to marshal certificate IDs"))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(certIDsJson)
+	return
+}
+
 func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
