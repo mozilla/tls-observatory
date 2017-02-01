@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -58,8 +59,10 @@ func (slice Analyses) Swap(i, j int) {
 
 func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, error) {
 
-	url := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
-		user, password, hostport, dbname, sslmode)
+	userPass := url.UserPassword(user, password)
+
+	url := fmt.Sprintf("postgres://%s@%s/%s?sslmode=%s",
+		userPass.String(), hostport, dbname, sslmode)
 
 	db, err := sql.Open("postgres", url)
 
