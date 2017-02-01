@@ -75,6 +75,10 @@ runs:
         - status.services.mozilla.com
         - restmail.net
 
+        # Normandy
+        - normandy.cdn.mozilla.net
+        - self-repair.mozilla.org
+
         # Pageshot
         - pageshot.net
 
