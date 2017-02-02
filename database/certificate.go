@@ -119,10 +119,11 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        permitted_ip_addresses,
                                        excluded_dns_domains,
                                        excluded_ip_addresses,
-                                       is_technically_constrained
+                                       is_technically_constrained,
+						   cisco_umbrella_rank
                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
                                         $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-                                        $27, $28, $29, $30, $31)
+                                        $27, $28, $29, $30, $31, $32)
                                         RETURNING id`,
 		cert.Serial,
 		cert.Hashes.SHA1,
@@ -155,11 +156,18 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		pq.Array(cert.X509v3Extensions.ExcludedDNSDomains),
 		pq.Array(cert.X509v3Extensions.ExcludedIPAddresses),
 		cert.X509v3Extensions.IsTechnicallyConstrained,
+		cert.CiscoUmbrellaRank,
 	).Scan(&id)
 	if err != nil {
 		return -1, err
 	}
 	return id, nil
+}
+
+// UpdateCertificateRank updates the rank integer of the input certificate.
+func (db *DB) UpdateCertificateRank(id, rank int64) error {
+	_, err := db.Exec("UPDATE certificates SET cisco_umbrella_rank=$1 WHERE id=$2", rank, id)
+	return err
 }
 
 // UpdateCertLastSeen updates the last_seen timestamp of the input certificate.
@@ -300,6 +308,7 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 		pq.Array(&cert.X509v3Extensions.ExcludedDNSDomains),
 		pq.Array(&cert.X509v3Extensions.ExcludedIPAddresses),
 		&cert.X509v3Extensions.IsTechnicallyConstrained,
+		&cert.CiscoUmbrellaRank,
 	)
 	if err != nil {
 		return cert, err
@@ -655,4 +664,5 @@ var allCertificateColumns = []string{
 	"excluded_dns_domains",
 	"excluded_ip_addresses",
 	"is_technically_constrained",
+	"cisco_umbrella_rank",
 }
