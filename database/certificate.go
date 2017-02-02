@@ -391,8 +391,8 @@ func (db *DB) GetAllCertsInStore(store string) (out []certificate.Certificate, e
 // GetEndEntityCertsForIssuerBySha256Fingerprint gets the certificate IDs of all
 // end entity certificates in the database that chain to the certificate with
 // the specified Sha256 fingerprint.
-func (db *DB) GetEndEntityCountForIssuerBySha256Fingerprint(sha256 string)(id int64, err error) {
-	id = -1
+func (db *DB) GetEndEntityCountForIssuerBySha256Fingerprint(sha256 string)(count int64, err error) {
+	count = -1
 
 	rows, err := db.Query(`
 	    WITH RECURSIVE issued_by(cert_id, issuer_id) AS (
@@ -410,13 +410,13 @@ func (db *DB) GetEndEntityCountForIssuerBySha256Fingerprint(sha256 string)(id in
 		SELECT count(id) FROM certificates WHERE id IN (
 			SELECT DISTINCT cert_id FROM issued_by) AND is_ca = false`, sha256)
 	if err != nil {
-		return id, err
+		return count, err
 	}
 	
 	if rows.Next() {
-		err = rows.Scan(&id)
+		err = rows.Scan(&count)
 	}
-	return id, err
+	return count, err
 }
 
 // GetCertBySHA1Fingerprint fetches a certain certificate from the database.

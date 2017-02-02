@@ -456,7 +456,7 @@ func IssuerEECountHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 	httpError(w, r, http.StatusInternalServerError,
-			fmt.Sprintf("Unable to obtain a certificate for the given hash"))
+			fmt.Sprintf("Unable to retrieve statistics for the given issuer"))
 	}
 
 	certCountJson, marshalErr := json.Marshal(count)
