@@ -118,7 +118,7 @@ var routes = Routes{
 	Route{
 		"CORS Preflight",
 		"OPTIONS",
-		"/api/v1/issuerStatus",
+		"/api/v1/issuereecount",
 		PreflightHandler,
 	},
 	Route{
