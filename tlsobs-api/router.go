@@ -79,10 +79,10 @@ var routes = Routes{
 		TruststoreHandler,
 	},
 	Route{
-		"Truststore",
+		"IssuerEECount",
 		"GET",
-		"/api/v1/issuerStatus",
-		IssuerStatusHandler,
+		"/api/v1/issuereecount",
+		IssuerEECountHandler,
 	},
 	// CORS preflight endpoints
 	Route{

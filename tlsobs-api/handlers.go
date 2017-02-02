@@ -439,12 +439,12 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// IssuerStatusHandler handles the /issuerStatus endpoint of the api.
-// It queries the database for a list of end-entity cert_ids which chain via the
+// IssuerEECountHandler handles the /issuereecount endpoint of the api.
+// It queries the database for a count of end-entity certs which chain via the
 // given certificate.
 // It takes the following HTTP parameter:
-//     fingerprint - a base64 encoded sha256 certificate fingerprint
-func IssuerStatusHandler(w http.ResponseWriter, r *http.Request) {
+//     sha256 - a hex encoded sha256 certificate fingerprint
+func IssuerEECountHandler(w http.ResponseWriter, r *http.Request) {
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
 		httpError(w, r, http.StatusInternalServerError,
@@ -452,14 +452,14 @@ func IssuerStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	db := val.(*pg.DB)
-	certIDs, err := db.GetAllCertIDsIssuedBy(r.FormValue("fingerprint"));
+	count, err := db.GetEndEntityCountForIssuerBySha256Fingerprint(r.FormValue("sha256"));
 
 	if err != nil {
 	httpError(w, r, http.StatusInternalServerError,
 			fmt.Sprintf("Unable to obtain a certificate for the given hash"))
 	}
 
-	certIDsJson, marshalErr := json.Marshal(certIDs)
+	certCountJson, marshalErr := json.Marshal(count)
 
 	if marshalErr != nil {
 	httpError(w, r, http.StatusInternalServerError,
@@ -467,7 +467,7 @@ func IssuerStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(certIDsJson)
+	w.Write(certCountJson)
 	return
 }
 
