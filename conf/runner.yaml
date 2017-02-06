@@ -74,6 +74,10 @@ runs:
         - status.services.mozilla.com
         - restmail.net
 
+        # Normandy
+        - normandy.cdn.mozilla.net
+        - self-repair.mozilla.org
+
         # Pageshot
         - pageshot.net
 
@@ -384,6 +388,20 @@ runs:
           email:
               recipients:
                   - cloud-ops@mozilla.com
+
+    # Normandy
+    - targets:
+        - normandy.cdn.mozilla.net
+        - self-repair.mozilla.org
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:c2hpZWxkQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20=
 
     # Pageshot
     - targets:

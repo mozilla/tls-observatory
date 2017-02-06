@@ -57,4 +57,10 @@ truststores:
 cipherscan:
 	cd cipherscan && git pull origin master && cd ..
 
+ciscotop1m:
+	wget http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip
+	unzip top-1m.csv.zip
+	mv top-1m.csv conf/
+	rm top-1m.csv.zip
+
 .PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor truststores cipherscan
