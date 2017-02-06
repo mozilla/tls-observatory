@@ -213,6 +213,7 @@ func scan(scanID int64, cipherscan string) {
 		log.WithFields(logrus.Fields{
 			"scan_id": scanID,
 			"cert_id": certID,
+			"err":     err,
 		}).Error("Could not get certificate from db to pass to workers")
 		return
 	}

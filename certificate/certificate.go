@@ -25,6 +25,8 @@ const (
 	Microsoft_TS_name = "Microsoft"
 	Apple_TS_name     = "Apple"
 	Android_TS_name   = "Android"
+
+	Default_Cisco_Umbrella_Rank = 2147483647 // max positive value of postgres integer
 )
 
 type Certificate struct {
@@ -48,6 +50,7 @@ type Certificate struct {
 	LastSeenTimestamp      time.Time                 `json:"lastSeenTimestamp"`
 	Hashes                 Hashes                    `json:"hashes"`
 	Raw                    string                    `json:"Raw"`
+	CiscoUmbrellaRank      int64                     `json:"ciscoUmbrellaRank"`
 	Anomalies              string                    `json:"anomalies,omitempty"`
 }
 
@@ -516,6 +519,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Hashes.PKPSHA256 = PKPSHA256Hash(cert)
 
 	stored.Raw = base64.StdEncoding.EncodeToString(cert.Raw)
+	stored.CiscoUmbrellaRank = Default_Cisco_Umbrella_Rank
 
 	return stored
 }
