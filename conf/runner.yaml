@@ -40,6 +40,8 @@ runs:
         - oauth.accounts.firefox.com
         - profile.accounts.firefox.com
         - verifier.accounts.firefox.com
+        - accounts.cdn.mozilla.net
+        - accounts-static.stage.mozaws.net
         - firefoxusercontent.com
         - mozillausercontent.com
 
@@ -312,6 +314,8 @@ runs:
         - oauth.accounts.firefox.com
         - profile.accounts.firefox.com
         - verifier.accounts.firefox.com
+        - accounts.cdn.mozilla.net
+        - accounts-static.stage.mozaws.net
         - firefoxusercontent.com
         - mozillausercontent.com
       assertions:
