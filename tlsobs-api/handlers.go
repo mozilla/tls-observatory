@@ -439,6 +439,38 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// IssuerEECountHandler handles the /issuereecount endpoint of the api.
+// It queries the database for a count of end-entity certs which chain via the
+// given certificate.
+// It takes the following HTTP parameter:
+//     sha256 - a hex encoded sha256 certificate fingerprint
+func IssuerEECountHandler(w http.ResponseWriter, r *http.Request) {
+	val := r.Context().Value(ctxDBKey)
+	if val == nil {
+		httpError(w, r, http.StatusInternalServerError,
+			fmt.Sprintf("Could not find database handler in request context"))
+		return
+	}
+	db := val.(*pg.DB)
+	count, err := db.GetEndEntityCountForIssuerBySha256Fingerprint(r.FormValue("sha256"));
+
+	if err != nil {
+	httpError(w, r, http.StatusInternalServerError,
+			fmt.Sprintf("Unable to retrieve statistics for the given issuer"))
+	}
+
+	certCountJson, marshalErr := json.Marshal(count)
+
+	if marshalErr != nil {
+	httpError(w, r, http.StatusInternalServerError,
+			fmt.Sprintf("Unable to marshal certificate IDs"))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(certCountJson)
+	return
+}
+
 func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
