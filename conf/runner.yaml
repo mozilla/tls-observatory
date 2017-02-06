@@ -69,9 +69,6 @@ runs:
         - sql.telemetry.mozilla.org
         - pipeline-dwl.prod.mozaws.net
 
-        # Miracle (Context Graph collection endpoint)
-        - miracle.services.mozilla.com
-
         # Misc
         - services.mozilla.com
         - status.services.mozilla.com
@@ -157,22 +154,19 @@ runs:
         - blocklists.settings.services.mozilla.com
         - firefox.settings.services.mozilla.com
         - webextensions.settings.services.mozilla.com
-        
+
         # Test Pilot
         - testpilot.firefox.com
         - embedly-proxy.services.mozilla.com
         - universalsearch.testpilot.firefox.com
-        
-        # Miracle (Context Graph collection endpoint)
-        - miracle.services.mozilla.com
-        
+
         # Pageshot
         - pageshot.net
-        
+
         # Push
         - push.services.mozilla.com
         - updates.push.services.mozilla.com
-        
+
         # Tiles
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
@@ -187,7 +181,7 @@ runs:
                   - cloud-ops@mozilla.com
 
     # Cloud Services TLS monitoring, all sites that must match modern level
-    - targets:    
+    - targets:
         # TLS Observatory
         - tls-observatory.services.mozilla.com
       assertions:
@@ -199,7 +193,7 @@ runs:
           email:
               recipients:
                   - cloud-ops@mozilla.com
-                  
+
     # absearch paging
     - targets:
         - search.services.mozilla.com
@@ -377,19 +371,6 @@ runs:
               recipients:
                   - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
 
-    # Miracle (Context Graph collection endpoint)
-    - targets:
-        - miracle.services.mozilla.com
-      assertions:
-        - certificate:
-            validity:
-                notafter: ">14d"
-      cron: "30 18 * * *"
-      notifications:
-          email:
-              recipients:
-                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
-
     # Misc paging
     - targets:
         - status.services.mozilla.com
@@ -556,7 +537,7 @@ runs:
           email:
               recipients:
                   - cloud-ops@mozilla.com
-                  
+
     # Cloud Services product delivery CDN always shows as bad because of RC4, AWS limitation
     - targets:
         - download-sha1.cdn.mozilla.net
@@ -569,7 +550,7 @@ runs:
           email:
               recipients:
                   - cloud-ops@mozilla.com
-                  
+
     # Julien's stuff
     - targets:
         - jve.linuxwall.info
