@@ -388,9 +388,8 @@ func (db *DB) GetAllCertsInStore(store string) (out []certificate.Certificate, e
 	}
 }
 
-// GetEECountForIssuerByID gets the certificate IDs of all end entity
-// certificates in the database that chain to the certificate with
-// the specified Sha256 fingerprint.
+// GetEECountForIssuerByID gets the count of end entity certificates in the
+// database that chain to the certificate with the specified ID
 func (db *DB) GetEECountForIssuerByID(certID int64) (count int64, err error) {
 	count = -1
 	rows, err := db.Query(`
