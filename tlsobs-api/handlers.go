@@ -439,12 +439,24 @@ func TruststoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// IssuerEECount contains a certificate and the count of end-entity certs
+// it has issued
+type IssuerEECount struct {
+	Issuer  *certificate.Certificate `json:"issuer"`
+	EECount int64                    `json:"eecount"`
+}
+
 // IssuerEECountHandler handles the /issuereecount endpoint of the api.
 // It queries the database for a count of end-entity certs which chain via the
 // given certificate.
 // It takes the following HTTP parameter:
 //     sha256 - a hex encoded sha256 certificate fingerprint
 func IssuerEECountHandler(w http.ResponseWriter, r *http.Request) {
+	var (
+		err           error
+		id            int64
+		issuerEECount IssuerEECount
+	)
 	val := r.Context().Value(ctxDBKey)
 	if val == nil {
 		httpError(w, r, http.StatusInternalServerError,
@@ -452,22 +464,42 @@ func IssuerEECountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	db := val.(*pg.DB)
-	count, err := db.GetEndEntityCountForIssuerBySha256Fingerprint(r.FormValue("sha256"));
-
+	if r.FormValue("id") != "" {
+		id, err = strconv.ParseInt(r.FormValue("id"), 10, 64)
+		if err != nil {
+			httpError(w, r, http.StatusBadRequest,
+				fmt.Sprintf("Could not parse certificate id: %v", err))
+			return
+		}
+	} else if r.FormValue("sha256") != "" {
+		id, err = db.GetCertIDBySHA256Fingerprint(r.FormValue("sha256"))
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError,
+				fmt.Sprintf("Could not retrieve certificate: %v", err))
+			return
+		}
+	} else {
+		httpError(w, r, http.StatusBadRequest, "Certificate ID or SHA256 are missing")
+		return
+	}
+	issuerEECount.EECount, err = db.GetEECountForIssuerByID(id)
 	if err != nil {
-	httpError(w, r, http.StatusInternalServerError,
+		httpError(w, r, http.StatusInternalServerError,
 			fmt.Sprintf("Unable to retrieve statistics for the given issuer"))
 	}
-
-	certCountJson, marshalErr := json.Marshal(count)
-
-	if marshalErr != nil {
-	httpError(w, r, http.StatusInternalServerError,
+	issuerEECount.Issuer, err = db.GetCertByID(id)
+	if err != nil {
+		httpError(w, r, http.StatusInternalServerError,
+			fmt.Sprintf("Could not retrieved stored certificate from database: %v", err))
+		return
+	}
+	issuerEEData, err := json.Marshal(issuerEECount)
+	if err != nil {
+		httpError(w, r, http.StatusInternalServerError,
 			fmt.Sprintf("Unable to marshal certificate IDs"))
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(certCountJson)
+	w.Write(issuerEEData)
 	return
 }
 

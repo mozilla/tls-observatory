@@ -250,7 +250,7 @@ func (db *DB) GetCertIDBySHA1Fingerprint(sha1 string) (id int64, err error) {
 	id = -1
 	err = db.QueryRow(`SELECT id
 				 FROM certificates
-				 WHERE sha1_fingerprint=$1
+				 WHERE sha1_fingerprint=upper($1)
 				 ORDER BY id ASC LIMIT 1`,
 		sha1).Scan(&id)
 	if err == sql.ErrNoRows {
@@ -267,7 +267,7 @@ func (db *DB) GetCertIDBySHA256Fingerprint(sha256 string) (id int64, err error) 
 	id = -1
 	err = db.QueryRow(`SELECT id
 				 FROM certificates
-				 WHERE sha256_fingerprint=$1
+				 WHERE sha256_fingerprint=upper($1)
 				 ORDER BY id ASC LIMIT 1`,
 		strings.ToUpper(sha256)).Scan(&id)
 	if err == sql.ErrNoRows {
@@ -397,18 +397,16 @@ func (db *DB) GetAllCertsInStore(store string) (out []certificate.Certificate, e
 	}
 }
 
-// GetEndEntityCertsForIssuerBySha256Fingerprint gets the certificate IDs of all
-// end entity certificates in the database that chain to the certificate with
-// the specified Sha256 fingerprint.
-func (db *DB) GetEndEntityCountForIssuerBySha256Fingerprint(sha256 string)(count int64, err error) {
+// GetEECountForIssuerByID gets the count of end entity certificates in the
+// database that chain to the certificate with the specified ID
+func (db *DB) GetEECountForIssuerByID(certID int64) (count int64, err error) {
 	count = -1
-
 	rows, err := db.Query(`
 	    WITH RECURSIVE issued_by(cert_id, issuer_id) AS (
 			SELECT cert_id, issuer_id FROM trust WHERE issuer_id = (
 				SELECT id
 				FROM certificates
-				WHERE sha256_fingerprint=$1
+				WHERE id=$1
 			)
 			AND cert_id != issuer_id
 			UNION ALL
@@ -417,11 +415,11 @@ func (db *DB) GetEndEntityCountForIssuerBySha256Fingerprint(sha256 string)(count
 				WHERE cert.issuer_id = issuer_id.cert_id
 		)
 		SELECT count(id) FROM certificates WHERE id IN (
-			SELECT DISTINCT cert_id FROM issued_by) AND is_ca = false`, sha256)
+			SELECT DISTINCT cert_id FROM issued_by
+		) AND is_ca = false`, certID)
 	if err != nil {
 		return count, err
 	}
-	
 	if rows.Next() {
 		err = rows.Scan(&count)
 	}

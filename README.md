@@ -20,6 +20,7 @@ Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.or
     * [POST /api/v1/certificate](#post-/api/v1/certificate)
     * [GET /api/v1/paths](#get-/api/v1/paths)
     * [GET /api/v1/truststore](#get-/api/v1/truststore)
+    * [GET /api/v1/issuereecount](#get-/api/v1/issuereecount)
   * [Database Queries](#database-queries)
     * [Find certificates signed by CAs identified by their SHA256 fingerprint](#find-certificates-signed-by-cas-identified-by-their-sha256-fingerprint)
     * [List signature algorithms of trusted certs](#list-signature-algorithms-of-trusted-certs)
@@ -317,6 +318,22 @@ curl https://tls-observatory.services.mozilla.com/api/v1/truststore?store=mozill
 * `format`, either "pem" or "json". 
 
 **Output**: if `format` is pem, a series of PEM-format certificates. If `format` is json, a json array of certificate objects, each with the same format of `/api/v1/certificate`.
+
+### GET /api/v1/issuereecount
+
+Retrieve the count of end-entity certificates that chain to the specified certificate. This is used to evaluate weight of a given issuer in the web pki.
+
+```bash
+curl https://tls-observatory.services.mozilla.com/api/v1/issuereecount?id=1
+```
+
+**Parameters**:
+
+* `id` is the ID of the certificate to start the path at.
+* `sha256` the hexadecimal checksum of the DER certificate (only if `id` is not
+  provided)
+
+**Output**: a `json` document containing the certificate itself under `issuer` and the count of end-entity certs under `eecount`.
 
 ## Database Queries
 
