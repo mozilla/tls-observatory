@@ -397,33 +397,28 @@ func (db *DB) GetAllCertsInStore(store string) (out []certificate.Certificate, e
 	}
 }
 
-// GetEECountForIssuerByID gets the count of end entity certificates in the
+// GetEECountForIssuerByID gets the count of valid end entity certificates in the
 // database that chain to the certificate with the specified ID
 func (db *DB) GetEECountForIssuerByID(certID int64) (count int64, err error) {
 	count = -1
-	rows, err := db.Query(`
-	    WITH RECURSIVE issued_by(cert_id, issuer_id) AS (
-			SELECT cert_id, issuer_id FROM trust WHERE issuer_id = (
-				SELECT id
-				FROM certificates
-				WHERE id=$1
-			)
-			AND cert_id != issuer_id
-			UNION ALL
-				SELECT cert.cert_id, cert.issuer_id
-				FROM issued_by issuer_id, trust cert
-				WHERE cert.issuer_id = issuer_id.cert_id
-		)
-		SELECT count(id) FROM certificates WHERE id IN (
-			SELECT DISTINCT cert_id FROM issued_by
-		) AND is_ca = false`, certID)
-	if err != nil {
-		return count, err
-	}
-	if rows.Next() {
-		err = rows.Scan(&count)
-	}
-	return count, err
+	err = db.QueryRow(`
+WITH RECURSIVE issued_by(cert_id, issuer_id) AS (
+	SELECT DISTINCT cert_id, issuer_id
+	FROM trust
+	WHERE issuer_id = $1
+	AND cert_id != issuer_id
+	UNION ALL
+		SELECT trust.cert_id, trust.issuer_id
+		FROM trust
+		JOIN issued_by
+		ON (trust.issuer_id = issued_by.cert_id)
+)
+SELECT count(id) FROM certificates WHERE id IN (
+	SELECT DISTINCT cert_id FROM issued_by
+) AND is_ca = false
+AND not_valid_after > NOW()
+AND not_valid_before < NOW()`, certID).Scan(&count)
+	return
 }
 
 // GetCertBySHA1Fingerprint fetches a certain certificate from the database.
