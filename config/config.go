@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/gcfg.v1"
 )
@@ -18,6 +19,7 @@ type Config struct {
 		CipherscanPath  string
 		ScanRefreshRate int
 		MaxProc         int
+		Timeout         time.Duration
 	}
 	TrustStores struct {
 		UbuntuTS    string
