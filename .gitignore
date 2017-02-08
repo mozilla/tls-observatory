@@ -2,6 +2,9 @@
 src/github.com/*
 src/code.google.com/*
 
+# configuration
+conf/api_prod.cfg
+
 # local builds
 bin/
 tmp/
