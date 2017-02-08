@@ -127,4 +127,10 @@ var routes = Routes{
 		"/api/v1/__heartbeat__",
 		HeartbeatHandler,
 	},
+	Route{
+		"Statistics",
+		"GET",
+		"/api/v1/__stats__",
+		StatsHandler,
+	},
 }

@@ -534,6 +534,84 @@ func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 	w.Write(certJson)
 }
 
+type Statistics struct {
+	PendingScans                  int64                 `json:"pendingScansCount"`
+	Last24HoursScans              []pg.HourlyScansCount `json:"last24HoursScansCount"`
+	DistinctTargetsLast24Hours    int64                 `json:"distinctTargetsLast24Hours"`
+	DistinctCertsSeenLast24Hours  int64                 `json:"distinctCertsSeenLast24Hours"`
+	DistinctCertsAddedLast24Hours int64                 `json:"distinctCertsAddedLast24Hours"`
+}
+
+func StatsHandler(w http.ResponseWriter, r *http.Request) {
+	var (
+		stats Statistics
+		err   error
+	)
+	val := r.Context().Value(ctxDBKey)
+	if val == nil {
+		httpError(w, r, http.StatusInternalServerError,
+			fmt.Sprintf("Could not find database handler in request context"))
+		return
+	}
+	db := val.(*pg.DB)
+	stats.PendingScans, err = db.CountPendingScans()
+	if err != nil {
+		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of pending scans: %v", err))
+		return
+	}
+	stats.Last24HoursScans, err = db.CountLast24HoursScans()
+	if err != nil {
+		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve hourly count of scans over last 24 hours: %v", err))
+		return
+	}
+	stats.DistinctTargetsLast24Hours, err = db.CountDistinctTargetsLast24Hours()
+	if err != nil {
+		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct targets over last 24 hours: %v", err))
+		return
+	}
+	stats.DistinctCertsSeenLast24Hours, err = db.CountDistinctCertsSeenLast24Hours()
+	if err != nil {
+		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct certs seen over last 24 hours: %v", err))
+		return
+	}
+	stats.DistinctCertsAddedLast24Hours, err = db.CountDistinctCertsAddedLast24Hours()
+	if err != nil {
+		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct certs added over last 24 hours: %v", err))
+		return
+	}
+	switch r.FormValue("format") {
+	case "text":
+		var buffer bytes.Buffer
+		buffer.Write([]byte(fmt.Sprintf(`
+pending scans: %d
+
+last 24 hours
+-------------
+- distinct targets: %d
+- certs seen:       %d
+- certs added:      %d
+
+hourly scans
+------------`, stats.PendingScans, stats.DistinctTargetsLast24Hours,
+			stats.DistinctCertsSeenLast24Hours, stats.DistinctCertsAddedLast24Hours)))
+		for _, hsc := range stats.Last24HoursScans {
+			buffer.Write([]byte(fmt.Sprintf("\n%s    %d", hsc.Hour.Format(time.RFC3339), hsc.Count)))
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		buffer.WriteTo(w)
+	default:
+		data, err := json.Marshal(stats)
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, "Could not marshal statistics")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
 func PreflightHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("preflighted"))
