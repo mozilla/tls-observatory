@@ -599,13 +599,17 @@ func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.Vali
 	return certificate.GetValidityMap(ubuntu, mozilla, microsoft, apple, android), issuerId, nil
 }
 
+// GetCertPaths returns the various certificates paths from the current cert to roots.
+// It takes a certificate as argument that will be used as the start of the path, and
+// a genealogy slice that contains the list of known parents, to prevent looping. When
+// first invoked, the genealogy variable should be an empty []string.
 func (db *DB) GetCertPaths(cert *certificate.Certificate, genealogy []string) (paths certificate.Paths, err error) {
 	paths.Cert = cert
 	xcert, err := cert.ToX509()
 	if err != nil {
 		return
 	}
-	genealogy = append(genealogy, cert.Subject.CommonName)
+	genealogy = append(genealogy, cert.Hashes.SHA256SubjectSPKI)
 	parents, err := db.GetCACertsBySubject(cert.Issuer)
 	if err != nil {
 		return
@@ -635,7 +639,7 @@ func (db *DB) GetCertPaths(cert *certificate.Certificate, genealogy []string) (p
 		}
 		isLooping := false
 		for _, ancestor := range genealogy {
-			if ancestor == parent.Subject.CommonName {
+			if ancestor == parent.Hashes.SHA256SubjectSPKI {
 				isLooping = true
 			}
 		}
