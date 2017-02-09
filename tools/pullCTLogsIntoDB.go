@@ -148,8 +148,7 @@ func main() {
 
 			// to insert the trust, first build the certificate paths, then insert one trust
 			// entry for each known parent of the cert
-			var genealogy []string
-			paths, err := db.GetCertPaths(&cert, genealogy)
+			paths, err := db.GetCertPaths(&cert)
 			if err != nil {
 				log.Printf("Failed to retrieve chains from database: %v", err)
 				continue
