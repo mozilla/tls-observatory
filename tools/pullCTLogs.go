@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/certificate-transparency/go"
 	"github.com/google/certificate-transparency/go/client"
+	"github.com/google/certificate-transparency/go/jsonclient"
 	"github.com/google/certificate-transparency/go/x509"
 	"github.com/mozilla/tls-observatory/certificate"
 )
@@ -25,9 +26,6 @@ func main() {
 		err    error
 		offset int
 	)
-	// create a certificate transparency client
-	ctLog := client.New("http://ct.googleapis.com/aviator", nil)
-
 	httpCli := &http.Client{
 		Transport: &http.Transport{
 			DisableCompression: true,
@@ -35,6 +33,8 @@ func main() {
 		},
 		Timeout: 10 * time.Second,
 	}
+	// create a certificate transparency client
+	ctLog, _ := client.New("http://ct.googleapis.com/aviator", httpCli, jsonclient.Options{})
 
 	if len(os.Args) > 1 {
 		offset, err = strconv.Atoi(os.Args[1])
@@ -44,7 +44,7 @@ func main() {
 	}
 	for {
 		log.Printf("retrieving CT logs %d to %d", offset, offset+100)
-		rawEnts, err := ctLog.GetEntries(int64(offset), int64(offset+100))
+		rawEnts, err := ctLog.GetEntries(nil, int64(offset), int64(offset+100))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -55,7 +55,7 @@ func main() {
 			var cert *x509.Certificate
 			switch ent.Leaf.TimestampedEntry.EntryType {
 			case ct.X509LogEntryType:
-				cert, err = x509.ParseCertificate(ent.Leaf.TimestampedEntry.X509Entry)
+				cert, err = x509.ParseCertificate(ent.Leaf.TimestampedEntry.X509Entry.Data)
 			case ct.PrecertLogEntryType:
 				cert, err = x509.ParseTBSCertificate(ent.Leaf.TimestampedEntry.PrecertEntry.TBSCertificate)
 			}
