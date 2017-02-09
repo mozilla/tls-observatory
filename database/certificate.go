@@ -599,12 +599,20 @@ func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.Vali
 	return certificate.GetValidityMap(ubuntu, mozilla, microsoft, apple, android), issuerId, nil
 }
 
+// GetCertPaths returns the various certificates paths from the current cert to roots.
+// It takes a certificate as argument that will be used as the start of the path.
 func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Paths, err error) {
+	var ancestors []string
+	return db.getCertPaths(cert, ancestors)
+}
+
+func (db *DB) getCertPaths(cert *certificate.Certificate, ancestors []string) (paths certificate.Paths, err error) {
 	paths.Cert = cert
 	xcert, err := cert.ToX509()
 	if err != nil {
 		return
 	}
+	ancestors = append(ancestors, cert.Hashes.SHA256SubjectSPKI)
 	parents, err := db.GetCACertsBySubject(cert.Issuer)
 	if err != nil {
 		return
@@ -629,6 +637,16 @@ func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Pat
 		}
 		// if the parent is self-signed, we have a root, no need to go deeper
 		if parent.IsSelfSigned() {
+			paths.Parents = append(paths.Parents, curPath)
+			continue
+		}
+		isLooping := false
+		for _, ancestor := range ancestors {
+			if ancestor == parent.Hashes.SHA256SubjectSPKI {
+				isLooping = true
+			}
+		}
+		if isLooping {
 			paths.Parents = append(paths.Parents, curPath)
 			continue
 		}

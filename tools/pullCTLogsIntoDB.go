@@ -91,6 +91,7 @@ func main() {
 				continue
 			}
 			log.Printf("CN=%s", ctcertX509.Subject.CommonName)
+			log.Printf("Issuer=%s", ctcertX509.Issuer.CommonName)
 			log.Printf("Not Before=%s", ctcertX509.NotBefore)
 			log.Printf("Not After=%s", ctcertX509.NotAfter)
 
