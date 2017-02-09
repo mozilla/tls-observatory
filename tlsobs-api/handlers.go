@@ -291,7 +291,8 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// to insert the trust, first build the certificate paths, then insert one trust
 	// entry for each known parent of the cert
-	paths, err := db.GetCertPaths(&cert)
+	var genealogy []string
+	paths, err := db.GetCertPaths(&cert, genealogy)
 	if err != nil {
 		httpError(w, r, http.StatusInternalServerError,
 			fmt.Sprintf("Failed to retrieve chains from database: %v", err))
@@ -351,7 +352,8 @@ func PathsHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("Could not retrieved stored certificate from database: %v", err))
 		return
 	}
-	paths, err := db.GetCertPaths(cert)
+	var genealogy []string
+	paths, err := db.GetCertPaths(cert, genealogy)
 	if err != nil {
 		httpError(w, r, http.StatusInternalServerError,
 			fmt.Sprintf("Failed to retrieve certificate paths from database: %v", err))

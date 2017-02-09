@@ -599,12 +599,13 @@ func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.Vali
 	return certificate.GetValidityMap(ubuntu, mozilla, microsoft, apple, android), issuerId, nil
 }
 
-func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Paths, err error) {
+func (db *DB) GetCertPaths(cert *certificate.Certificate, genealogy []string) (paths certificate.Paths, err error) {
 	paths.Cert = cert
 	xcert, err := cert.ToX509()
 	if err != nil {
 		return
 	}
+	genealogy = append(genealogy, cert.Subject.CommonName)
 	parents, err := db.GetCACertsBySubject(cert.Issuer)
 	if err != nil {
 		return
@@ -632,8 +633,18 @@ func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Pat
 			paths.Parents = append(paths.Parents, curPath)
 			continue
 		}
+		isLooping := false
+		for _, ancestor := range genealogy {
+			if ancestor == parent.Subject.CommonName {
+				isLooping = true
+			}
+		}
+		if isLooping {
+			paths.Parents = append(paths.Parents, curPath)
+			continue
+		}
 		// if the parent is not self signed, we grab its own parents
-		curPath, err := db.GetCertPaths(parent)
+		curPath, err := db.GetCertPaths(parent, genealogy)
 		if err != nil {
 			continue
 		}

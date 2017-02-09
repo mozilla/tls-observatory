@@ -91,6 +91,7 @@ func main() {
 				continue
 			}
 			log.Printf("CN=%s", ctcertX509.Subject.CommonName)
+			log.Printf("Issuer=%s", ctcertX509.Issuer.CommonName)
 			log.Printf("Not Before=%s", ctcertX509.NotBefore)
 			log.Printf("Not After=%s", ctcertX509.NotAfter)
 
@@ -147,7 +148,8 @@ func main() {
 
 			// to insert the trust, first build the certificate paths, then insert one trust
 			// entry for each known parent of the cert
-			paths, err := db.GetCertPaths(&cert)
+			var genealogy []string
+			paths, err := db.GetCertPaths(&cert, genealogy)
 			if err != nil {
 				log.Printf("Failed to retrieve chains from database: %v", err)
 				continue
