@@ -651,7 +651,7 @@ func (db *DB) getCertPaths(cert *certificate.Certificate, ancestors []string) (p
 			continue
 		}
 		// if the parent is not self signed, we grab its own parents
-		curPath, err := db.GetCertPaths(parent)
+		curPath, err := db.getCertPaths(parent, ancestors)
 		if err != nil {
 			continue
 		}
