@@ -56,6 +56,7 @@ func (m *MozLogger) Write(l []byte) (int, error) {
 // AppLog implements Mozilla logging standard
 type AppLog struct {
 	Timestamp  int64
+	Time       string
 	Type       string
 	Logger     string
 	Hostname   string `json:",omitempty"`
@@ -67,8 +68,10 @@ type AppLog struct {
 
 // NewAppLog returns a loggable struct
 func NewAppLog(loggerName string, msg []byte) *AppLog {
+	now := time.Now().UTC()
 	return &AppLog{
-		Timestamp:  time.Now().UnixNano(),
+		Timestamp:  now.UnixNano(),
+		Time:       now.Format(time.RFC3339),
 		Type:       "app.log",
 		Logger:     loggerName,
 		Hostname:   hostname,
