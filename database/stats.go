@@ -6,19 +6,19 @@ import "time"
 // and certificates stored in database. The count uses Postgres' own stats counter and is
 // not guaranteed to be fully accurate.
 func (db *DB) CountTableEntries() (scans, trusts, analyses, certificates int64, err error) {
-	err = db.QueryRow(`SELECT reltuples FROM pg_class WHERE relname='scans'`).Scan(&scans)
+	err = db.QueryRow(`SELECT reltuples::INTEGER FROM pg_class WHERE relname='scans'`).Scan(&scans)
 	if err != nil {
 		return
 	}
-	err = db.QueryRow(`SELECT reltuples FROM pg_class WHERE relname='trust'`).Scan(&trusts)
+	err = db.QueryRow(`SELECT reltuples::INTEGER FROM pg_class WHERE relname='trust'`).Scan(&trusts)
 	if err != nil {
 		return
 	}
-	err = db.QueryRow(`SELECT reltuples FROM pg_class WHERE relname='analysis'`).Scan(&analyses)
+	err = db.QueryRow(`SELECT reltuples::INTEGER FROM pg_class WHERE relname='analysis'`).Scan(&analyses)
 	if err != nil {
 		return
 	}
-	err = db.QueryRow(`SELECT reltuples FROM pg_class WHERE relname='certificates'`).Scan(&certificates)
+	err = db.QueryRow(`SELECT reltuples::INTEGER FROM pg_class WHERE relname='certificates'`).Scan(&certificates)
 	if err != nil {
 		return
 	}
