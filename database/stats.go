@@ -2,6 +2,29 @@ package database
 
 import "time"
 
+// CountTableEntries returns the estimated count of scans, trusts relationships, analyses
+// and certificates stored in database. The count uses Postgres' own stats counter and is
+// not guaranteed to be fully accurate.
+func (db *DB) CountTableEntries() (scans, trusts, analyses, certificates int64, err error) {
+	err = db.QueryRow(`SELECT reltuples FROM pg_class WHERE relname='scans'`).Scan(&scans)
+	if err != nil {
+		return
+	}
+	err = db.QueryRow(`SELECT reltuples FROM pg_class WHERE relname='trust'`).Scan(&trusts)
+	if err != nil {
+		return
+	}
+	err = db.QueryRow(`SELECT reltuples FROM pg_class WHERE relname='analysis'`).Scan(&analyses)
+	if err != nil {
+		return
+	}
+	err = db.QueryRow(`SELECT reltuples FROM pg_class WHERE relname='certificates'`).Scan(&certificates)
+	if err != nil {
+		return
+	}
+	return
+}
+
 // CountPendingScans returns the total number of scans that are pending in the queue
 func (db *DB) CountPendingScans() (count int64, err error) {
 	err = db.QueryRow(`SELECT COUNT(*) FROM scans

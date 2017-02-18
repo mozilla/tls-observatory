@@ -535,6 +535,10 @@ func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 }
 
 type Statistics struct {
+	Scans                         int64                 `json:"scans"`
+	Trusts                        int64                 `json:"trusts"`
+	Analyses                      int64                 `json:"analyses"`
+	Certificates                  int64                 `json:"certificates"`
 	PendingScans                  int64                 `json:"pendingScansCount"`
 	Last24HoursScans              []pg.HourlyScansCount `json:"last24HoursScansCount"`
 	DistinctTargetsLast24Hours    int64                 `json:"distinctTargetsLast24Hours"`
@@ -554,6 +558,11 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	db := val.(*pg.DB)
+	stats.Scans, stats.Trusts, stats.Analyses, stats.Certificates, err = db.CountTableEntries()
+	if err != nil {
+		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of entries: %v", err))
+		return
+	}
 	stats.PendingScans, err = db.CountPendingScans()
 	if err != nil {
 		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of pending scans: %v", err))
@@ -583,7 +592,16 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	case "text":
 		var buffer bytes.Buffer
 		buffer.Write([]byte(fmt.Sprintf(`
-pending scans: %d
+Totals
+-------------
+scans:              %d
+trust relations:    %d
+analyses:           %d
+certificates:       %d
+
+Queue
+-------------
+pending scans:      %d
 
 last 24 hours
 -------------
@@ -592,7 +610,8 @@ last 24 hours
 - certs added:      %d
 
 hourly scans
-------------`, stats.PendingScans, stats.DistinctTargetsLast24Hours,
+------------`, stats.Scans, stats.Trusts, stats.Analyses, stats.Certificates,
+			stats.PendingScans, stats.DistinctTargetsLast24Hours,
 			stats.DistinctCertsSeenLast24Hours, stats.DistinctCertsAddedLast24Hours)))
 		for _, hsc := range stats.Last24HoursScans {
 			buffer.Write([]byte(fmt.Sprintf("\n%s    %d", hsc.Hour.Format(time.RFC3339), hsc.Count)))
