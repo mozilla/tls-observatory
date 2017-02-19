@@ -437,6 +437,21 @@ ORDER BY date_trunc('year', not_valid_after) ASC,
          date_trunc('month', not_valid_after) ASC;
 ```
 
+### Count valid SHA-1 certs seen over the last 2 weeks on TOP1M sites
+
+```sql
+SELECT  distinct(certificates.id), domains, not_valid_before, not_valid_after, cisco_umbrella_rank
+FROM    certificates
+    INNER JOIN trust ON (certificates.id=trust.cert_id)
+WHERE is_ca='false'
+    AND trust.trusted_mozilla='true'
+    AND signature_algo='SHA1WithRSA'
+    AND cisco_umbrella_rank > 1000000
+    AND last_seen > NOW() - INTERVAL '2 weeks'
+    AND not_valid_after > NOW()
+ORDER BY cisco_umbrella_rank ASC;
+```
+
 ### List issuer, subject and SAN of Mozilla|Firefox certs not issued by Digicert
 
 ```sql
