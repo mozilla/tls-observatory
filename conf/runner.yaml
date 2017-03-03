@@ -326,6 +326,19 @@ runs:
               recipients:
                   - b64:ZnhhQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
+    # IT Hostmaster paging
+    - targets:
+        - telemetry-experiment.cdn.mozilla.net
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - hostmaster@mozilla.com
+
     # Locations paging
     - targets:
         - location.services.mozilla.com
@@ -360,7 +373,6 @@ runs:
     # Metrics paging
     - targets:
         - incoming.telemetry.mozilla.org
-        - telemetry-experiment.cdn.mozilla.net
         - metrics.services.mozilla.com
         - analysis.telemetry.mozilla.org
         - sql.telemetry.mozilla.org
