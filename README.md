@@ -525,6 +525,36 @@ WHERE jsonb_typeof(x509_certificatePolicies) != 'null'
                '2.16.840.1.114413.1.7.23.3','2.16.840.1.114414.1.7.23.3')
   AND is_ca='true';
 ```
+
+### Evaluate the quality of TLS configurations of top sites
+
+This query uses the Cisco Umbrella ranking analyzer to retrieve the Mozilla evaluation of top sites.
+
+```sql
+SELECT COUNT(DISTINCT(target)), output->>'level' AS "Mozilla Configuration"
+FROM scans
+  INNER JOIN analysis ON (scans.id=analysis.scan_id)
+WHERE has_tls=true
+  AND target IN ( SELECT target
+                  FROM scans
+                  INNER JOIN analysis ON (scans.id=analysis.scan_id)
+                  WHERE worker_name='ciscoUmbrellaRank'
+                    AND CAST(output->>'rank' AS INTEGER) < 3000
+                    AND timestamp > NOW() - INTERVAL '24 hours')
+  AND worker_name='mozillaEvaluationWorker'
+GROUP BY has_tls, output->>'level'
+ORDER BY COUNT(DISTINCT(target)) DESC;
+ count |     Mozilla Configuration      
+-------+--------------------------------
+  1302 | intermediate
+   699 | bad
+   658 | non compliant
+    22 | intermediate with bad ordering
+     9 | old
+     1 | modern
+(6 rows)
+```
+
 ## Core contributors
 
  * Julien Vehent (lead maintainer)
