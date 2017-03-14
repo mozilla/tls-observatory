@@ -86,6 +86,7 @@ CREATE INDEX scans_ack_idx ON scans(ack);
 CREATE INDEX scans_target_idx ON scans(target);
 CREATE INDEX scans_timestamp_idx ON scans(timestamp);
 CREATE INDEX scans_cert_id_idx ON scans(cert_id);
+CREATE INDEX scans_has_tls_idx ON scans(has_tls);
 
 CREATE TABLE analysis(
     id          serial primary key,
