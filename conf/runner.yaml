@@ -15,6 +15,9 @@ runs:
         - versioncheck.addons.mozilla.org
         - compatibility-lookup.services.mozilla.com
 
+        # Autograph
+        - content-signature.cdn.mozilla.net
+
         # Balrog
         - aus3.mozilla.org
         - aus4.mozilla.org
@@ -231,6 +234,19 @@ runs:
           email:
               recipients:
                   - b64:bWFya2V0cGxhY2VAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+
+    # Autograph paging
+    - targets:
+        - content-signature.cdn.mozilla.net
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:Zm94c2VjQG1vemlsbGEuY29tCg==
 
     # Balrog paging
     - targets:
