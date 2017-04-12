@@ -47,6 +47,7 @@ runs:
         - accounts-static.stage.mozaws.net
         - firefoxusercontent.com
         - mozillausercontent.com
+        - latest.dev.lcip.org
 
         # Firefox Settings (Kinto)
         - blocklists.settings.services.mozilla.com
@@ -332,6 +333,7 @@ runs:
         - accounts-static.stage.mozaws.net
         - firefoxusercontent.com
         - mozillausercontent.com
+        - latest.dev.lcip.org
       assertions:
         - certificate:
             validity:
