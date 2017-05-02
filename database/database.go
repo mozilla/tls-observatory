@@ -69,7 +69,6 @@ func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, 
 	if err != nil {
 		db = nil
 	}
-
 	return &DB{db}, err
 }
 

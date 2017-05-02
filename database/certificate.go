@@ -441,7 +441,8 @@ func (db *DB) GetCACertsBySubject(subject certificate.Subject) (certs []*certifi
 	if err != nil {
 		return
 	}
-	rows, err := db.Query(`SELECT id FROM certificates WHERE is_ca='true' AND subject=$1`, subjectJson)
+	rows, err := db.Query(`SELECT `+strings.Join(allCertificateColumns, ", ")+`
+                    FROM certificates WHERE is_ca='true' AND subject=$1`, subjectJson)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -454,18 +455,13 @@ func (db *DB) GetCACertsBySubject(subject certificate.Subject) (certs []*certifi
 	}
 	for rows.Next() {
 		var (
-			id   int64 = -1
-			cert *certificate.Certificate
+			cert certificate.Certificate
 		)
-		err = rows.Scan(&id)
+		cert, err = db.scanCert(rows)
 		if err != nil {
 			return
 		}
-		cert, err = db.GetCertByID(id)
-		if err != nil {
-			return
-		}
-		certs = append(certs, cert)
+		certs = append(certs, &cert)
 	}
 	if err := rows.Err(); err != nil {
 		err = fmt.Errorf("Failed to complete database query: '%v'", err)
