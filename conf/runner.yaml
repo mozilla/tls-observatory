@@ -691,3 +691,8 @@ smtp:
     #auth:
     #    user: someuser
     #    pass: somepass
+
+slack:
+    username: tls-observatory
+    icon_emoji: ':telescope:'
+    # webhook: https://hooks.slack.com/services/not/a/realwebhook

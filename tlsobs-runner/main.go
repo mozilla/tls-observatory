@@ -36,7 +36,13 @@ type Configuration struct {
 			User, Pass string
 		}
 	}
+	Slack struct {
+		Username string
+		Icon_emoji string
+		Webhook string
+	}
 }
+
 type Run struct {
 	Targets       []string
 	Assertions    []Assertion
@@ -63,6 +69,9 @@ type NotificationsConf struct {
 	}
 	Email struct {
 		Recipients []string
+	}
+	Slack struct {
+		Channels []string
 	}
 }
 
@@ -276,6 +285,15 @@ func getConf(cfg string) (c Configuration) {
 	}
 	if os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS") != "" {
 		c.Smtp.Auth.Pass = os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SLACK_USERNAME") != "" {
+		c.Slack.Username = os.Getenv("TLSOBS_RUNNER_USERNAME")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SLACK_ICON") != "" {
+		c.Slack.Icon_emoji = os.Getenv("TLSOBS_RUNNER_SLACK_ICON")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SLACK_WEBHOOK") != "" {
+		c.Slack.Webhook = os.Getenv("TLSOBS_RUNNER_SLACK_WEBHOOK")
 	}
 	return c
 }

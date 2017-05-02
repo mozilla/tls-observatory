@@ -7,8 +7,7 @@ import (
 	"testing"
 )
 
-// test reading a basic configuration file with smtp user & pass overridden by
-// environment variables
+// ensure environment variables override smtp & slack auth in config file
 func TestConf(t *testing.T) {
 
 	testconf := `
@@ -18,7 +17,7 @@ runs:
         - jve.linuxwall.info
       assertions:
         - certificate:
-                validity: 
+                validity:
                     notafter: ">15d"
         - analysis:
             analyzer: mozillaEvaluationWorker
@@ -29,12 +28,20 @@ runs:
             recipients:
                 - testnotif@example.com
                 - b64:dGVzdGI2NEBleGFtcGxlLm5ldAo=
+        slack:
+            channels:
+                - 'somechannel'
 smtp:
     host: localhost
     port: 25
     auth:
         user: someuser
         pass: somepass
+
+slack:
+    username: 'tls-observatory'
+    icon_emoji: ':telescope:'
+    webhook: https://hooks.slack.com/services/not/a/realwebhook
 `
 	// override smtp user & pass using env variables
 	err := os.Setenv("TLSOBS_RUNNER_SMTP_AUTH_USER", "secretuser")
@@ -42,6 +49,12 @@ smtp:
 		t.Fatal(err)
 	}
 	err = os.Setenv("TLSOBS_RUNNER_SMTP_AUTH_PASS", "secretpass")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// override slack webhook using env variables
+	err = os.Setenv("TLSOBS_RUNNER_SLACK_WEBHOOK", "secrethook")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,5 +119,18 @@ smtp:
 	}
 	if conf.Smtp.Auth.Pass != "secretpass" {
 		t.Fatalf("invalid smtp auth pass, expected 'secretpass', got %q", conf.Smtp.Auth.Pass)
+	}
+	if conf.Runs[0].Notifications.Slack.Channels[0] != "somechannel" {
+		t.Fatalf("invalid slack channel, expected 'somechannel', got %q",
+			conf.Runs[0].Notifications.Slack.Channels[0])
+	}
+	if conf.Slack.Username != "tls-observatory" {
+		t.Fatalf("invalid slack username, expected 'tls-observatory', got %q", conf.Slack.Username)
+	}
+	if conf.Slack.Icon_emoji != ":telescope:" {
+		t.Fatalf("invalid slack icon, expected ':telescope:', got %q", conf.Slack.Icon_emoji)
+	}
+	if conf.Slack.Webhook != "secrethook" {
+		t.Fatalf("invalid slack webhook, expected 'secrethook', got %q", conf.Slack.Webhook)
 	}
 }
