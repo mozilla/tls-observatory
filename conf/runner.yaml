@@ -112,9 +112,10 @@ runs:
 
         # Sync
         - token.services.mozilla.com
-        - sync-264-us-west-2.sync.services.mozilla.com
+        - sync-499-us-west-2.sync.services.mozilla.com
         - 401inator.sync.services.mozilla.com
         - eolinator.services.mozilla.com
+        - sync-4-us-east-1.stage.mozaws.net
 
         # Tiles
         - tiles.cdn.mozilla.net
