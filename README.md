@@ -24,13 +24,6 @@ Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.or
     * [GET /api/v1/__heartbeat__](#get-/api/v1/__heartbeat__)
     * [GET /api/v1/__stats__](#get-/api/v1/__stats__)
   * [Database Queries](#database-queries)
-    * [Find certificates signed by CAs identified by their SHA256 fingerprint](#find-certificates-signed-by-cas-identified-by-their-sha256-fingerprint)
-    * [List signature algorithms of trusted certs](#list-signature-algorithms-of-trusted-certs)
-    * [Show expiration dates of trusted SHA-1 certificates](#show-expiration-dates-of-trusted-sha-1-certificates)
-    * [List issuer, subject and SAN of Mozilla|Firefox certs not issued by Digicert](#list-issuer,-subject-and-san-of-mozilla|firefox-certs-not-issued-by-digicert)
-    * [Find count of targets that support the SEED-SHA ciphersuite](#find-count-of-targets-that-support-the-seed-sha-ciphersuite)
-    * [Find intermediate CA certs whose root is trusted by Mozilla](#find-intermediate-ca-certs-whose-root-is-trusted-by-mozilla)
-    * [Find CA certs treated as EV in Firefox](#find-ca-certs-treated-as-ev-in-firefox)
   * [Core contributors](#core-contributors)
   * [License](#license)
 
@@ -556,6 +549,22 @@ ORDER BY COUNT(DISTINCT(target)) DESC;
 (6 rows)
 ```
 
+### Count Top 1M sites that support RC4
+```sql
+SELECT COUNT(DISTINCT(target))
+FROM scans,
+     jsonb_array_elements(conn_info->'ciphersuite') as ciphersuites
+WHERE jsonb_typeof(conn_info) = 'object'
+  AND jsonb_typeof(conn_info->'ciphersuite') = 'array'
+  AND ciphersuites->>'cipher' LIKE 'RC4-%'
+  AND target IN ( SELECT target
+                  FROM scans
+                       INNER JOIN analysis ON (scans.id=analysis.scan_id)
+                  WHERE worker_name='ciscoUmbrellaRank'
+                    AND CAST(output->>'rank' AS INTEGER) < 1000000
+                    AND timestamp > NOW() - INTERVAL '1 month')
+  AND timestamp > NOW() - INTERVAL '1 month';
+  ```
 ## Core contributors
 
  * Julien Vehent (lead maintainer)
