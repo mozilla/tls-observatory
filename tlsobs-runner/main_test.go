@@ -40,7 +40,7 @@ smtp:
 
 slack:
     username: 'tls-observatory'
-    icon_emoji: ':telescope:'
+    iconemoji: ':telescope:'
     webhook: https://hooks.slack.com/services/not/a/realwebhook
 `
 	// override smtp user & pass using env variables
@@ -127,8 +127,8 @@ slack:
 	if conf.Slack.Username != "tls-observatory" {
 		t.Fatalf("invalid slack username, expected 'tls-observatory', got %q", conf.Slack.Username)
 	}
-	if conf.Slack.Icon_emoji != ":telescope:" {
-		t.Fatalf("invalid slack icon, expected ':telescope:', got %q", conf.Slack.Icon_emoji)
+	if conf.Slack.IconEmoji != ":telescope:" {
+		t.Fatalf("invalid slack icon, expected ':telescope:', got %q", conf.Slack.IconEmoji)
 	}
 	if conf.Slack.Webhook != "secrethook" {
 		t.Fatalf("invalid slack webhook, expected 'secrethook', got %q", conf.Slack.Webhook)

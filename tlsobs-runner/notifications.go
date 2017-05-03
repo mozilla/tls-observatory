@@ -47,7 +47,6 @@ func processNotifications(notifchan chan Notification, done chan bool) {
 				body = slackntfs[rcpt]
 			}
 			slackntfs[rcpt] = []byte(fmt.Sprintf("%s\n%s: %s", body, n.Target, n.Body))
-			log.Println(fmt.Sprintf("huh?: %s", slackntfs[rcpt]))
 		}
 	}
 	for rcpt, body := range emailntfs {
@@ -57,10 +56,9 @@ func processNotifications(notifchan chan Notification, done chan bool) {
 		}
 	}
 	for rcpt, body := range slackntfs {
-		log.Println(fmt.Sprintf("huh2?: %s", body))
 		err := sendSlackMessage(rcpt, body)
 		if err != nil {
-			log.Printf("[error] failed to send slack notification to %q: %v", rcpt, err)
+			log.Printf("[error] failed to send slack notification to channel %q: %v", rcpt, err)
 		}
 	}
 	done <- true
@@ -95,7 +93,7 @@ func sendSlackMessage(rcpt string, body []byte) (err error) {
 		"channel":    rcpt,
 		"text":       fmt.Sprintf("%s", body),
 		"username":   conf.Slack.Username,
-		"icon_emoji": conf.Slack.Icon_emoji,
+		"icon_emoji": conf.Slack.IconEmoji,
 	}
 	payload, err := json.Marshal(&raw)
 	if err != nil {

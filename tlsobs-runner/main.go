@@ -37,9 +37,7 @@ type Configuration struct {
 		}
 	}
 	Slack struct {
-		Username string
-		Icon_emoji string
-		Webhook string
+		Username, IconEmoji, Webhook string
 	}
 }
 
@@ -289,8 +287,8 @@ func getConf(cfg string) (c Configuration) {
 	if os.Getenv("TLSOBS_RUNNER_SLACK_USERNAME") != "" {
 		c.Slack.Username = os.Getenv("TLSOBS_RUNNER_USERNAME")
 	}
-	if os.Getenv("TLSOBS_RUNNER_SLACK_ICON") != "" {
-		c.Slack.Icon_emoji = os.Getenv("TLSOBS_RUNNER_SLACK_ICON")
+	if os.Getenv("TLSOBS_RUNNER_SLACK_ICONEMOJI") != "" {
+		c.Slack.IconEmoji = os.Getenv("TLSOBS_RUNNER_SLACK_ICONEMOJI")
 	}
 	if os.Getenv("TLSOBS_RUNNER_SLACK_WEBHOOK") != "" {
 		c.Slack.Webhook = os.Getenv("TLSOBS_RUNNER_SLACK_WEBHOOK")
