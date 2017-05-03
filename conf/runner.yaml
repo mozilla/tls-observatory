@@ -86,19 +86,16 @@ runs:
         - pageshot.net
 
         # Persona
-        - browserid.org
         - firefoxos.persona.org
         - persona.org
         - static.login.persona.org
         - verifier.login.persona.org
-        - www.browserid.org
         - www.persona.org
         - yahoo.login.persona.org
         - gmail.login.persona.org
         - login.anosrep.org
         - login.mozilla.org
         - login.persona.org
-        - diresworb.org
 
         # Product Delivery
         - download.mozilla.org
@@ -449,19 +446,16 @@ runs:
 
     # Persona paging
     - targets:
-        - browserid.org
         - firefoxos.persona.org
         - persona.org
         - static.login.persona.org
         - verifier.login.persona.org
-        - www.browserid.org
         - www.persona.org
         - yahoo.login.persona.org
         - gmail.login.persona.org
         - login.anosrep.org
         - login.mozilla.org
         - login.persona.org
-        - diresworb.org
       assertions:
         - certificate:
             validity:
