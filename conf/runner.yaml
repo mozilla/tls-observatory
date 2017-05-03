@@ -47,6 +47,7 @@ runs:
         - accounts-static.stage.mozaws.net
         - firefoxusercontent.com
         - mozillausercontent.com
+        - latest.dev.lcip.org
 
         # Firefox Settings (Kinto)
         - blocklists.settings.services.mozilla.com
@@ -85,19 +86,16 @@ runs:
         - pageshot.net
 
         # Persona
-        - browserid.org
         - firefoxos.persona.org
         - persona.org
         - static.login.persona.org
         - verifier.login.persona.org
-        - www.browserid.org
         - www.persona.org
         - yahoo.login.persona.org
         - gmail.login.persona.org
         - login.anosrep.org
         - login.mozilla.org
         - login.persona.org
-        - diresworb.org
 
         # Product Delivery
         - download.mozilla.org
@@ -111,9 +109,10 @@ runs:
 
         # Sync
         - token.services.mozilla.com
-        - sync-264-us-west-2.sync.services.mozilla.com
+        - sync-499-us-west-2.sync.services.mozilla.com
         - 401inator.sync.services.mozilla.com
         - eolinator.services.mozilla.com
+        - sync-4-us-east-1.stage.mozaws.net
 
         # Tiles
         - tiles.cdn.mozilla.net
@@ -332,6 +331,7 @@ runs:
         - accounts-static.stage.mozaws.net
         - firefoxusercontent.com
         - mozillausercontent.com
+        - latest.dev.lcip.org
       assertions:
         - certificate:
             validity:
@@ -446,19 +446,16 @@ runs:
 
     # Persona paging
     - targets:
-        - browserid.org
         - firefoxos.persona.org
         - persona.org
         - static.login.persona.org
         - verifier.login.persona.org
-        - www.browserid.org
         - www.persona.org
         - yahoo.login.persona.org
         - gmail.login.persona.org
         - login.anosrep.org
         - login.mozilla.org
         - login.persona.org
-        - diresworb.org
       assertions:
         - certificate:
             validity:
