@@ -17,6 +17,7 @@ runs:
 
         # Autograph
         - content-signature.cdn.mozilla.net
+        - content-signature.stage.mozaws.net
 
         # Balrog
         - aus3.mozilla.org
@@ -237,6 +238,7 @@ runs:
     # Autograph paging
     - targets:
         - content-signature.cdn.mozilla.net
+        - content-signature.stage.mozaws.net
       assertions:
         - certificate:
             validity:
