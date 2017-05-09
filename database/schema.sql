@@ -96,6 +96,7 @@ CREATE TABLE analysis(
     output      jsonb NULL
 );
 CREATE INDEX analysis_scan_id_idx ON analysis(scan_id);
+CREATE INDEX analysis_worker_name_idx ON analysis(worker_name);
 
 CREATE FUNCTION notify_trigger() RETURNS trigger AS $$
 DECLARE
