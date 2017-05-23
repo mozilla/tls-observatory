@@ -81,22 +81,8 @@ runs:
 
         # Normandy
         - normandy.cdn.mozilla.net
+        - normandy.services.mozilla.com
         - self-repair.mozilla.org
-
-        # Pageshot
-        - pageshot.net
-
-        # Persona
-        - firefoxos.persona.org
-        - persona.org
-        - static.login.persona.org
-        - verifier.login.persona.org
-        - www.persona.org
-        - yahoo.login.persona.org
-        - gmail.login.persona.org
-        - login.anosrep.org
-        - login.mozilla.org
-        - login.persona.org
 
         # Product Delivery
         - download.mozilla.org
@@ -108,6 +94,13 @@ runs:
         - push.services.mozilla.com
         - updates.push.services.mozilla.com
 
+        # Screenshots
+        - pageshot.net
+        - screenshots.firefox.com
+        - screenshotscdn.firefox.com
+        - screenshots.firefoxusercontent.com
+        - screenshtoscdn.firefoxusercontent.com
+
         # Sync
         - token.services.mozilla.com
         - sync-499-us-west-2.sync.services.mozilla.com
@@ -118,6 +111,7 @@ runs:
         # Tiles
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
+        - embedly-proxy.services.mozilla.com
 
         # TLS Observatory
         - tls-observatory.services.mozilla.com
@@ -127,8 +121,6 @@ runs:
 
         # Test Pilot
         - testpilot.firefox.com
-        - embedly-proxy.services.mozilla.com
-        - universalsearch.testpilot.firefox.com
 
       assertions:
         - certificate:
@@ -162,21 +154,29 @@ runs:
         - firefox.settings.services.mozilla.com
         - webextensions.settings.services.mozilla.com
 
+        # Normandy
+        - normandy.cdn.mozilla.net
+        - normandy.services.mozilla.com
+        - self-repair.mozilla.org
+
         # Test Pilot
         - testpilot.firefox.com
-        - embedly-proxy.services.mozilla.com
-        - universalsearch.testpilot.firefox.com
-
-        # Pageshot
-        - pageshot.net
 
         # Push
         - push.services.mozilla.com
         - updates.push.services.mozilla.com
 
+        # Screenshots
+        - pageshot.net
+        - screenshots.firefox.com
+        - screenshotscdn.firefox.com
+        - screenshots.firefoxusercontent.com
+        - screenshtoscdn.firefoxusercontent.com
+
         # Tiles
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
+        - embedly-proxy.services.mozilla.com
       assertions:
         - analysis:
             analyzer: mozillaEvaluationWorker
@@ -422,6 +422,7 @@ runs:
     # Normandy
     - targets:
         - normandy.cdn.mozilla.net
+        - normandy.services.mozilla.com
         - self-repair.mozilla.org
       assertions:
         - certificate:
@@ -433,9 +434,13 @@ runs:
               recipients:
                   - b64:c2hpZWxkQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20=
 
-    # Pageshot
+    # Screenshots
     - targets:
         - pageshot.net
+        - screenshots.firefox.com
+        - screenshotscdn.firefox.com
+        - screenshots.firefoxusercontent.com
+        - screenshtoscdn.firefoxusercontent.com
       assertions:
         - certificate:
             validity:
@@ -445,28 +450,6 @@ runs:
           email:
               recipients:
                   - b64:dGVzdHBpbG90QG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
-
-    # Persona paging
-    - targets:
-        - firefoxos.persona.org
-        - persona.org
-        - static.login.persona.org
-        - verifier.login.persona.org
-        - www.persona.org
-        - yahoo.login.persona.org
-        - gmail.login.persona.org
-        - login.anosrep.org
-        - login.mozilla.org
-        - login.persona.org
-      assertions:
-        - certificate:
-            validity:
-                notafter: ">14d"
-      cron: "30 18 * * *"
-      notifications:
-          email:
-              recipients:
-                  - b64:cGVyc29uYUBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
 
     # Product Delivery paging
     - targets:
@@ -518,6 +501,7 @@ runs:
     - targets:
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
+        - embedly-proxy.services.mozilla.com
       assertions:
         - certificate:
             validity:
@@ -531,8 +515,6 @@ runs:
     # TestPilot paging
     - targets:
         - testpilot.firefox.com
-        - embedly-proxy.services.mozilla.com
-        - universalsearch.testpilot.firefox.com
       assertions:
         - certificate:
             validity:
