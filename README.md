@@ -34,10 +34,10 @@ It requires Golang 1.7+ to be installed:
 ```bash
 $ go version
 go version go1.7 linux/amd64
- 
+
 $ export GOPATH="$HOME/go"
 $ mkdir $GOPATH
- 
+
 $ export PATH=$GOPATH/bin:$PATH
 ```
 Then get the binary:
@@ -124,7 +124,7 @@ to build all components.
 ```bash
 $ docker run -it golang:1.7
 
-root@c63f11b8852b:/go# go get github.com/mozilla/tls-observatory 
+root@c63f11b8852b:/go# go get github.com/mozilla/tls-observatory
 package github.com/mozilla/tls-observatory: no buildable Go source files in /go/src/github.com/mozilla/tls-observatory
 
 root@c63f11b8852b:/go# cd $GOPATH/src/github.com/mozilla/tls-observatory
@@ -147,7 +147,7 @@ CREATE DATABASE
 postgres=# \c observatory
 You are now connected to database "observatory" as user "postgres".
 
-postgres=# \i /go/src/github.com/mozilla/tls-observatory/database/schema.sql 
+postgres=# \i /go/src/github.com/mozilla/tls-observatory/database/schema.sql
 ```
 This automatically creates all tables, indexes, users and grants to work
 with the default configuration.
@@ -205,6 +205,9 @@ parameters can also be provided through environment variables:
 * `TLSOBS_RUNNER_SMTP_FROM` is the from address of email notifications sent by the runner (eg. `mynotification@tlsobservatory.example.net`)
 * `TLSOBS_RUNNER_SMTP_AUTH_USER` is the smtp authenticated username (eg `tlsobsrunner`)
 * `TLSOBS_RUNNER_SMTP_AUTH_PASS` is the smtp user password (eg. `mysecretpassphrase`)
+* `TLSOBS_RUNNER_SLACK_WEBHOOK` is the slack webhook (eg. `https://hooks.slack.com/services/not/a/realwebhook`)
+* `TLSOBS_RUNNER_SLACK_USERNAME` is the what the message sender's username will be (eg. `tlsbot`)
+* `TLSOBS_RUNNER_SLACK_ICONEMOJI` is the what the message sender's icon will be (eg. `:telescope:`)
 
 ## API Endpoints
 
@@ -281,7 +284,7 @@ curl -X POST -F certificate=@example.pem https://tls-observatory.services.mozill
 
 **Output**: a `json` document containing the parsed certificate and its raw X509 version encoded with base64.
 
-**Caching**: Certificates are only stored once. The database uses the SHA256 hash of the DER (binary) certificate to identify duplicates. Posting a certificate already stored in database returns the stored version. 
+**Caching**: Certificates are only stored once. The database uses the SHA256 hash of the DER (binary) certificate to identify duplicates. Posting a certificate already stored in database returns the stored version.
 
 ### GET /api/v1/paths
 
@@ -310,7 +313,7 @@ curl https://tls-observatory.services.mozilla.com/api/v1/truststore?store=mozill
 **Parameters**:
 
 * `store` is the store to retrieve certificates from. "mozilla", "android", "apple", "microsoft" and "ubuntu" are allowed.
-* `format`, either "pem" or "json". 
+* `format`, either "pem" or "json".
 
 **Output**: if `format` is pem, a series of PEM-format certificates. If `format` is json, a json array of certificate objects, each with the same format of `/api/v1/certificate`.
 
@@ -538,7 +541,7 @@ WHERE has_tls=true
 GROUP BY has_tls, output->>'level'
 ORDER BY COUNT(DISTINCT(target)) DESC;
 
- count |     Mozilla Configuration      
+ count |     Mozilla Configuration
 -------+--------------------------------
   1302 | intermediate
    699 | bad

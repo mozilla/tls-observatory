@@ -690,3 +690,10 @@ smtp:
     #auth:
     #    user: someuser
     #    pass: somepass
+
+slack:
+    # slackbot will send the notification to each run's specified channels
+    # slackbot's username and icon can be customized below or left empty for slack's default
+    username: tls-observatory
+    iconemoji: ':telescope:'
+    # webhook: https://hooks.slack.com/services/not/a/realwebhook
