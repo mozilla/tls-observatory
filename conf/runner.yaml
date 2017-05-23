@@ -29,6 +29,7 @@ runs:
         - crash-stats.mozilla.com
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
+        - symbols.mozilla.org
 
         # everything.me
         - api.everything.me
@@ -78,6 +79,8 @@ runs:
         - services.mozilla.com
         - status.services.mozilla.com
         - restmail.net
+        - reaper.dev.mozaws.net
+        - testrail.stage.mozaws.net
 
         # Normandy
         - normandy.cdn.mozilla.net
@@ -271,6 +274,7 @@ runs:
         - crash-stats.mozilla.com
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
+        - symbols.mozilla.org
       assertions:
         - certificate:
             validity:
@@ -279,8 +283,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - cloud-ops@mozilla.com
-                  - jschneider@mozilla.com
+                  - b64:c29jb3Jyb0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29t
 
     # everything.me paging
     - targets:
@@ -652,7 +655,6 @@ runs:
         - github.taskcluster.net
         - tools.taskcluster.net
         - docs.taskcluster.net
-        - grafana.taskcluster.net
         - login.taskcluster.net
         - cors-proxy.taskcluster.net
       assertions:
