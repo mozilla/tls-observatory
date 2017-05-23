@@ -81,6 +81,7 @@ runs:
 
         # Normandy
         - normandy.cdn.mozilla.net
+        - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
         - self-repair.mozilla.org
 
@@ -156,6 +157,7 @@ runs:
 
         # Normandy
         - normandy.cdn.mozilla.net
+        - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
         - self-repair.mozilla.org
 
@@ -422,6 +424,7 @@ runs:
     # Normandy
     - targets:
         - normandy.cdn.mozilla.net
+        - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
         - self-repair.mozilla.org
       assertions:
