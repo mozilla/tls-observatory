@@ -191,7 +191,7 @@ localhost:*:*:*:pass_C
 	pgpass.Close()
 
 	assertPassword := func(extra values, expected string) {
-		o := &values{
+		o := values{
 			"host":               "localhost",
 			"sslmode":            "disable",
 			"connect_timeout":    "20",
@@ -203,11 +203,11 @@ localhost:*:*:*:pass_C
 			"datestyle":          "ISO, MDY",
 		}
 		for k, v := range extra {
-			(*o)[k] = v
+			o[k] = v
 		}
-		(&conn{}).handlePgpass(*o)
-		if o.Get("password") != expected {
-			t.Fatalf("For %v expected %s got %s", extra, expected, o.Get("password"))
+		(&conn{}).handlePgpass(o)
+		if pw := o["password"]; pw != expected {
+			t.Fatalf("For %v expected %s got %s", extra, expected, pw)
 		}
 	}
 	// wrong permissions for the pgpass file means it should be ignored
@@ -686,17 +686,28 @@ func TestCloseBadConn(t *testing.T) {
 	if err := cn.Close(); err != nil {
 		t.Fatal(err)
 	}
+
+	// During the Go 1.9 cycle, https://github.com/golang/go/commit/3792db5
+	// changed this error from
+	//
+	// net.errClosing = errors.New("use of closed network connection")
+	//
+	// to
+	//
+	// internal/poll.ErrClosing = errors.New("use of closed file or network connection")
+	const errClosing = "use of closed"
+
 	// Verify write after closing fails.
 	if _, err := nc.Write(nil); err == nil {
 		t.Fatal("expected error")
-	} else if !strings.Contains(err.Error(), "use of closed network connection") {
-		t.Fatalf("expected use of closed network connection error, got %s", err)
+	} else if !strings.Contains(err.Error(), errClosing) {
+		t.Fatalf("expected %s error, got %s", errClosing, err)
 	}
 	// Verify second close fails.
 	if err := cn.Close(); err == nil {
 		t.Fatal("expected error")
-	} else if !strings.Contains(err.Error(), "use of closed network connection") {
-		t.Fatalf("expected use of closed network connection error, got %s", err)
+	} else if !strings.Contains(err.Error(), errClosing) {
+		t.Fatalf("expected %s error, got %s", errClosing, err)
 	}
 }
 

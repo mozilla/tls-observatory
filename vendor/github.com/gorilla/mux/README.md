@@ -2,6 +2,7 @@ gorilla/mux
 ===
 [![GoDoc](https://godoc.org/github.com/gorilla/mux?status.svg)](https://godoc.org/github.com/gorilla/mux)
 [![Build Status](https://travis-ci.org/gorilla/mux.svg?branch=master)](https://travis-ci.org/gorilla/mux)
+[![Sourcegraph](https://sourcegraph.com/github.com/gorilla/mux/-/badge.svg)](https://sourcegraph.com/github.com/gorilla/mux?badge)
 
 ![Gorilla Logo](http://www.gorillatoolkit.org/static/images/gorilla-icon-64.png)
 
@@ -23,9 +24,9 @@ The name mux stands for "HTTP request multiplexer". Like the standard `http.Serv
 * [Install](#install)
 * [Examples](#examples)
 * [Matching Routes](#matching-routes)
-* [Listing Routes](#listing-routes)
 * [Static Files](#static-files)
 * [Registered URLs](#registered-urls)
+* [Walking Routes](#walking-routes)
 * [Full Example](#full-example)
 
 ---
@@ -167,7 +168,6 @@ s.HandleFunc("/{key}/", ProductHandler)
 // "/products/{key}/details"
 s.HandleFunc("/{key}/details", ProductDetailsHandler)
 ```
-
 ### Listing Routes
 
 Routes on a mux can be listed using the Router.Walk method—useful for generating documentation:
@@ -178,6 +178,7 @@ package main
 import (
     "fmt"
     "net/http"
+    "strings"
 
     "github.com/gorilla/mux"
 )
@@ -189,15 +190,25 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/", handler)
-    r.HandleFunc("/products", handler)
-    r.HandleFunc("/articles", handler)
-    r.HandleFunc("/articles/{id}", handler)
+    r.Methods("POST").HandleFunc("/products", handler)
+    r.Methods("GET").HandleFunc("/articles", handler)
+    r.Methods("GET", "PUT").HandleFunc("/articles/{id}", handler)
     r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
         t, err := route.GetPathTemplate()
         if err != nil {
             return err
         }
-        fmt.Println(t)
+        // p will contain regular expression is compatible with regular expression in Perl, Python, and other languages.
+        // for instance the regular expression for path '/articles/{id}' will be '^/articles/(?P<v0>[^/]+)$'
+        p, err := route.GetPathRegexp()
+        if err != nil {
+            return err
+        }
+        m, err := route.GetMethods()
+        if err != nil {
+            return err
+        }
+        fmt.Println(strings.Join(m, ","), t, p)
         return nil
     })
     http.Handle("/", r)
@@ -305,6 +316,37 @@ s.Path("/articles/{category}/{id:[0-9]+}").
 url, err := r.Get("article").URL("subdomain", "news",
                                  "category", "technology",
                                  "id", "42")
+```
+
+### Walking Routes
+
+The `Walk` function on `mux.Router` can be used to visit all of the routes that are registered on a router. For example,
+the following prints all of the registered routes:
+
+```go
+r := mux.NewRouter()
+r.HandleFunc("/", handler)
+r.Methods("POST").HandleFunc("/products", handler)
+r.Methods("GET").HandleFunc("/articles", handler)
+r.Methods("GET", "PUT").HandleFunc("/articles/{id}", handler)
+r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+    t, err := route.GetPathTemplate()
+    if err != nil {
+        return err
+    }
+    // p will contain a regular expression that is compatible with regular expressions in Perl, Python, and other languages.
+    // For example, the regular expression for path '/articles/{id}' will be '^/articles/(?P<v0>[^/]+)$'.
+    p, err := route.GetPathRegexp()
+    if err != nil {
+        return err
+    }
+    m, err := route.GetMethods()
+    if err != nil {
+        return err
+    }
+    fmt.Println(strings.Join(m, ","), t, p)
+    return nil
+})
 ```
 
 ## Full Example

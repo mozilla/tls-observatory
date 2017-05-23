@@ -6,7 +6,6 @@ env:
   global:
     - INSTALL_DIR=${TRAVIS_BUILD_DIR}/../install
     - PROTOC="${INSTALL_DIR}/bin/protoc"
-    - GOPATH=${INSTALL_DIR}/go
     - MAKE=make
 
 addons:
@@ -73,9 +72,8 @@ cache:
     - $TRAVIS_BUILD_DIR/../depot_tools
     - $TRAVIS_BUILD_DIR/../install
 
-
 before_install:
- - eval "$(gimme 1.6)"
+ - eval "$(gimme 1.7)"
 # Set compiler version overrides if we have any:
  - if [ "${REAL_CC}" != "" ]; then export CC=${REAL_CC} CXX=${REAL_CXX}; fi
  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then . ./build/travis.osx.before_install.sh; fi
@@ -84,12 +82,8 @@ before_install:
  - echo "leak:SetExitLoopHandler" >> ${HOME}/lsan.supp
  - echo "leak:masterelection_test" >> ${HOME}/lsan.supp
  - if [ "${CLEAR_CACHE}" != "" ]; then echo "Clearing cache"; rm -fr ${TRAVIS_BUILD_DIR}/../ct ${TRAVIS_BUILD_DIR}/../install ${HOME}/.ccache; fi
- - mkdir -p ${INSTALL_DIR}/include ${INSTALL_DIR}/lib ${INSTALL_DIR}/java
+ - mkdir -p ${INSTALL_DIR}/include ${INSTALL_DIR}/lib
  - echo "INSTALL_DIR=${INSTALL_DIR}"
- - mkdir -p $GOPATH/src/github.com/google
- - ln -sf $PWD $GOPATH/src/github.com/google
- - echo "jars.protobuf = ${INSTALL_DIR}/java/protobuf.jar" > local.properties
- - echo "protoc.bin = ${PROTOC}" >> local.properties
 
 install:
 # Workaround LLVM's apt mirror being feeble and underpowered
@@ -102,7 +96,6 @@ install:
  - autoconf --version
  - pushd ..
  - mkdir -p ct
- - wget http://central.maven.org/maven2/com/google/protobuf/protobuf-java/2.6.0/protobuf-java-2.6.0.jar -O ${INSTALL_DIR}/java/protobuf.jar
  - if [ ! -e depot_tools/gclient ]; then git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git; fi
  - export PATH="$PATH:/usr/local/bin:"`pwd`/depot_tools
  - cd ct
@@ -113,21 +106,8 @@ install:
  - popd
  - export PYTHONPATH=$(python -m site --user-site)
  - pip install --user --upgrade -r python/requirements.txt
-# Sigh, go get -t will fetch part of this package, but doesn't catch the transitive deps so grab it manually:
- - pushd go
- - go get github.com/stretchr/testify
- - go get -v -d -t ./...
- - popd
 
 script:
  - getconf _NPROCESSORS_ONLN
  - ${MAKE} -j$(getconf _NPROCESSORS_ONLN) check VERBOSE=1 V=${ENV_VERBOSE}
- - ant build test
  - ${MAKE} -C python test
- - pushd ${GOPATH}
- - |
-   CGO_CPPFLAGS="-I${INSTALL_DIR}/include" CGO_LDFLAGS="-L${INSTALL_DIR}/lib" go test -v ./src/github.com/google/certificate-transparency/go/...
- - |
-   CGO_CPPFLAGS="-I${INSTALL_DIR}/include" CGO_LDFLAGS="-L${INSTALL_DIR}/lib" go test -v -race ./src/github.com/google/certificate-transparency/go/...
- - popd
-
