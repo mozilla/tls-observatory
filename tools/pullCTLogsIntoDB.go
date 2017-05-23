@@ -69,15 +69,16 @@ func main() {
 		}
 	}
 	for {
-		log.Printf("retrieving CT logs %d to %d", offset, offset+100)
-		rawEnts, err := ctLog.GetEntries(nil, int64(offset), int64(offset+100))
+		log.Printf("retrieving CT logs %d to %d", offset, offset+10)
+		rawEnts, err := ctLog.GetEntries(nil, int64(offset), int64(offset+10))
 		if err != nil {
-			log.Fatal(err)
+			log.Println("Failed to retrieve entries from CT log: ", err)
+			time.Sleep(10 * time.Second)
+			continue
 		}
 
 		// loop over CT records
 		for i, ent := range rawEnts {
-			fmt.Printf("\n")
 			log.Printf("CT index=%d", offset+i)
 			var ctcertX509 *ctx509.Certificate
 			switch ent.Leaf.TimestampedEntry.EntryType {
@@ -90,11 +91,8 @@ func main() {
 				log.Printf("Failed to parse CT certificate: %v", err)
 				continue
 			}
-			log.Printf("CN=%s", ctcertX509.Subject.CommonName)
-			log.Printf("Issuer=%s", ctcertX509.Issuer.CommonName)
-			log.Printf("Not Before=%s", ctcertX509.NotBefore)
-			log.Printf("Not After=%s", ctcertX509.NotAfter)
-
+			log.Printf("CN=%s; Issuer=%s", ctcertX509.Subject.CommonName, ctcertX509.Issuer.CommonName)
+			log.Printf("Not Before=%s; Not After=%s", ctcertX509.NotBefore, ctcertX509.NotAfter)
 			certHash := certificate.SHA256Hash(ctcertX509.Raw)
 			id, err := db.GetCertIDBySHA256Fingerprint(certHash)
 			if err != nil {
@@ -103,7 +101,7 @@ func main() {
 			}
 			if id > 0 {
 				// if the cert already exists in DB, return early
-				log.Printf("Certificate is already in database: id=%d", id)
+				//log.Printf("Certificate is already in database: id=%d", id)
 				continue
 			}
 
@@ -161,8 +159,8 @@ func main() {
 					continue
 				}
 			}
-			log.Printf("URL = https://tls-observatory.services.mozilla.com/static/certsplainer.html?id=%d", id)
+			//log.Printf("URL = https://tls-observatory.services.mozilla.com/static/certsplainer.html?id=%d", id)
 		}
-		offset += 100
+		offset += 10
 	}
 }
