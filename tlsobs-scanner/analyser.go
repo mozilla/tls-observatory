@@ -155,6 +155,11 @@ func Setup(c config.Config) {
 			}
 			poollen++
 		}
+		if poollen == 0 {
+			log.WithFields(logrus.Fields{
+				"tsname": tsName,
+			}).Fatal("No CA cert found in truststore")
+		}
 		// We have a list of certificates in the current truststore and
 		// we use it to disable certs no longer in in
 		err = db.RemoveCACertFromTruststore(certHashes, tsName)

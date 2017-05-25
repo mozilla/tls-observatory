@@ -214,6 +214,9 @@ func (db *DB) AddCertToAndroidTruststore(id int64) error {
 // RemoveCACertFromTruststore takes a list of hashes from certs trusted by a given truststore and disables
 // the trust of all certs not listed but trusted in DB
 func (db *DB) RemoveCACertFromTruststore(trustedCerts []string, tsName string) error {
+	if len(trustedCerts) == 0 {
+		return errors.New("Cannot work with empty list of trusted certs")
+	}
 	tsVariable := ""
 	switch tsName {
 	case certificate.Ubuntu_TS_name:
