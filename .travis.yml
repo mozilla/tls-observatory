@@ -14,28 +14,29 @@ env:
   - secure: Yn1AeR9yB7SY/jwPZ96UjMTt8N3zBJV1VCwDWT5YsBILyRqrZfZ/r7YI+aEueC8dUeZ5b5jdSFYXNf+eMk1j31m4HqeKIQtVe/D8XHJNvxNlYg42W4R+qPz+uhzKB0UMrKvwPddrd6ceVeFqzRnHFl4SO2AjqBUjEPESnconnJ0=
 
 before_script:
-  - docker-compose -f tools/docker-compose.yml build
-  - docker-compose -f tools/docker-compose.yml up -d
+  - make truststores cipherscan
+  - make
   - docker build -t mozilla/tls-observatory .
+  - docker-compose -f tools/docker-compose.yml build  
+  - docker-compose -f tools/docker-compose.yml up
 
 script:
-- make truststores cipherscan
-- make
-- docker run --net=host mozilla/tls-observatory tlsobs --targetLevel intermediate --observatory http://localhost:8083 sampleapp
-- |
-  if [ ! -z "$TRAVIS_TAG" ]; then
-    docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-    docker push jvehent/tls-observatory-api:latest
-    docker push jvehent/tls-observatory-scanner:latest
-    docker push jvehent/tls-observatory-runner:latest
-    docker logout
+  - make test
+  - docker-compose -f tools/docker-compose.yml run test
+  - |
+    if [ ! -z "$TRAVIS_TAG" ]; then
+      docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+      docker push jvehent/tls-observatory-api:latest
+      docker push jvehent/tls-observatory-scanner:latest
+      docker push jvehent/tls-observatory-runner:latest
+      docker logout
 
-    docker login -e="$MZCSEMAIL" -u="$MZCSUSER" -p="$MZCSPASS"
-    docker push mozilla/tls-observatory:latest
-    docker logout
-  else
-    exit 0
-  fi
+      docker login -e="$MZCSEMAIL" -u="$MZCSUSER" -p="$MZCSPASS"
+      docker push mozilla/tls-observatory:latest
+      docker logout
+    else
+     exit 0
+    fi
 
 after_scipt:
   - docker-compose -f tools/docker-compose.yml down
