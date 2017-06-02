@@ -568,6 +568,19 @@ WHERE jsonb_typeof(conn_info) = 'object'
                     AND timestamp > NOW() - INTERVAL '1 month')
   AND timestamp > NOW() - INTERVAL '1 month';
   ```
+  
+### Count end-entity certificates by issuer organizations
+```sql
+SELECT COUNT(*), issuer#>'{o}'->>0
+FROM certificates
+  INNER JOIN trust ON (certificates.id=trust.cert_id)
+WHERE certificates.is_ca = false
+  AND trust.trusted_mozilla=true
+  AND trust.is_current = true
+GROUP BY issuer#>'{o}'->>0
+ORDER BY count(*) DESC;
+```
+
 ## Core contributors
 
  * Julien Vehent (lead maintainer)
