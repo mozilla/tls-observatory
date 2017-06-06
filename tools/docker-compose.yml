@@ -5,7 +5,7 @@ services:
       context: ../
       dockerfile: ./tools/Dockerfile-postgres
     ports:
-      - 5432
+      - 5432:5432
 
   api:
     build:
@@ -15,7 +15,7 @@ services:
     links: 
       - postgres
     ports:
-      - 8083
+      - 8083:8083
     depends_on:
       - postgres
     restart: unless-stopped
@@ -37,7 +37,7 @@ services:
       context: .
       dockerfile: Dockerfile-sample_app
     ports:
-      - 443
+      - 443:443
 
   test:
     image: mozilla/tls-observatory
@@ -48,10 +48,10 @@ services:
       - api
       - sampleapp
 
-  runner:
-    build:
-      context: ../
-      dockerfile: ./tools/Dockerfile-runner
-    image: jvehent/tls-observatory-runner
-    links:
-      - api
+        #  runner:
+        #    build:
+        #      context: ../
+        #      dockerfile: ./tools/Dockerfile-runner
+        #    image: jvehent/tls-observatory-runner
+        #    links:
+        #      - api
