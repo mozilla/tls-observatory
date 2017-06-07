@@ -561,23 +561,11 @@ runs:
     - targets:
         - download-sha1.allizom.org
         - crash-reports-xpsp2.mozilla.com
-      assertions:
-        - analysis:
-            analyzer: mozillaEvaluationWorker
-            result: '{"level": "old"}'
-      cron: "0 19 * * *"
-      notifications:
-          email:
-              recipients:
-                  - cloud-ops@mozilla.com
-
-    # Cloud Services product delivery CDN always shows as bad because of RC4, AWS limitation
-    - targets:
         - download-sha1.cdn.mozilla.net
       assertions:
         - analysis:
             analyzer: mozillaEvaluationWorker
-            result: '{"level": "bad"}'
+            result: '{"level": "old"}'
       cron: "0 19 * * *"
       notifications:
           email:
