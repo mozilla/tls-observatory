@@ -1,0 +1,8 @@
+FROM postgres:latest
+MAINTAINER Dimitris Bachtis
+
+ENV POSTGRES_PASSWORD mysecretpassphrase
+ENV POSTGRES_DB observatory
+ADD database/schema.sql /docker-entrypoint-initdb.d/
+
+EXPOSE 5432

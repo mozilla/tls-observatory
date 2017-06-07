@@ -1,0 +1,8 @@
+FROM golang:1.7
+MAINTAINER Dimitris Bachtis
+
+ADD simple-server.go /go/src/
+ADD cert.pem /etc/
+ADD key.pem /etc/
+
+ENTRYPOINT go run /go/src/simple-server.go
