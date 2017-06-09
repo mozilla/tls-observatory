@@ -26,7 +26,7 @@ sudo bash ./${AGENT_INSTALL_SCRIPT} --write-gcm
 # Install google-fluentd which pushes application log files up into the Google
 # Cloud Logs Monitor.
 AGENT_INSTALL_SCRIPT="install-logging-agent.sh"
-EXPECTED_SHA256="07ca6e522885b9696013aaddde48bf2675429e57081c70080a9a1364a411b395  ./${AGENT_INSTALL_SCRIPT}"
+EXPECTED_SHA256="8db836510cf65f3fba44a3d49265ed7932e731e7747c6163da1c06bf2063c301  ./${AGENT_INSTALL_SCRIPT}"
 curl -sSO https://dl.google.com/cloudagents/${AGENT_INSTALL_SCRIPT}
 if ! echo "${EXPECTED_SHA256}" | sha256sum --quiet -c; then
   echo "Got ${AGENT_INSTALL_SCRIPT} with sha256sum "
@@ -42,11 +42,16 @@ fi
 sudo bash ./${AGENT_INSTALL_SCRIPT}
 
 # Examine what kind of Docker image is on this machine to determine what to log.
-if docker images | grep ct-server; then
+DOCKER_REPOS_FILE=$(mktemp)
+docker images --format '{{ .Repository }}' > "${DOCKER_REPOS_FILE}"
+
+if grep '/ct-server$' "${DOCKER_REPOS_FILE}"; then
   CT_LOGS_PREFIX="${DATA_DIR}/ctlog/logs/ct-server"
-elif docker images | grep ct-mirror; then
+elif grep '/ct-mirror$' "${DOCKER_REPOS_FILE}"; then
   CT_LOGS_PREFIX="${DATA_DIR}/ctmirror/logs/ct-mirror"
 fi
+
+rm "${DOCKER_REPOS_FILE}"
 
 if [[ -n "${CT_LOGS_PREFIX}" ]]; then
   sudo cat > /etc/google-fluentd/config.d/ct-info.conf <<EOF

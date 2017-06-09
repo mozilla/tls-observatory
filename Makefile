@@ -62,5 +62,6 @@ ciscotop1m:
 	unzip top-1m.csv.zip
 	mv top-1m.csv conf/
 	rm top-1m.csv.zip
+	dos2unix conf/top-1m.csv
 
 .PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor truststores cipherscan
