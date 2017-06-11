@@ -24,6 +24,19 @@ before_install:
 script:
 - make truststores cipherscan ciscotop1m
 - make
+
+# configure a database and run a test scan locally
+- sudo su - postgres -c "psql -c 'create database observatory;'"
+- cp $GOPATH/src/github.com/mozilla/tls-observatory/database/schema.sql /tmp/
+- chmod 444 /tmp/schema.sql
+- sudo su - postgres -c "psql -d observatory -f /tmp/schema.sql"
+- sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
+- sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
+- $GOPATH/bin/tlsobs-scanner &
+- $GOPATH/bin/tlsobs-api &
+- tlsobs -observatory http://localhost:8083 www.mozilla.org || exit 1
+
+# build and upload containers
 - docker build -t mozilla/tls-observatory .
 - docker build -t jvehent/tls-observatory-api -f tools/Dockerfile-api .
 - docker build -t jvehent/tls-observatory-scanner -f tools/Dockerfile-scanner .
