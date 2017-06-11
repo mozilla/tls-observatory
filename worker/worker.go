@@ -20,6 +20,7 @@ type Result struct {
 
 // Input holds all the info that is given as input to each scanner.
 type Input struct {
+	Target           string
 	Certificate      certificate.Certificate
 	CertificateChain *certificate.Chain
 	Connection       connection.Stored

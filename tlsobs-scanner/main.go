@@ -137,7 +137,7 @@ func scan(scanID int64, cipherscan string) {
 		db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 		log.WithFields(logrus.Fields{
 			"scan_id":     scanID,
-			"scan_Target": scan.Target,
+			"scan_target": scan.Target,
 			"error":       err.Error(),
 		}).Error("Could not get certificate info")
 		return
@@ -233,6 +233,7 @@ func scan(scanID int64, cipherscan string) {
 	workerInput := worker.Input{
 		DBHandle:         db,
 		Scanid:           scanID,
+		Target:           scan.Target,
 		Certificate:      *cert,
 		CertificateChain: chain,
 		Connection:       conn_info,
