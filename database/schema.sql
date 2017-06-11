@@ -47,6 +47,8 @@ CREATE TABLE certificates(
 CREATE INDEX certificates_sha256_fingerprint_idx ON certificates(sha256_fingerprint);
 CREATE INDEX certificates_subject_idx ON certificates(subject);
 CREATE INDEX certificates_cisco_umbrella_rank ON certificates(cisco_umbrella_rank);
+CREATE INDEX certificates_first_seen_idx ON certificates(first_seen);
+CREATE INDEX certificates_last_seen_idx ON certificates(last_seen);
 ALTER TABLE certificates ADD CONSTRAINT certificates_unique_sha256_fingerprint UNIQUE (sha256_fingerprint);
 
 CREATE TABLE trust (
