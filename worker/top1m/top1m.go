@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	workerName = "ciscoUmbrellaRank"
-	workerDesc = "Evaluate the ranking of a site using the domains in the certificate and the Cisco Umbrella TOP 1m list"
+	workerName = "top1m"
+	workerDesc = "Rank a target and its certificate against the top 1 million websites published by Cisco Umbrella"
 	log        = logger.GetLogger()
 )
 
