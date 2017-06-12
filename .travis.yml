@@ -6,10 +6,6 @@ services:
 - docker
 addons:
   postgresql: "9.4"
-notifications:
-  irc:
-    channels:
-      - "irc.mozilla.org#observatory"
 env:
   global:
   - DOCKER_EMAIL=jvehent@mozilla.com
