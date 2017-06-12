@@ -147,3 +147,16 @@ func (w ranker) analyseCertificateRank(in worker.Input) (certRank certificateRan
 	err = in.DBHandle.UpdateCertificateRank(in.Certificate.ID, certRank.Rank)
 	return
 }
+
+func (w ranker) AnalysisPrinter(r []byte, printAll interface{}) (results []string, err error) {
+	var a Analysis
+	err = json.Unmarshal(r, &a)
+	if err != nil {
+		err = fmt.Errorf("Top 1M: failed to parse results: %v", err)
+		return
+	}
+	results = append(results, "* Top 1M:")
+	results = append(results, fmt.Sprintf("  - target %q ranks %d", a.Target.Domain, a.Target.Rank))
+	results = append(results, fmt.Sprintf("  - certificate valid for %q ranks %d", a.Certificate.Domain, a.Certificate.Rank))
+	return
+}
