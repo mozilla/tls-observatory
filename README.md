@@ -524,32 +524,32 @@ WHERE jsonb_typeof(x509_certificatePolicies) != 'null'
 
 ### Evaluate the quality of TLS configurations of top sites
 
-This query uses the Cisco Umbrella ranking analyzer to retrieve the Mozilla evaluation of top sites.
+This query uses the top1m ranking analyzer to retrieve the Mozilla evaluation of top sites.
 
 ```sql
-SELECT COUNT(DISTINCT(target)), output->>'level' AS "Mozilla Configuration"
+observatory=> SELECT COUNT(DISTINCT(target)), output->>'level' AS "Mozilla Configuration"
 FROM scans
   INNER JOIN analysis ON (scans.id=analysis.scan_id)
 WHERE has_tls=true
   AND target IN ( SELECT target
                   FROM scans
                   INNER JOIN analysis ON (scans.id=analysis.scan_id)
-                  WHERE worker_name='ciscoUmbrellaRank'
-                    AND CAST(output->>'rank' AS INTEGER) < 3000
-                    AND timestamp > NOW() - INTERVAL '24 hours')
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 10000
+                    AND timestamp > NOW() - INTERVAL '1 month')
   AND worker_name='mozillaEvaluationWorker'
+  AND timestamp > NOW() - INTERVAL '1 month'
 GROUP BY has_tls, output->>'level'
 ORDER BY COUNT(DISTINCT(target)) DESC;
 
- count |     Mozilla Configuration
--------+--------------------------------
-  1302 | intermediate
-   699 | bad
-   658 | non compliant
-    22 | intermediate with bad ordering
-     9 | old
-     1 | modern
-(6 rows)
+ count | Mozilla Configuration 
+-------+-----------------------
+  3689 | intermediate
+  1906 | non compliant
+  1570 | bad
+    15 | old
+(4 rows)
+
 ```
 
 ### Count Top 1M sites that support RC4
@@ -563,8 +563,8 @@ WHERE jsonb_typeof(conn_info) = 'object'
   AND target IN ( SELECT target
                   FROM scans
                        INNER JOIN analysis ON (scans.id=analysis.scan_id)
-                  WHERE worker_name='ciscoUmbrellaRank'
-                    AND CAST(output->>'rank' AS INTEGER) < 1000000
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 1000000
                     AND timestamp > NOW() - INTERVAL '1 month')
   AND timestamp > NOW() - INTERVAL '1 month';
   ```
@@ -581,7 +581,7 @@ GROUP BY issuer#>'{o}'->>0
 ORDER BY count(*) DESC;
 ```
 
-## Core contributors
+## Contributors
 
  * Julien Vehent (lead maintainer)
  * Dimitris Bachtis (original dev)
