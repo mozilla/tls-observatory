@@ -5,7 +5,7 @@ go:
 services:
 - docker
 addons:
-  postgresql: "9.4"
+  postgresql: "9.6"
 env:
   global:
   - DOCKER_EMAIL=jvehent@mozilla.com
