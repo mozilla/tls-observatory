@@ -1,4 +1,4 @@
-FROM golang:1.7
+FROM golang:latest
 MAINTAINER Julien Vehent
 RUN go get github.com/mozilla/tls-observatory/tlsobs && \
     go install github.com/mozilla/tls-observatory/tlsobs-api && \
