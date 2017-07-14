@@ -36,9 +36,6 @@ runs:
         - appsearch.services.mozilla.com
         - geodude.services.mozilla.com
 
-        # Find my device
-        - find.firefox.com
-
         # Firefox Accounts
         - accounts.firefox.com
         - api.accounts.firefox.com
@@ -299,19 +296,6 @@ runs:
           email:
               recipients:
                   - b64:bG9jYXRpb25AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
-
-    # Find my device paging
-    - targets:
-        - find.firefox.com
-      assertions:
-        - certificate:
-            validity:
-                notafter: ">14d"
-      cron: "30 18 * * *"
-      notifications:
-          email:
-              recipients:
-                  - b64:Zm1kQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
     # Firefox Settings (Kinto)
     - targets:
