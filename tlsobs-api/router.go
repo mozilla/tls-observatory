@@ -43,6 +43,24 @@ var routes = Routes{
 		IndexHandler,
 	},
 	Route{
+		"Heartbeat",
+		"GET",
+		"/__heartbeat__",
+		heartbeatHandler,
+	},
+	Route{
+		"LbHeartbeat",
+		"GET",
+		"/__lbheartbeat__",
+		lbHeartbeatHandler,
+	},
+	Route{
+		"Version",
+		"GET",
+		"/__version__",
+		versionHandler,
+	},
+	Route{
 		"Scan",
 		"POST",
 		"/api/v1/scan",

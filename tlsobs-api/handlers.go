@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"sort"
 	"strconv"
 	"time"
@@ -634,6 +636,53 @@ hourly scans
 func PreflightHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("preflighted"))
+}
+
+func heartbeatHandler(w http.ResponseWriter, r *http.Request) {
+	val := r.Context().Value(ctxDBKey)
+	if val == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	db, ok := val.(*pg.DB)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var one uint
+	err := db.QueryRow("SELECT 1").Scan(&one)
+	if err != nil || one != 1 {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("alive"))
+}
+
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	dir, err := os.Getwd()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	filename := path.Clean(dir + string(os.PathSeparator) + "version.json")
+	f, err := os.Open(filename)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	stat, err := f.Stat()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	http.ServeContent(w, r, "__version__", stat.ModTime(), f)
+}
+
+func lbHeartbeatHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("alive"))
 }
 
 func HeartbeatHandler(w http.ResponseWriter, r *http.Request) {
