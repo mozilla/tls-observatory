@@ -25,6 +25,9 @@ runs:
         - aus5.mozilla.org
         - aus.mozilla.org
 
+        # Cloudfront (Misc Static Sites)
+        - fxpartners.mozilla.com
+
         # Crash report (socorro)
         - crash-stats.mozilla.com
         - crash-reports-xpsp2.mozilla.com
