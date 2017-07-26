@@ -8,7 +8,6 @@ runs:
         - addon.mozilla.org
         - addons.mozilla.org
         - blocklist.addons.mozilla.org
-        - builder.addons.mozilla.org
         - services.addons.mozilla.org
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
@@ -143,7 +142,6 @@ runs:
         - addon.mozilla.org
         - addons.mozilla.org
         - blocklist.addons.mozilla.org
-        - builder.addons.mozilla.org
         - services.addons.mozilla.org
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
@@ -224,7 +222,6 @@ runs:
         - addon.mozilla.org
         - addons.mozilla.org
         - blocklist.addons.mozilla.org
-        - builder.addons.mozilla.org
         - services.addons.mozilla.org
         - static.addons.mozilla.net
         - versioncheck-bg.addons.mozilla.org
