@@ -13,6 +13,26 @@ runs:
         - versioncheck-bg.addons.mozilla.org
         - versioncheck.addons.mozilla.org
         - compatibility-lookup.services.mozilla.com
+        - discovery.addons.mozilla.org
+        - addons.cdn.mozilla.net
+        - addons-discovery.cdn.mozilla.net
+        - addons-amo.cdn.mozilla.net
+
+        # AMO Dev & Stage
+        - addons-dev.allizom.org
+        - addons.allizom.org
+        - discovery.addons-dev.allizom.org
+        - discovery.addons.allizom.org
+        - services.addons-dev.allizom.org
+        - services.addons.allizom.org
+        - versioncheck-dev.allizom.org
+        - versioncheck.allizom.org
+        - addons-dev-cdn.allizom.org
+        - addons-stage-cdn.allizom.org
+        - addons-amo-dev-cdn.allizom.org
+        - addons-amo-cdn.allizom.org
+        - addons-discovery-dev-cdn.allizom.org
+        - addons-discovery-cdn.allizom.org
 
         # Autograph
         - content-signature.cdn.mozilla.net
@@ -147,6 +167,7 @@ runs:
         - versioncheck-bg.addons.mozilla.org
         - versioncheck.addons.mozilla.org
         - compatibility-lookup.services.mozilla.com
+        - discovery.addons.mozilla.org
 
         # Balrog
         - aus5.mozilla.org
@@ -227,6 +248,10 @@ runs:
         - versioncheck-bg.addons.mozilla.org
         - versioncheck.addons.mozilla.org
         - compatibility-lookup.services.mozilla.com
+        - discovery.addons.mozilla.org
+        - addons.cdn.mozilla.net
+        - addons-discovery.cdn.mozilla.net
+        - addons-amo.cdn.mozilla.net
       assertions:
         - certificate:
             validity:
