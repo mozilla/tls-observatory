@@ -68,12 +68,21 @@ runs:
         - syncto.services.mozilla.com
 
         # Metrics
-        - incoming.telemetry.mozilla.org
         - telemetry-experiment.cdn.mozilla.net
+        - incoming.telemetry.mozilla.org
         - metrics.services.mozilla.com
         - analysis.telemetry.mozilla.org
         - sql.telemetry.mozilla.org
         - pipeline-dwl.prod.mozaws.net
+        - docs.telemetry.mozilla.org
+        - workflow.telemetry.mozilla.org
+        - aggregates.telemetry.mozilla.org
+        - alerts.telemetry.mozilla.org
+        - start.telemetry.mozilla.org
+        - reports.telemetry.mozilla.org
+        - schemas.telemetry.mozilla.org
+        - telemetry.mozilla.org
+        - data-presto.data.mozaws.net
 
         # Misc
         - services.mozilla.com
@@ -382,11 +391,21 @@ runs:
 
     # Metrics paging
     - targets:
+        - telemetry-experiment.cdn.mozilla.net
         - incoming.telemetry.mozilla.org
         - metrics.services.mozilla.com
         - analysis.telemetry.mozilla.org
         - sql.telemetry.mozilla.org
         - pipeline-dwl.prod.mozaws.net
+        - docs.telemetry.mozilla.org
+        - workflow.telemetry.mozilla.org
+        - aggregates.telemetry.mozilla.org
+        - alerts.telemetry.mozilla.org
+        - start.telemetry.mozilla.org
+        - reports.telemetry.mozilla.org
+        - schemas.telemetry.mozilla.org
+        - telemetry.mozilla.org
+        - data-presto.data.mozaws.net
       assertions:
         - certificate:
             validity:
