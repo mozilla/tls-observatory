@@ -601,16 +601,27 @@ func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.Vali
 // GetCertPaths returns the various certificates paths from the current cert to roots.
 // It takes a certificate as argument that will be used as the start of the path.
 func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Paths, err error) {
+	// check if we have a path in the cache
+	if paths, ok := db.paths.Get(cert.Issuer.String()); ok {
+		return paths.(certificate.Paths), nil
+	}
+	// nothing in the cache, go to the database, recursively
 	var ancestors []string
-	return db.getCertPaths(cert, ancestors)
+	paths, err = db.getCertPaths(cert, ancestors)
+	if err != nil {
+		return
+	}
+	// add the path into the cache
+	db.paths.Add(cert.Issuer.String(), paths)
+	return
 }
 
 func (db *DB) getCertPaths(cert *certificate.Certificate, ancestors []string) (paths certificate.Paths, err error) {
-	paths.Cert = cert
 	xcert, err := cert.ToX509()
 	if err != nil {
 		return
 	}
+	paths.Cert = cert
 	ancestors = append(ancestors, cert.Hashes.SHA256SubjectSPKI)
 	parents, err := db.GetCACertsBySubject(cert.Issuer)
 	if err != nil {
