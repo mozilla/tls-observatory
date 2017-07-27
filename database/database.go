@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
 	_ "github.com/lib/pq"
 
 	"github.com/mozilla/tls-observatory/connection"
@@ -14,6 +15,7 @@ import (
 
 type DB struct {
 	*sql.DB
+	paths *lru.ARCCache
 }
 
 type Scan struct {
@@ -58,18 +60,15 @@ func (slice Analyses) Swap(i, j int) {
 }
 
 func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, error) {
-
 	userPass := url.UserPassword(user, password)
-
 	url := fmt.Sprintf("postgres://%s@%s/%s?sslmode=%s",
 		userPass.String(), hostport, dbname, sslmode)
-
-	db, err := sql.Open("postgres", url)
-
+	dbfd, err := sql.Open("postgres", url)
 	if err != nil {
-		db = nil
+		return nil, err
 	}
-	return &DB{db}, err
+	paths, err := lru.NewARC(10000)
+	return &DB{dbfd, paths}, nil
 }
 
 func (db *DB) NewScan(domain string, rplay int, jsonParams []byte) (Scan, error) {
