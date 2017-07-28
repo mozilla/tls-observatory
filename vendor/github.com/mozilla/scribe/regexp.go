@@ -11,6 +11,7 @@ import (
 	"regexp"
 )
 
+// Regex is used to specify regular expression matching criteria within a test.
 type Regex struct {
 	Value string `json:"value,omitempty" yaml:"value,omitempty"`
 }

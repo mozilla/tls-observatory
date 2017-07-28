@@ -12,12 +12,15 @@ import (
 	"strings"
 )
 
-// Describes arbitrary key value tags that can be associated with a test
+// TestTag describes arbitrary key value tags that can be associated with a test
 type TestTag struct {
 	Key   string `json:"key,omitempty" yaml:"key,omitempty"`
 	Value string `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
+// Test is a test within the policy document that will be executed. Tests specify
+// various criteria, and then compare this criteria against the data returned by the
+// object the test references.
 type Test struct {
 	TestID      string `json:"test" yaml:"test"`     // The ID for this test.
 	TestName    string `json:"name" yaml:"name"`     // An optional name for this test
@@ -85,7 +88,7 @@ func (t *Test) validate(d *Document) error {
 		return fmt.Errorf("%v: no valid evaluation interface", t.TestID)
 	}
 	for _, x := range t.If {
-		ptr, err := d.getTest(x)
+		ptr, err := d.GetTest(x)
 		if err != nil {
 			return fmt.Errorf("%v: %v", t.TestID, err)
 		}
@@ -148,7 +151,7 @@ func (t *Test) runTest(d *Document) error {
 	// First, see if this test has any dependencies. If so, run those
 	// before we execute this one.
 	for _, x := range t.If {
-		dt, err := d.getTest(x)
+		dt, err := d.GetTest(x)
 		if err != nil {
 			t.err = err
 			return t.errorHandler(d)
@@ -204,7 +207,7 @@ func (t *Test) runTest(d *Document) error {
 		t.masterResult = true
 	}
 	for _, x := range t.If {
-		dt, err := d.getTest(x)
+		dt, err := d.GetTest(x)
 		if err != nil {
 			t.err = err
 			t.masterResult = false

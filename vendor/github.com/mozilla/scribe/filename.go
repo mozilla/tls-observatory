@@ -13,6 +13,8 @@ import (
 	"regexp"
 )
 
+// FileName is used to perform tests against a given file name on
+// the file system
 type FileName struct {
 	Path string `json:"path,omitempty" yaml:"path,omitempty"`
 	File string `json:"file,omitempty" yaml:"file,omitempty"`
