@@ -73,9 +73,9 @@ func main() {
 	}()
 
 	scanRefreshRate = float64(conf.General.ScanRefreshRate)
-
+	log.Printf("Listening on %s", conf.General.APIListenAddr)
 	// wait for clients
-	err = http.ListenAndServe(":8083",
+	err = http.ListenAndServe(conf.General.APIListenAddr,
 		HandleMiddlewares(
 			router,
 			addRequestID(),
