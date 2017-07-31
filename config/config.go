@@ -20,6 +20,7 @@ type Config struct {
 		ScanRefreshRate int
 		MaxProc         int
 		Timeout         time.Duration
+		APIListenAddr   string
 	}
 	TrustStores struct {
 		UbuntuTS    string
@@ -51,6 +52,9 @@ func Load(path string) (conf Config, err error) {
 	}
 	if os.Getenv("TLSOBS_POSTGRESPASS") != "" {
 		conf.General.PostgresPass = os.Getenv("TLSOBS_POSTGRESPASS")
+	}
+	if apiListenAddr := os.Getenv("TLSOBS_APILISTENADDR"); apiListenAddr != "" {
+		conf.General.APIListenAddr = apiListenAddr
 	}
 	return
 }
