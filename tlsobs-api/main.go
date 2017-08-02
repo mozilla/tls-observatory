@@ -22,8 +22,6 @@ func init() {
 
 func main() {
 
-	router := NewRouter()
-
 	var cfgFile string
 	var debug bool
 	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/api.cfg", "Input file csv format")
@@ -38,6 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to load configuration: %v", err)
 	}
+	router := NewRouter(conf)
 	if !conf.General.Enable && os.Getenv("TLSOBS_API_ENABLE") != "on" {
 		log.Fatal("API is disabled in configuration")
 	}

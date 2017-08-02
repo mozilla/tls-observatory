@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 
 	"encoding/base64"
@@ -19,6 +20,9 @@ var workerDesc = `Determines if a given EV policy fulfills the requirements of M
 var log = logger.GetLogger()
 
 func init() {
+	if path := os.Getenv("TLSOBS_EVCHECKERPATH"); path != "" {
+		EvCheckerBinaryName = path
+	}
 	_, err := exec.LookPath(EvCheckerBinaryName)
 	if err != nil {
 		log.Warn("Could not find ev-checker binary, " + workerName + " disabled.")
