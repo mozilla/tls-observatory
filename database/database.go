@@ -80,7 +80,7 @@ func (db *DB) NewScan(domain string, rplay int, jsonParams []byte) (Scan, error)
 			(timestamp, target, replay, has_tls, is_valid, completion_perc, validation_error, conn_info, ack, attempts, analysis_params)
 			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			RETURNING id`,
-		timestamp, domain, rplay, false, false, 0, "", []byte("null"), false, 1, jsonParams).Scan(&id)
+		timestamp, domain, rplay, false, false, 0, "", []byte("null"), false, 0, jsonParams).Scan(&id)
 
 	if err != nil {
 		return Scan{}, err
