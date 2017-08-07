@@ -21,6 +21,7 @@ type Config struct {
 		MaxProc         int
 		Timeout         time.Duration
 		APIListenAddr   string
+		StaticAssetPath string
 	}
 	TrustStores struct {
 		UbuntuTS    string
@@ -55,6 +56,28 @@ func Load(path string) (conf Config, err error) {
 	}
 	if apiListenAddr := os.Getenv("TLSOBS_APILISTENADDR"); apiListenAddr != "" {
 		conf.General.APIListenAddr = apiListenAddr
+	}
+	if cipherscanPath := os.Getenv("TLSOBS_CIPHERSCANPATH"); cipherscanPath != "" {
+		conf.General.CipherscanPath = cipherscanPath
+	}
+	if ubuntuTSPath := os.Getenv("TLSOBS_UBUNTUTSPATH"); ubuntuTSPath != "" {
+		conf.TrustStores.UbuntuTS = ubuntuTSPath
+	}
+	if mozillaTSPath := os.Getenv("TLSOBS_MOZILLATSPATH"); mozillaTSPath != "" {
+		conf.TrustStores.MozillaTS = mozillaTSPath
+	}
+	if microsoftTSPath := os.Getenv("TLSOBS_MICROSOFTTSPATH"); microsoftTSPath != "" {
+		conf.TrustStores.MicrosoftTS = microsoftTSPath
+	}
+	if appleTSPath := os.Getenv("TLSOBS_APPLETSPATH"); appleTSPath != "" {
+		conf.TrustStores.AppleTS = appleTSPath
+	}
+	if androidTSPath := os.Getenv("TLSOBS_ANDROIDTSPATH"); androidTSPath != "" {
+		conf.TrustStores.AndroidTS = androidTSPath
+	}
+	conf.General.StaticAssetPath = "./static/"
+	if staticAssetPath := os.Getenv("TLSOBS_STATICASSETPATH"); staticAssetPath != "" {
+		conf.General.StaticAssetPath = staticAssetPath
 	}
 	return
 }
