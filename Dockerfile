@@ -18,7 +18,9 @@ RUN mv $GOPATH/bin/tlsobs-api /app/ && \
     mv $GOPATH/bin/tlsobs-scanner /app/ && \
     mv $GOPATH/bin/tlsobs-runner /app/ && \
     mv $GOPATH/bin/ev-checker /app/
+RUN mv $GOPATH/src/github.com/mozilla/tls-observatory/version.json /app
 RUN ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
 RUN ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
 
+WORKDIR /app
 USER app

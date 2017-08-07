@@ -32,6 +32,7 @@ script:
 - $GOPATH/bin/tlsobs-api &
 - tlsobs -observatory http://localhost:8083 www.mozilla.org || exit 1
 
+- printf '{"commit":"%s","version":"%s","source":"https://github.com/%s","build":"https://travis-ci.org/%s/builds/%s"}\n' "$TRAVIS_COMMIT" "$TRAVIS_TAG" "$TRAVIS_REPO_SLUG" "$TRAVIS_REPO_SLUG" "$TRAVIS_BUILD_ID" > version.json
 # build and upload containers
 - docker build -t mozilla/tls-observatory .
 - docker build -t jvehent/tls-observatory-api -f tools/Dockerfile-api .
