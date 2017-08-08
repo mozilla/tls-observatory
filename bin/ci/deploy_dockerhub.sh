@@ -21,17 +21,13 @@ function retry() {
     done
     return 0
 }
-
-if [[ "$DOCKER_DEPLOY" == "true" ]]; then
+if [[ "$DOCKER_DEPLOY" == "true" ]]; then 
     # configure docker creds
     retry 3 docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-
     # docker tag and push git branch to dockerhub
     if [ -n "$1" ]; then
-        [ "$1" == master ] && TAG=latest || TAG="$1"
-            retry 3 docker push "mozilla/tls-observatory:$TAG" ||
-                (echo "Couldn't push mozilla/tls-observatory:$TAG" && false)
-            echo "Pushed mozilla/tls-observatory:$TAG"
-        done
+	retry 3 docker push "mozilla/tls-observatory:$1" ||
+            (echo "Couldn't push mozilla/tls-observatory:$1" && false)
+	echo "Pushed mozilla/tls-observatory:$1"
     fi
 fi
