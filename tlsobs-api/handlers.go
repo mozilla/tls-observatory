@@ -17,8 +17,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
+	"github.com/mozilla/tls-observatory/metrics"
 )
 
 var scanRefreshRate float64
@@ -43,7 +45,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), status)
 		}
 	}()
-
 	status = http.StatusInternalServerError
 
 	val := r.Context().Value(ctxDBKey)
@@ -106,6 +107,10 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusInternalServerError,
 			fmt.Sprintf("Could not create new scan: %v", err))
 		return
+	}
+	cloudwatchSvc, ok := r.Context().Value(ctxCloudwatchKey).(*cloudwatch.CloudWatch)
+	if ok {
+		metrics.NewScan(cloudwatchSvc)
 	}
 	sr := scanResponse{
 		ID: scan.ID,
@@ -307,6 +312,11 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("Failed to store trust in database: %v", err))
 			return
 		}
+	}
+
+	cloudwatchSvc, ok := r.Context().Value(ctxCloudwatchKey).(*cloudwatch.CloudWatch)
+	if ok {
+		metrics.NewCertificate(cloudwatchSvc)
 	}
 
 	jsonCertFromID(w, r, cert.ID)

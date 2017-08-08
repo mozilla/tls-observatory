@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	pg "github.com/mozilla/tls-observatory/database"
 )
 
@@ -13,8 +14,9 @@ import (
 type Middleware func(http.Handler) http.Handler
 
 const (
-	ctxDBKey = "db"
-	ctxReqID = "reqID"
+	ctxDBKey         = "db"
+	ctxReqID         = "reqID"
+	ctxCloudwatchKey = "cloudwatch"
 )
 
 func logRequest() Middleware {
@@ -36,6 +38,14 @@ func addDB(db *pg.DB) Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h.ServeHTTP(w, addtoContext(r, ctxDBKey, db))
+		})
+	}
+}
+
+func addCloudwatch(cloudwatch *cloudwatch.CloudWatch) Middleware {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, addtoContext(r, ctxCloudwatchKey, cloudwatch))
 		})
 	}
 }

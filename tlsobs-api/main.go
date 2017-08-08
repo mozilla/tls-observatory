@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/mozilla/tls-observatory/config"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
@@ -21,7 +23,6 @@ func init() {
 }
 
 func main() {
-
 	var cfgFile string
 	var debug bool
 	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/api.cfg", "Input file csv format")
@@ -71,17 +72,29 @@ func main() {
 		}
 	}()
 
+	middlewares := []Middleware{
+		addRequestID(),
+		addDB(db),
+		logRequest(),
+		setResponseHeaders(),
+	}
+
+	sess, err := session.NewSession()
+	if err != nil {
+		log.Printf("Could not create AWS session: %s", err)
+	} else {
+		cloudwatchSvc := cloudwatch.New(sess)
+		middlewares = append(middlewares, addCloudwatch(cloudwatchSvc))
+		log.Printf("CloudWatch configured.")
+	}
+
 	scanRefreshRate = float64(conf.General.ScanRefreshRate)
 	log.Printf("Listening on %s", conf.General.APIListenAddr)
 	// wait for clients
 	err = http.ListenAndServe(conf.General.APIListenAddr,
 		HandleMiddlewares(
 			router,
-			addRequestID(),
-			addDB(db),
-			logRequest(),
-			setResponseHeaders(),
-		),
+			middlewares...),
 	)
 
 	log.Fatal(err)
