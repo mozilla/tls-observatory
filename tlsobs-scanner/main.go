@@ -14,6 +14,7 @@ import (
 	"github.com/mozilla/tls-observatory/connection"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/logger"
+	"github.com/mozilla/tls-observatory/metrics"
 	"github.com/mozilla/tls-observatory/worker"
 )
 
@@ -92,22 +93,24 @@ func main() {
 		dbtls)
 	Setup(conf)
 
-	activeScanners := 0
+	activeScans := 0
+	sender, _ := metrics.NewSender()
+	scanner := scanner{sender}
 	for {
 		select {
 		case scanID := <-incomingScans:
 			// new scan, send it to the first available scanner
 			for {
-				if activeScanners >= conf.General.MaxProc {
+				if activeScans >= conf.General.MaxProc {
 					time.Sleep(time.Second)
 				} else {
 					break
 				}
 			}
 			go func() {
-				activeScanners++
-				scan(scanID, cipherscan)
-				activeScanners--
+				activeScans++
+				scanner.scan(scanID, cipherscan)
+				activeScans--
 			}()
 		case <-time.After(conf.General.Timeout * time.Minute):
 			log.Fatalf("No new scan received in %d minutes, shutting down", conf.General.Timeout)
@@ -115,7 +118,11 @@ func main() {
 	}
 }
 
-func scan(scanID int64, cipherscan string) {
+type scanner struct {
+	metricsSender *metrics.Sender
+}
+
+func (s scanner) scan(scanID int64, cipherscan string) {
 	log.WithFields(logrus.Fields{
 		"scan_id": scanID,
 	}).Info("Received new scan")
@@ -129,6 +136,14 @@ func scan(scanID int64, cipherscan string) {
 		}).Error("Could not find/decode scan")
 		return
 	}
+
+	// Send a completed scan event to CloudWatch when the function returns
+	defer func() {
+		if s.metricsSender != nil {
+			s.metricsSender.CompletedScan()
+		}
+	}()
+
 	var completion int
 
 	// Retrieve the certificate from the target
@@ -290,6 +305,9 @@ func scan(scanID int64, cipherscan string) {
 					"error":   err.Error(),
 				}).Error("Could not insert worker results in database")
 				continue
+			}
+			if s.metricsSender != nil {
+				s.metricsSender.NewAnalysis()
 			}
 			log.WithFields(logrus.Fields{
 				"scan_id":     scanID,

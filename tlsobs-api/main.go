@@ -2,15 +2,16 @@ package main
 
 import (
 	"flag"
-	"github.com/mozilla/tls-observatory/config"
-	pg "github.com/mozilla/tls-observatory/database"
-	"github.com/mozilla/tls-observatory/logger"
-	"go.mozilla.org/mozlog"
 	"log"
 	"net/http"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/mozilla/tls-observatory/config"
+	pg "github.com/mozilla/tls-observatory/database"
+	"github.com/mozilla/tls-observatory/logger"
+	"go.mozilla.org/mozlog"
 )
 
 func init() {
@@ -72,7 +73,6 @@ func main() {
 	middlewares := []Middleware{
 		addRequestID(),
 		addDB(db),
-		addMetricsSender(),
 		logRequest(),
 		setResponseHeaders(),
 	}

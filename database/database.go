@@ -11,11 +11,13 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/mozilla/tls-observatory/connection"
+	"github.com/mozilla/tls-observatory/metrics"
 )
 
 type DB struct {
 	*sql.DB
-	paths *lru.ARCCache
+	paths         *lru.ARCCache
+	metricsSender *metrics.Sender
 }
 
 type Scan struct {
@@ -68,7 +70,8 @@ func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, 
 		return nil, err
 	}
 	paths, err := lru.NewARC(10000)
-	return &DB{dbfd, paths}, nil
+	sender, _ := metrics.NewSender()
+	return &DB{dbfd, paths, sender}, nil
 }
 
 func (db *DB) NewScan(domain string, rplay int, jsonParams []byte) (Scan, error) {

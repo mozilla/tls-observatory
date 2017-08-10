@@ -19,7 +19,6 @@ import (
 
 	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
-	"github.com/mozilla/tls-observatory/metrics"
 )
 
 var scanRefreshRate float64
@@ -106,10 +105,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, http.StatusInternalServerError,
 			fmt.Sprintf("Could not create new scan: %v", err))
 		return
-	}
-	metricsSender, ok := r.Context().Value(ctxMetricsSenderKey).(*metrics.Sender)
-	if ok {
-		metricsSender.NewScan()
 	}
 	sr := scanResponse{
 		ID: scan.ID,
@@ -311,11 +306,6 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("Failed to store trust in database: %v", err))
 			return
 		}
-	}
-
-	metricsSender, ok := r.Context().Value(ctxMetricsSenderKey).(*metrics.Sender)
-	if ok {
-		metricsSender.NewCertificate()
 	}
 
 	jsonCertFromID(w, r, cert.ID)

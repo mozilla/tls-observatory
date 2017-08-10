@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	pg "github.com/mozilla/tls-observatory/database"
-	"github.com/mozilla/tls-observatory/metrics"
 )
 
 // Middleware wraps an http.Handler with additional
@@ -14,9 +13,8 @@ import (
 type Middleware func(http.Handler) http.Handler
 
 const (
-	ctxDBKey            = "db"
-	ctxReqID            = "reqID"
-	ctxMetricsSenderKey = "metricsSender"
+	ctxDBKey = "db"
+	ctxReqID = "reqID"
 )
 
 func logRequest() Middleware {
@@ -38,18 +36,6 @@ func addDB(db *pg.DB) Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h.ServeHTTP(w, addtoContext(r, ctxDBKey, db))
-		})
-	}
-}
-
-func addMetricsSender() Middleware {
-	sender, err := metrics.NewSender()
-	if err != nil {
-		log.Printf("Error creating metrics sender: %s", err)
-	}
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, addtoContext(r, ctxMetricsSenderKey, sender))
 		})
 	}
 }
