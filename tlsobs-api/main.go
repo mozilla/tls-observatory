@@ -21,7 +21,6 @@ func init() {
 }
 
 func main() {
-
 	var cfgFile string
 	var debug bool
 	flag.StringVar(&cfgFile, "c", "/etc/tls-observatory/api.cfg", "Input file csv format")
@@ -71,17 +70,19 @@ func main() {
 		}
 	}()
 
+	middlewares := []Middleware{
+		addRequestID(),
+		addDB(db),
+		logRequest(),
+		setResponseHeaders(),
+	}
 	scanRefreshRate = float64(conf.General.ScanRefreshRate)
 	log.Printf("Listening on %s", conf.General.APIListenAddr)
 	// wait for clients
 	err = http.ListenAndServe(conf.General.APIListenAddr,
 		HandleMiddlewares(
 			router,
-			addRequestID(),
-			addDB(db),
-			logRequest(),
-			setResponseHeaders(),
-		),
+			middlewares...),
 	)
 
 	log.Fatal(err)

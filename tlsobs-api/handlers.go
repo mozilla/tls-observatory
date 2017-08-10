@@ -43,7 +43,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), status)
 		}
 	}()
-
 	status = http.StatusInternalServerError
 
 	val := r.Context().Value(ctxDBKey)
