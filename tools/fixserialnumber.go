@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/x509"
-	"encoding/asn1"
 	"encoding/base64"
 	"flag"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/database"
 )
 
@@ -143,12 +143,11 @@ func b64RawCertToX509Cert(b64Crt string) (*x509.Certificate, error) {
 
 func worker(id int, jobs <-chan job, results chan result, db *database.DB) {
 	for j := range jobs {
-		correctSerialNumberBytes, err := getSerialNumberASN1Value(j.cert)
+		correctSerialNumber, err := certificate.GetHexASN1Serial(j.cert)
 		if err != nil {
 			results <- result{id: j.id, err: err}
 			continue
 		}
-		correctSerialNumber := fmt.Sprintf("%X", correctSerialNumberBytes)
 		if correctSerialNumber == *j.currentSerialNumber {
 			// Serial number is already stored correctly in the database
 			results <- result{id: j.id, err: nil}
@@ -164,20 +163,6 @@ func worker(id int, jobs <-chan job, results chan result, db *database.DB) {
 		}
 		results <- result{id: j.id, err: nil, changed: true}
 	}
-}
-
-// getSerialNumberASN1Value returns the ASN1-encoded serial number for the given certificate, excluding the tag and length.
-func getSerialNumberASN1Value(cert *x509.Certificate) ([]byte, error) {
-	m, err := asn1.Marshal(cert.SerialNumber)
-	if err != nil {
-		return nil, fmt.Errorf("Error marshalling certificate's serial number: %s", err)
-	}
-	var rawValue asn1.RawValue
-	_, err = asn1.Unmarshal(m, &rawValue)
-	if err != nil {
-		return nil, fmt.Errorf("Error unmarshaling certificate's serial number from ASN1: %s", err)
-	}
-	return rawValue.Bytes, nil
 }
 
 func updateSerialNumberInDB(db *database.DB, id int64, correctSerialNumber string) error {
