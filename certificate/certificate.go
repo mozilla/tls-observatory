@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -447,6 +448,20 @@ func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
 
 }
 
+func GetHexASN1Serial(cert *x509.Certificate) (serial string, err error) {
+	m, err := asn1.Marshal(cert.SerialNumber)
+	if err != nil {
+		return
+	}
+	var rawValue asn1.RawValue
+	_, err = asn1.Unmarshal(m, &rawValue)
+	if err != nil {
+		return
+	}
+	serial = fmt.Sprintf("%X", rawValue.Bytes)
+	return
+}
+
 //certtoStored returns a Certificate struct created from a X509.Certificate
 func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TSName string, valInfo *ValidationInfo) Certificate {
 	var (
@@ -458,7 +473,11 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.IPs = make([]string, 0)
 
 	stored.Version = cert.Version
-	stored.Serial = fmt.Sprintf("%X", cert.SerialNumber)
+
+	// If there's an error, we just store the zero value ("")
+	serial, _ := GetHexASN1Serial(cert)
+	stored.Serial = serial
+
 	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
 
 	stored.Key, err = getPublicKeyInfo(cert)
