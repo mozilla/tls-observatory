@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -458,7 +459,21 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.IPs = make([]string, 0)
 
 	stored.Version = cert.Version
-	stored.Serial = fmt.Sprintf("%X", cert.SerialNumber)
+
+	// Compute the ASN1 representation of the serial number
+	m, err := asn1.Marshal(cert.SerialNumber)
+	if err != nil {
+		stored.Serial = ""
+	}
+	// Unmarshal the ASN1 representation into a RawValue so we can trim
+	// the ASN1 tag and length
+	var rawValue asn1.RawValue
+	_, err = asn1.Unmarshal(m, &rawValue)
+	if err != nil {
+		stored.Serial = ""
+	}
+	stored.Serial = fmt.Sprintf("%X", rawValue.Bytes)
+
 	stored.SignatureAlgorithm = SignatureAlgorithm[cert.SignatureAlgorithm]
 
 	stored.Key, err = getPublicKeyInfo(cert)
