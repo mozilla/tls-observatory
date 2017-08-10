@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/metrics"
@@ -108,9 +107,9 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("Could not create new scan: %v", err))
 		return
 	}
-	cloudwatchSvc, ok := r.Context().Value(ctxCloudwatchKey).(*cloudwatch.CloudWatch)
+	metricsSender, ok := r.Context().Value(ctxMetricsSenderKey).(*metrics.Sender)
 	if ok {
-		metrics.NewScan(cloudwatchSvc)
+		metricsSender.NewScan()
 	}
 	sr := scanResponse{
 		ID: scan.ID,
@@ -314,9 +313,9 @@ func PostCertificateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	cloudwatchSvc, ok := r.Context().Value(ctxCloudwatchKey).(*cloudwatch.CloudWatch)
+	metricsSender, ok := r.Context().Value(ctxMetricsSenderKey).(*metrics.Sender)
 	if ok {
-		metrics.NewCertificate(cloudwatchSvc)
+		metricsSender.NewCertificate()
 	}
 
 	jsonCertFromID(w, r, cert.ID)

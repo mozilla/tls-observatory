@@ -1,13 +1,28 @@
 package metrics
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 )
 
+type Sender struct {
+	cloudwatchSvc *cloudwatch.CloudWatch
+}
+
+func NewSender() (*Sender, error) {
+	sess, err := session.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("Could not create AWS session: %s", err)
+	}
+	return &Sender{cloudwatch.New(sess)}, nil
+}
+
 // NewScan informs Cloudwatch that a new scan has been created
-func NewScan(cloudwatchSvc *cloudwatch.CloudWatch) {
-	cloudwatchSvc.PutMetricData(&cloudwatch.PutMetricDataInput{
+func (sender *Sender) NewScan() {
+	sender.cloudwatchSvc.PutMetricData(&cloudwatch.PutMetricDataInput{
 		MetricData: []*cloudwatch.MetricDatum{
 			&cloudwatch.MetricDatum{
 				MetricName: aws.String("NewScans"),
@@ -21,8 +36,8 @@ func NewScan(cloudwatchSvc *cloudwatch.CloudWatch) {
 }
 
 // NewCertificate informs Cloudwatch that a new certificate has been created
-func NewCertificate(cloudwatchSvc *cloudwatch.CloudWatch) {
-	cloudwatchSvc.PutMetricData(&cloudwatch.PutMetricDataInput{
+func (sender *Sender) NewCertificate() {
+	sender.cloudwatchSvc.PutMetricData(&cloudwatch.PutMetricDataInput{
 		MetricData: []*cloudwatch.MetricDatum{
 			&cloudwatch.MetricDatum{
 				MetricName: aws.String("NewCertificates"),

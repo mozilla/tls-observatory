@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	pg "github.com/mozilla/tls-observatory/database"
+	"github.com/mozilla/tls-observatory/metrics"
 )
 
 // Middleware wraps an http.Handler with additional
@@ -14,9 +14,9 @@ import (
 type Middleware func(http.Handler) http.Handler
 
 const (
-	ctxDBKey         = "db"
-	ctxReqID         = "reqID"
-	ctxCloudwatchKey = "cloudwatch"
+	ctxDBKey            = "db"
+	ctxReqID            = "reqID"
+	ctxMetricsSenderKey = "metricsSender"
 )
 
 func logRequest() Middleware {
@@ -42,10 +42,14 @@ func addDB(db *pg.DB) Middleware {
 	}
 }
 
-func addCloudwatch(cloudwatch *cloudwatch.CloudWatch) Middleware {
+func addMetricsSender() Middleware {
+	sender, err := metrics.NewSender()
+	if err != nil {
+		log.Printf("Error creating metrics sender: %s", err)
+	}
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, addtoContext(r, ctxCloudwatchKey, cloudwatch))
+			h.ServeHTTP(w, addtoContext(r, ctxMetricsSenderKey, sender))
 		})
 	}
 }
