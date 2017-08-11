@@ -1,0 +1,60 @@
+cversion: 2
+jobs:
+  build:
+    working_directory: /go/src/github.com/mozilla/tls-observatory
+    docker:
+      - image: circleci/golang:1.8
+      - image: circleci/postgres:9.5-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: observatory
+          POSTGRES_PASSWORD: ""
+    steps:
+      - checkout
+      - run: git submodule update --init
+      - run: sudo apt-get install dos2unix postgresql-client -y
+      - run:
+          name: Clone EV-Checker
+          command: git clone https://github.com/mozkeeler/ev-checker.git
+      - run:
+          name: Fetch EV-Checker dependencies
+          command: sudo apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang make -y
+      - run:
+          name: Build EV-Checker
+          command: |
+            cd ev-checker
+            make
+      - run:
+          name: Build TLS Observatory
+          command: |
+            make truststores cipherscan ciscotop1m
+            make
+      - run:
+          name: Run a simple test scan
+          command: |
+            psql -h 127.0.0.1 -U postgres -d observatory -f database/schema.sql
+            sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
+            sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
+            $GOPATH/bin/tlsobs-scanner & $GOPATH/bin/tlsobs-api & tlsobs -observatory http://localhost:8083 www.mozilla.org || exit 1
+      - setup_remote_docker
+      - run:
+          name: Create version.json
+          command: |
+            printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n' \
+            "$CIRCLE_SHA1" \
+            "$CIRCLE_TAG" \
+            "$CIRCLE_PROJECT_USERNAME" \
+            "$CIRCLE_PROJECT_REPONAME" \
+            "$CIRCLE_BUILD_URL" > version.json
+      - run:
+          name: Build containers
+          command: |
+            docker build -t mozilla/tls-observatory .
+            docker tag mozilla/tls-observatory "mozilla/tls-observatory:$CIRCLE_SHA1"
+      - run:
+          name: Push containers
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+                ./bin/ci/deploy_dockerhub.sh "latest"
+                ./bin/ci/deploy_dockerhub.sh "$CIRCLE_SHA1"
+            fi

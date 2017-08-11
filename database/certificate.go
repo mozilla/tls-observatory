@@ -161,6 +161,9 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
+	if db.metricsSender != nil {
+		db.metricsSender.NewCertificate()
+	}
 	return id, nil
 }
 
@@ -484,7 +487,9 @@ func (db *DB) InsertTrustToDB(cert certificate.Certificate, certID, parID int64)
 	if err != nil {
 		return -1, err
 	}
-
+	if db.metricsSender != nil {
+		db.metricsSender.NewTrustRelation()
+	}
 	return trustID, nil
 
 }

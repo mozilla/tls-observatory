@@ -43,7 +43,11 @@ type certificateRank struct {
 func init() {
 	runner := new(ranker)
 	runner.Ranks = make(map[string]int64)
-	fd, err := os.Open("/etc/tls-observatory/top-1m.csv")
+	top1mPath := "/etc/tls-observatory/top-1m.csv"
+	if path := os.Getenv("TLSOBS_TOP1MPATH"); path != "" {
+		top1mPath = path
+	}
+	fd, err := os.Open(top1mPath)
 	if err != nil {
 		log.Printf("Failed to initialize %s: %v", workerName, err)
 		return
