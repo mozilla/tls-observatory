@@ -14,6 +14,11 @@ type EqualityFixture struct {
 	*gunit.Fixture
 }
 
+func (this *EqualityFixture) TestNilNil() {
+	spec := newEqualityMethodSpecification(nil, nil)
+	this.So(spec.IsSatisfied(), ShouldBeFalse)
+}
+
 func (this *EqualityFixture) TestEligible1() {
 	a := Eligible1{"hi"}
 	b := Eligible1{"hi"}
