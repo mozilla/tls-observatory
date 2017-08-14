@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -29,21 +30,39 @@ func main() {
 		maxJobs   = 100
 		jobCount  = 0
 	)
-	httpCli := &http.Client{
-		Transport: &http.Transport{
-			DisableCompression: true,
-			DisableKeepAlives:  false,
-		},
-		Timeout: 60 * time.Second,
-	}
-	// create a certificate transparency client
-	ctLog, _ := client.New("http://ct.googleapis.com/pilot", httpCli, jsonclient.Options{})
-
+	// if present, parse the first argument of the cmdline as offset
 	if len(os.Args) > 1 {
 		offset, err = strconv.Atoi(os.Args[1])
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+	// create an http client for CT log
+	httpCTCli := &http.Client{
+		Transport: &http.Transport{
+			DisableCompression: false,
+			DisableKeepAlives:  false,
+			Dial: (&net.Dialer{
+				Timeout: 5 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 5 * time.Second,
+		},
+		Timeout: 60 * time.Second,
+	}
+	// create a certificate transparency client
+	ctLog, _ := client.New("http://ct.googleapis.com/pilot", httpCTCli, jsonclient.Options{})
+
+	// create an http client to post to tls observatory
+	httpCli := &http.Client{
+		Transport: &http.Transport{
+			DisableCompression: false,
+			DisableKeepAlives:  false,
+			Dial: (&net.Dialer{
+				Timeout: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 30 * time.Second,
+		},
+		Timeout: 60 * time.Second,
 	}
 	for {
 		log.Printf("retrieving CT logs %d to %d", offset, offset+batchSize)
