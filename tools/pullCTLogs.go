@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/certificate-transparency-go"
@@ -20,6 +21,7 @@ import (
 	"github.com/google/certificate-transparency-go/jsonclient"
 	"github.com/google/certificate-transparency-go/x509"
 	"github.com/mozilla/tls-observatory/certificate"
+	"github.com/viki-org/dnscache"
 )
 
 func main() {
@@ -53,13 +55,20 @@ func main() {
 	ctLog, _ := client.New("http://ct.googleapis.com/pilot", httpCTCli, jsonclient.Options{})
 
 	// create an http client to post to tls observatory
+	resolver := dnscache.New(time.Minute * 5)
 	httpCli := &http.Client{
 		Transport: &http.Transport{
-			DisableCompression: false,
-			DisableKeepAlives:  false,
-			Dial: (&net.Dialer{
-				Timeout: 30 * time.Second,
-			}).Dial,
+			DisableCompression:  false,
+			DisableKeepAlives:   false,
+			MaxIdleConnsPerHost: 64,
+			Dial: func(network string, address string) (net.Conn, error) {
+				separator := strings.LastIndex(address, ":")
+				ip, err := resolver.FetchOneString(address[:separator])
+				if err != nil {
+					log.Fatal(err)
+				}
+				return net.Dial("tcp", ip+address[separator:])
+			},
 			TLSHandshakeTimeout: 30 * time.Second,
 		},
 		Timeout: 60 * time.Second,
@@ -97,9 +106,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				log.Printf("CN=%s", cert.Subject.CommonName)
-				log.Printf("Not Before=%s", cert.NotBefore)
-				log.Printf("Not After=%s", cert.NotAfter)
+				log.Printf("CN=%s; Issuer=%s\nNot Before=%s; Not After=%s", cert.Subject.CommonName, cert.Issuer.CommonName, cert.NotBefore, cert.NotAfter)
 
 				// Format the PEM certificate
 				payload := base64.StdEncoding.EncodeToString(cert.Raw)
