@@ -347,8 +347,13 @@ I iz alive.
 
 Returns usage statistics in json (default) or text format.
 
+By default, this endpoint returns stale data, refreshed the last time the
+endpoint was called, so it's possible to not have the latest available
+statistics. Use the query parameter `details=full` to get the real-time stats,
+but be aware that this is expensive and often times out.
+
 ```bash
-curl https://tls-observatory.services.mozilla.com/api/v1/__stats__?format=text
+curl https://tls-observatory.services.mozilla.com/api/v1/__stats__?format=text&details=full
 
 pending scans: 7
 
