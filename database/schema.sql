@@ -124,13 +124,13 @@ SELECT
   COALESCE((SELECT COUNT(DISTINCT(id)) FROM certificates WHERE first_seen > NOW() - INTERVAL '24 hours'), 0) AS count_certificates_added_last24h,
   COALESCE((SELECT COUNT(DISTINCT(id)) FROM scans WHERE timestamp > NOW() - INTERVAL '24 hours' AND ack=true AND completion_perc=100), 0) AS count_scans_last24h;
 
-ALTER MATERIALIZED VIEW statistics OWNER TO tlsobsapi;
 
 CREATE ROLE tlsobsapi;
 ALTER ROLE tlsobsapi WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';
 GRANT SELECT ON analysis, certificates, scans, trust, statistics TO tlsobsapi;
 GRANT INSERT ON scans, certificates, trust TO tlsobsapi;
 GRANT USAGE ON scans_id_seq, certificates_id_seq, trust_id_seq TO tlsobsapi;
+ALTER MATERIALIZED VIEW statistics OWNER TO tlsobsapi;
 
 CREATE ROLE tlsobsscanner;
 ALTER ROLE tlsobsscanner WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';
