@@ -5,7 +5,7 @@ RUN go install github.com/mozilla/tls-observatory/tlsobs-api && \
     go install github.com/mozilla/tls-observatory/tlsobs-scanner && \
     go install github.com/mozilla/tls-observatory/tlsobs-runner && \
     apt-get update -y && \
-    apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang -y && \
+    apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang postgresql-client -y && \
     git clone https://github.com/mozkeeler/ev-checker.git && \
     cd ev-checker && \
     make && \
