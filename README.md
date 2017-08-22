@@ -103,6 +103,8 @@ $ docker run -it mozilla/tls-observatory tlsobs accounts.firefox.com
 
 ## Developing
 
+You can use the Kubernetes configuration provided in https://github.com/mozilla/tls-observatory/tree/master/kubernetes , or alternatively, you can do the following:
+
 You can use the `mozilla/tls-observatory` docker container for development:
 ```bash
 $ docker pull mozilla/tls-observatory
