@@ -123,7 +123,7 @@ SELECT
   COALESCE((SELECT COUNT(DISTINCT(id)) FROM certificates WHERE last_seen > NOW() - INTERVAL '24 hours'), 0) AS count_certificates_seen_last24h,
   COALESCE((SELECT COUNT(DISTINCT(id)) FROM certificates WHERE first_seen > NOW() - INTERVAL '24 hours'), 0) AS count_certificates_added_last24h,
   COALESCE((SELECT COUNT(DISTINCT(id)) FROM scans WHERE timestamp > NOW() - INTERVAL '24 hours' AND ack=true AND completion_perc=100), 0) AS count_scans_last24h;
-
+CREATE UNIQUE INDEX statistics_timestamp_idx ON statistics(timestamp);
 
 CREATE ROLE tlsobsapi;
 ALTER ROLE tlsobsapi WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';
