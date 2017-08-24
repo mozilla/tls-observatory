@@ -32,7 +32,7 @@ func (db *DB) GetLatestStatisticsFromView() (stats Statistics, err error) {
 		&stats.DistinctCertsSeenLast24Hours, &stats.DistinctCertsAddedLast24Hours,
 		&stats.ScansLast24Hours)
 	if ts.Before(time.Now().Add(-(5 * time.Minute))) {
-		go db.Exec(`REFRESH MATERIALIZED VIEW statistics`)
+		go db.Exec(`REFRESH MATERIALIZED VIEW CONCURRENTLY statistics`)
 	}
 	return
 }
