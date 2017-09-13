@@ -86,7 +86,7 @@ runs:
         - casttv.services.mozilla.com
         - syncto.services.mozilla.com
 
-        # Metrics
+        # Data Platform services
         - telemetry-experiment.cdn.mozilla.net
         - incoming.telemetry.mozilla.org
         - metrics.services.mozilla.com
@@ -412,7 +412,7 @@ runs:
               recipients:
                   - b64:bWFya2V0cGxhY2VAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
 
-    # Metrics paging
+    # Data Platform services paging
     - targets:
         - telemetry-experiment.cdn.mozilla.net
         - incoming.telemetry.mozilla.org
@@ -438,7 +438,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+                  - b64:ZGF0YS1vcGVyYXRpb25zLWdlbmVyYWxAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQ==
 
     # Misc paging
     - targets:
