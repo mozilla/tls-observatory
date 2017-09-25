@@ -748,7 +748,7 @@ func (e eval) Assertor(evresults, assertresults []byte) (pass bool, body []byte,
 		return
 	}
 	if evres.Level != assertres.Level {
-		body = []byte(fmt.Sprintf(`Assertion mozillaEvaluationWorker.level=%q failed because measured leved is %q`,
+		body = []byte(fmt.Sprintf(`Assertion mozillaEvaluationWorker.level=%q failed because measured level is %q`,
 			assertres.Level, evres.Level))
 		pass = false
 	} else {
