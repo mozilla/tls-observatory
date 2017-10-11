@@ -608,7 +608,11 @@ func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.Vali
 func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Paths, err error) {
 	// check if we have a path in the cache
 	if paths, ok := db.paths.Get(cert.Issuer.String()); ok {
-		return paths.(certificate.Paths), nil
+		// the end-entity in the cache is likely another cert, so replace
+		// it with the current one
+		newpaths := paths.(certificate.Paths)
+		newpaths.Cert = cert
+		return newpaths, nil
 	}
 	// nothing in the cache, go to the database, recursively
 	var ancestors []string
