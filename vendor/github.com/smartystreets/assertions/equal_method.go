@@ -1,10 +1,6 @@
 package assertions
 
-import (
-	"reflect"
-
-	"github.com/smartystreets/logging"
-)
+import "reflect"
 
 type equalityMethodSpecification struct {
 	a interface{}
@@ -14,15 +10,12 @@ type equalityMethodSpecification struct {
 	bType reflect.Type
 
 	equalMethod reflect.Value
-
-	log *logging.Logger
 }
 
 func newEqualityMethodSpecification(a, b interface{}) *equalityMethodSpecification {
 	return &equalityMethodSpecification{
-		a:   a,
-		b:   b,
-		log: logging.Capture(),
+		a: a,
+		b: b,
 	}
 }
 

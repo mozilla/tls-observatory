@@ -56,7 +56,6 @@ func (this *EqualityFixture) TestEligible1_PointerReceiver() {
 	this.So(a.Equal(b), ShouldBeTrue)
 	specification := newEqualityMethodSpecification(a, b)
 	this.So(specification.IsSatisfied(), ShouldBeTrue)
-	this.Println(specification.log.Log)
 }
 
 func (this *EqualityFixture) TestIneligible_PrimitiveTypes() {
