@@ -142,6 +142,9 @@ runs:
         - download-installer-cloudfront.cdn.mozilla.net
         - download-sha1.cdn.mozilla.net
         - bouncer-bouncer.stage.mozaws.net
+        - buckerlister-delivery.stage.mozaws.net
+        - buckerlister-delivery.prod.mozaws.net
+        - admin-bouncer.stage.mozaws.net
 
         # Push
         - autopush.stage.mozaws.net
