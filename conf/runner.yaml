@@ -75,6 +75,12 @@ runs:
         - firefox.settings.services.mozilla.com
         - webextensions.settings.services.mozilla.com
 
+        # Hopscotch
+        - hopscotch.cdn.mozilla.net
+        - hopscotch.services.mozilla.com
+        - hopscotch-default.stage.mozaws.net
+        - hopscotch-cdn-default.stage.mozaws.net
+
         # Locations
         - location.services.mozilla.com
         - location-leaderboard.services.mozilla.com
@@ -110,6 +116,9 @@ runs:
         - restmail.net
         - reaper.dev.mozaws.net
         - testrail.stage.mozaws.net
+        - go.mozilla.org
+        - getpocket.cdn.mozilla.net
+        - hello.firefox.com
 
         # Normandy
         - normandy.cdn.mozilla.net
@@ -118,14 +127,27 @@ runs:
         - self-repair.mozilla.org
 
         # Product Delivery
+        - ftp.stage.mozaws.net
+        - ftp.mozilla.org
+        - archive.mozilla.org
+        - releases.mozilla.org
+        - releases.mozilla.com
         - download.mozilla.org
         - download-sha1.allizom.org
         - download-installer.cdn.mozilla.net
+        - download-origin.cdn.mozilla.net
+        - download-installer-origin.cdn.mozilla.net
+        - download.cdn.mozilla.net
+        - download-cloudfront.cdn.mozilla.net
+        - download-installer-cloudfront.cdn.mozilla.net
         - download-sha1.cdn.mozilla.net
+        - bouncer-bouncer.stage.mozaws.net
 
         # Push
+        - autopush.stage.mozaws.net
         - push.services.mozilla.com
         - updates.push.services.mozilla.com
+        - ua.push.tefdigital.com
 
         # Screenshots
         - pageshot.net
@@ -133,6 +155,11 @@ runs:
         - screenshotscdn.firefox.com
         - screenshots.firefoxusercontent.com
         - screenshtoscdn.firefoxusercontent.com
+
+        # Stub
+        - stubattribution-default.stage.mozaws.net
+        - stubdownloader.services.mozilla.com
+        - stubdownloader.cdn.mozilla.net
 
         # Sync
         - token.services.mozilla.com
