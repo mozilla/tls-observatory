@@ -147,7 +147,11 @@ runs:
         - admin-bouncer.stage.mozaws.net
 
         # Push
+        - updates-partner-autopush.stage.mozaws.net
         - autopush.stage.mozaws.net
+        - updates-autopush.stage.mozaws.net
+        - autopush.dev.mozaws.net
+        - updates-autopush.dev.mozaws.net
         - push.services.mozilla.com
         - updates.push.services.mozilla.com
         - ua.push.tefdigital.com
