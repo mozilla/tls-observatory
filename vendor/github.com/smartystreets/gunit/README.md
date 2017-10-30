@@ -89,3 +89,28 @@ Enjoy.
 [Advanced Examples](https://github.com/smartystreets/gunit/tree/master/advanced_examples)
 
 ----------------------------------------------------------------------------
+
+For users of JetBrains IDEs, here's LiveTemplate you can use for generating the scaffolding for a new fixture:
+
+- Abbreviation: `fixture`
+- Description: `Generate gunit Fixture boilerplate`
+- Template Text:
+
+```
+func Test$NAME$(t *testing.T) {
+    gunit.Run(new($NAME$), t)
+}
+
+type $NAME$ struct {
+    *gunit.Fixture
+}
+
+func (this *$NAME$) Setup() {
+}
+
+func (this *$NAME$) Test$END$() {
+}
+
+```
+
+Be sure to specify that this LiveTemplate is applicable in Go files.
