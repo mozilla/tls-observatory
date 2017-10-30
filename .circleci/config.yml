@@ -14,17 +14,6 @@ jobs:
       - run: git submodule update --init
       - run: sudo apt-get install dos2unix postgresql-client -y
       - run:
-          name: Clone EV-Checker
-          command: git clone https://github.com/mozkeeler/ev-checker.git
-      - run:
-          name: Fetch EV-Checker dependencies
-          command: sudo apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang make -y
-      - run:
-          name: Build EV-Checker
-          command: |
-            cd ev-checker
-            make
-      - run:
           name: Build TLS Observatory
           command: |
             make truststores cipherscan ciscotop1m
