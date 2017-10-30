@@ -262,7 +262,7 @@ runs:
       assertions:
         - analysis:
             analyzer: mozillaEvaluationWorker
-            result: '{"level": "modern"}'
+            result: '{"level": "intermediate"}' # should be modern once tls-observatory supports the modern level
       cron: "30 18 * * *"
       notifications:
           email:
