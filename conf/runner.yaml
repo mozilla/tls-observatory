@@ -118,6 +118,7 @@ runs:
         - testrail.stage.mozaws.net
         - go.mozilla.org
         - getpocket.cdn.mozilla.net
+        - img-getpocket.cdn.mozilla.net
         - hello.firefox.com
 
         # Normandy
