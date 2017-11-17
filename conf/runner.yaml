@@ -126,6 +126,11 @@ runs:
         - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
         - self-repair.mozilla.org
+        - normandy.stage.mozaws.net
+        - normandy-cdn.stage.mozaws.net
+        - normandy.dev.mozaws.net
+        - normandy-cdn.dev.mozaws.net
+        - normandy-mock.dev.mozaws.net
 
         # Product Delivery
         - ftp.stage.mozaws.net
@@ -159,10 +164,21 @@ runs:
 
         # Screenshots
         - pageshot.net
+        - pageshot-usercontent.net
         - screenshots.firefox.com
         - screenshotscdn.firefox.com
         - screenshots.firefoxusercontent.com
-        - screenshtoscdn.firefoxusercontent.com
+        - screenshotscdn.firefoxusercontent.com
+        - pageshot.stage.mozaws.net
+        - pageshotcontent.stage.mozaws.net
+        - screenshots.stage.mozaws.net
+        - screenshotscdn.stage.mozaws.net
+        - screenshotsusercontent.stage.mozaws.net
+        - screenshotsusercontentcdn.stage.mozaws.net
+        - screenshots.dev.mozaws.net
+        - screenshotscdn.dev.mozaws.net
+        - screenshotsusercontent.dev.mozaws.net
+        - screenshotsusercontentcdn.dev.mozaws.net
 
         # Stub
         - stubattribution-default.stage.mozaws.net
@@ -188,7 +204,10 @@ runs:
         - shavar.services.mozilla.com
 
         # Test Pilot
+        - send.firefox.com
         - testpilot.firefox.com
+        - send.stage.mozaws.net
+        - testpilot.stage.mozaws.net
 
       assertions:
         - certificate:
@@ -227,9 +246,17 @@ runs:
         - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
         - self-repair.mozilla.org
+        - normandy.stage.mozaws.net
+        - normandy-cdn.stage.mozaws.net
+        - normandy.dev.mozaws.net
+        - normandy-cdn.dev.mozaws.net
+        - normandy-mock.dev.mozaws.net
 
         # Test Pilot
+        - send.firefox.com
         - testpilot.firefox.com
+        - send.stage.mozaws.net
+        - testpilot.stage.mozaws.net
 
         # Push
         - push.services.mozilla.com
@@ -237,10 +264,21 @@ runs:
 
         # Screenshots
         - pageshot.net
+        - pageshot-usercontent.net
         - screenshots.firefox.com
         - screenshotscdn.firefox.com
         - screenshots.firefoxusercontent.com
-        - screenshtoscdn.firefoxusercontent.com
+        - screenshotscdn.firefoxusercontent.com
+        - pageshot.stage.mozaws.net
+        - pageshotcontent.stage.mozaws.net
+        - screenshots.stage.mozaws.net
+        - screenshotscdn.stage.mozaws.net
+        - screenshotsusercontent.stage.mozaws.net
+        - screenshotsusercontentcdn.stage.mozaws.net
+        - screenshots.dev.mozaws.net
+        - screenshotscdn.dev.mozaws.net
+        - screenshotsusercontent.dev.mozaws.net
+        - screenshotsusercontentcdn.dev.mozaws.net
 
         # Tiles
         - tiles.cdn.mozilla.net
@@ -495,6 +533,11 @@ runs:
         - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
         - self-repair.mozilla.org
+        - normandy.stage.mozaws.net
+        - normandy-cdn.stage.mozaws.net
+        - normandy.dev.mozaws.net
+        - normandy-cdn.dev.mozaws.net
+        - normandy-mock.dev.mozaws.net
       assertions:
         - certificate:
             validity:
@@ -508,10 +551,21 @@ runs:
     # Screenshots
     - targets:
         - pageshot.net
+        - pageshot-usercontent.net
         - screenshots.firefox.com
         - screenshotscdn.firefox.com
         - screenshots.firefoxusercontent.com
-        - screenshtoscdn.firefoxusercontent.com
+        - screenshotscdn.firefoxusercontent.com
+        - pageshot.stage.mozaws.net
+        - pageshotcontent.stage.mozaws.net
+        - screenshots.stage.mozaws.net
+        - screenshotscdn.stage.mozaws.net
+        - screenshotsusercontent.stage.mozaws.net
+        - screenshotsusercontentcdn.stage.mozaws.net
+        - screenshots.dev.mozaws.net
+        - screenshotscdn.dev.mozaws.net
+        - screenshotsusercontent.dev.mozaws.net
+        - screenshotsusercontentcdn.dev.mozaws.net
       assertions:
         - certificate:
             validity:
@@ -585,7 +639,10 @@ runs:
 
     # TestPilot paging
     - targets:
+        - send.firefox.com
         - testpilot.firefox.com
+        - send.stage.mozaws.net
+        - testpilot.stage.mozaws.net
       assertions:
         - certificate:
             validity:
