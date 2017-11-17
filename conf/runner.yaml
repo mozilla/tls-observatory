@@ -47,6 +47,13 @@ runs:
         # Cloudfront (Misc Static Sites)
         - fxpartners.mozilla.com
 
+        # Conduit
+        - phabricator-dev.allizom.org
+        - phabricator.allizom.org
+        - phabricator.services.mozilla.com
+        - bugzilla.allizom.org
+        - bugzilla.mozilla.org
+
         # Crash report (socorro)
         - crash-stats.mozilla.com
         - crash-reports-xpsp2.mozilla.com
@@ -372,6 +379,23 @@ runs:
           email:
               recipients:
                   - b64:YmFscm9nLXRsc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
+    # Conduit paging
+    - targets:
+        - phabricator-dev.allizom.org
+        - phabricator.allizom.org
+        - phabricator.services.mozilla.com
+        - bugzilla.allizom.org
+        - bugzilla.mozilla.org
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - cloud-ops@mozilla.com
 
     # Crash report paging
     - targets:
