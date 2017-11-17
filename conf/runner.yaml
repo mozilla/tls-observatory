@@ -64,7 +64,7 @@ runs:
         - oauth.accounts.firefox.com
         - profile.accounts.firefox.com
         - verifier.accounts.firefox.com
-        - accounts.cdn.mozilla.net
+        - accounts-static.cdn.mozilla.net
         - accounts-static.stage.mozaws.net
         - firefoxusercontent.com
         - mozillausercontent.com
@@ -193,9 +193,9 @@ runs:
         - sync-4-us-east-1.stage.mozaws.net
 
         # Tiles
+        - activity-stream-icons.services.mozilla.com
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
-        - embedly-proxy.services.mozilla.com
 
         # TLS Observatory
         - tls-observatory.services.mozilla.com
@@ -283,7 +283,6 @@ runs:
         # Tiles
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
-        - embedly-proxy.services.mozilla.com
       assertions:
         - analysis:
             analyzer: mozillaEvaluationWorker
@@ -426,7 +425,7 @@ runs:
         - oauth.accounts.firefox.com
         - profile.accounts.firefox.com
         - verifier.accounts.firefox.com
-        - accounts.cdn.mozilla.net
+        - accounts-static.cdn.mozilla.net
         - accounts-static.stage.mozaws.net
         - firefoxusercontent.com
         - mozillausercontent.com
@@ -624,9 +623,9 @@ runs:
 
     # Tiles paging
     - targets:
+        - activity-stream-icons.services.mozilla.com
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
-        - embedly-proxy.services.mozilla.com
       assertions:
         - certificate:
             validity:
