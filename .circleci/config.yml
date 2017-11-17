@@ -39,11 +39,15 @@ jobs:
           name: Build containers
           command: |
             docker build -t mozilla/tls-observatory .
-            docker tag mozilla/tls-observatory "mozilla/tls-observatory:$CIRCLE_SHA1"
+            docker tag mozilla/tls-observatory "mozilla/tls-observatory:latest"
       - run:
           name: Push containers
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
-                ./bin/ci/deploy_dockerhub.sh "latest"
-                ./bin/ci/deploy_dockerhub.sh "$CIRCLE_SHA1"
+                if [ ! -z "${CIRCLE_TAG}" ]; then
+                    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+                    docker tag mozilla/tls-observatory "mozilla/tls-observatory:$CIRCLE_TAG"
+                    docker push "mozilla/tls-observatory:latest"
+                    docker push "mozilla/tls-observatory:$CIRCLE_TAG"
+                fi
             fi
