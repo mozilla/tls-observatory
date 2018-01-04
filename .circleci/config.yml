@@ -1,4 +1,4 @@
-cversion: 2
+version: 2
 jobs:
   build:
     working_directory: /go/src/github.com/mozilla/tls-observatory
@@ -43,11 +43,27 @@ jobs:
       - run:
           name: Push containers
           command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-                if [ ! -z "${CIRCLE_TAG}" ]; then
-                    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-                    docker tag mozilla/tls-observatory "mozilla/tls-observatory:$CIRCLE_TAG"
-                    docker push "mozilla/tls-observatory:latest"
-                    docker push "mozilla/tls-observatory:$CIRCLE_TAG"
-                fi
-            fi
+             if [ ! -z "${CIRCLE_TAG}" ]; then
+                 docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+                 docker tag mozilla/tls-observatory "mozilla/tls-observatory:$CIRCLE_TAG"
+                 docker push "mozilla/tls-observatory:latest"
+                 docker push "mozilla/tls-observatory:$CIRCLE_TAG"
+             fi
+
+workflows:
+  version: 2
+
+  # workflow jobs are _not_ run in tag builds by default
+  # we use filters to whitelist jobs that should be run for tags
+
+  # workflow jobs are run in _all_ branch builds by default
+  # we use filters to blacklist jobs that shouldn't be run for a branch
+
+  # see: https://circleci.com/docs/2.0/workflows/#git-tag-job-execution
+
+  build-test-push:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/

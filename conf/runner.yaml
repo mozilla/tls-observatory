@@ -155,6 +155,7 @@ runs:
         - download-installer-cloudfront.cdn.mozilla.net
         - download-sha1.cdn.mozilla.net
         - bouncer-bouncer.stage.mozaws.net
+        - bouncer-bouncer-releng.stage.mozaws.net
         - bucketlister-delivery.stage.mozaws.net
         - bucketlister-delivery.prod.mozaws.net
         - admin-bouncer.stage.mozaws.net
@@ -602,7 +603,6 @@ runs:
     # Product Delivery paging
     - targets:
         - download.mozilla.org
-        - download-legacy.allizom.org
         - download-installer.cdn.mozilla.net
         - download-sha1.cdn.mozilla.net
       assertions:

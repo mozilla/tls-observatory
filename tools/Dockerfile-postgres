@@ -1,0 +1,4 @@
+# tls-observatory database
+
+FROM postgres:9
+ADD database/schema.sql /docker-entrypoint-initdb.d/
