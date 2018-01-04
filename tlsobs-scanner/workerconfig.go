@@ -6,4 +6,5 @@ import (
 	_ "github.com/mozilla/tls-observatory/worker/mozillaGradingWorker"
 	_ "github.com/mozilla/tls-observatory/worker/sslLabsClientSupport"
 	_ "github.com/mozilla/tls-observatory/worker/top1m"
+	_ "github.com/mozilla/tls-observatory/worker/ocspStatusWorker"
 )
