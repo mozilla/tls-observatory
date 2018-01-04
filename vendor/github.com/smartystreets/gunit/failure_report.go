@@ -22,17 +22,19 @@ func newFailureReport(failure string) string {
 }
 
 func (this *failureReport) ScanStack() {
-	for x := maxStackDepth; x >= 0; x-- {
-		pc, file, line, ok := runtime.Caller(x)
-		if !ok { // stack frame still too high
+	stack := make([]uintptr, maxStackDepth)
+	runtime.Callers(0, stack)
+	frames := runtime.CallersFrames(stack)
+	for {
+		frame, more := frames.Next()
+		if !more {
+			break
+		}
+		if !strings.HasSuffix(frame.File, "_test.go") {
 			continue
 		}
-		if !strings.HasSuffix(file, "_test.go") {
-			continue
-		}
-		name := runtime.FuncForPC(pc).Name() // example: bitbucket.org/smartystreets/project/package.(*SomeFixture).TestSomething
-		this.ParseTestName(name)
-		this.Stack = append(this.Stack, fmt.Sprintf("%s:%d", file, line))
+		this.ParseTestName(frame.Function)
+		this.Stack = append(this.Stack, fmt.Sprintf("%s:%d", frame.File, frame.Line))
 	}
 }
 
@@ -64,4 +66,4 @@ func (this failureReport) String() string {
 	return buffer.String() + "\n\n"
 }
 
-const maxStackDepth = 24
+const maxStackDepth = 32

@@ -17,6 +17,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -29,16 +31,22 @@ import (
 	ct "github.com/google/certificate-transparency-go"
 	"github.com/google/certificate-transparency-go/client"
 	"github.com/google/certificate-transparency-go/jsonclient"
+	"github.com/google/certificate-transparency-go/merkletree"
+	"github.com/google/certificate-transparency-go/tls"
 	"github.com/google/certificate-transparency-go/x509"
 	"github.com/google/certificate-transparency-go/x509util"
 )
 
-var logURI = flag.String("log_uri", "http://ct.googleapis.com/aviator", "CT log base URI")
-var pubKey = flag.String("pub_key", "", "Name of file containing log's public key")
-var certChain = flag.String("cert_chain", "", "Name of file containing certificate chain as concatenated PEM files")
-var textOut = flag.Bool("text", true, "Display certificates as text")
-var getFirst = flag.Int64("first", -1, "First entry to get")
-var getLast = flag.Int64("last", -1, "Last entry to get")
+var (
+	logURI    = flag.String("log_uri", "http://ct.googleapis.com/aviator", "CT log base URI")
+	pubKey    = flag.String("pub_key", "", "Name of file containing log's public key")
+	certChain = flag.String("cert_chain", "", "Name of file containing certificate chain as concatenated PEM files")
+	textOut   = flag.Bool("text", true, "Display certificates as text")
+	getFirst  = flag.Int64("first", -1, "First entry to get")
+	getLast   = flag.Int64("last", -1, "Last entry to get")
+	treeSize  = flag.Int64("size", -1, "Tree size to query at")
+	leafHash  = flag.String("leaf_hash", "", "Leaf hash to retrieve (as hex string)")
+)
 
 func ctTimestampToTime(ts uint64) time.Time {
 	secs := int64(ts / 1000)
@@ -88,7 +96,7 @@ func addChain(ctx context.Context, logClient *client.LogClient) {
 	isPrecert := false
 	leaf, err := x509.ParseCertificate(chain[0].Data)
 	if err == nil {
-		count, _ := x509util.OidInExtensions(x509.OIDExtensionCTPoison, leaf.Extensions)
+		count, _ := x509util.OIDInExtensions(x509.OIDExtensionCTPoison, leaf.Extensions)
 		if count > 0 {
 			isPrecert = true
 			fmt.Print("Uploading pre-certificate to log\n")
@@ -104,10 +112,19 @@ func addChain(ctx context.Context, logClient *client.LogClient) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Calculate the leaf hash
+	leafEntry := ct.CreateX509MerkleTreeLeaf(chain[0], sct.Timestamp)
+	leafData, err := tls.Marshal(*leafEntry)
+	if err != nil {
+		log.Fatalf("Failed to tls.Marshal leaf: %v", err)
+	}
+	leafHash := sha256.Sum256(append([]byte{merkletree.LeafPrefix}, leafData...))
+
 	// Display the SCT
 	when := ctTimestampToTime(sct.Timestamp)
 	fmt.Printf("%v: Uploaded chain of %d certs to %v log at %v\n", when, len(chain), sct.SCTVersion, *logURI)
-	fmt.Printf("%v\n", signatureToString(&sct.Signature))
+	fmt.Printf("LeafHash: %x\n", leafHash)
+	fmt.Printf("Signature: %v\n", signatureToString(&sct.Signature))
 }
 
 func getRoots(ctx context.Context, logClient *client.LogClient) {
@@ -148,6 +165,43 @@ func getEntries(ctx context.Context, logClient *client.LogClient) {
 	}
 }
 
+func getInclusionProof(ctx context.Context, logClient *client.LogClient) {
+	var sth *ct.SignedTreeHead
+	size := *treeSize
+	if size <= 0 {
+		var err error
+		sth, err = logClient.GetSTH(ctx)
+		if err != nil {
+			log.Fatalf("Failed to get current STH: %v", err)
+		}
+		size = int64(sth.TreeSize)
+	}
+	// Display the inclusion proof.
+	hash, err := hex.DecodeString(*leafHash)
+	if err != nil || len(hash) != 32 {
+		log.Fatal("No valid --leaf_hash supplied in hex")
+	}
+	rsp, err := logClient.GetProofByHash(ctx, hash, uint64(size))
+	if err != nil {
+		log.Fatalf("Failed to get-proof-by-hash: %v", err)
+	}
+	fmt.Printf("Inclusion proof for index %d in tree of size %d:\n", rsp.LeafIndex, size)
+	for _, e := range rsp.AuditPath {
+		fmt.Printf("  %x\n", e)
+	}
+	if sth != nil {
+		// If we retrieved an STH we can verify the proof.
+		verifier := merkletree.NewMerkleVerifier(func(data []byte) []byte {
+			hash := sha256.Sum256(data)
+			return hash[:]
+		})
+		if err := verifier.VerifyInclusionProofByHash(rsp.LeafIndex, int64(sth.TreeSize), rsp.AuditPath, sth.SHA256RootHash[:], hash); err != nil {
+			log.Fatalf("Failed to VerifyInclusionProofByHash(%d, %d)=%v", rsp.LeafIndex, sth.TreeSize, err)
+		}
+		fmt.Printf("Verified that hash %x + proof = root hash %x\n", hash, sth.SHA256RootHash)
+	}
+}
+
 func showRawCert(cert ct.ASN1Cert) {
 	if *textOut {
 		c, err := x509.ParseCertificate(cert.Data)
@@ -182,7 +236,8 @@ func dieWithUsage(msg string) {
 		"   sth         retrieve signed tree head\n"+
 		"   upload      upload cert chain and show SCT (needs -cert_chain)\n"+
 		"   getroots    show accepted roots\n"+
-		"   getentries  get log entries (needs -first and -last)\n")
+		"   getentries  get log entries (needs -first and -last)\n"+
+		"   inclusion   get inclusion proof (needs -leaf_hash and optionally -size)\n")
 	os.Exit(1)
 }
 
@@ -227,6 +282,8 @@ func main() {
 		getRoots(ctx, logClient)
 	case "getentries", "get_entries", "get-entries":
 		getEntries(ctx, logClient)
+	case "inclusion", "inclusion-proof":
+		getInclusionProof(ctx, logClient)
 	default:
 		dieWithUsage(fmt.Sprintf("Unknown command '%s'", cmd))
 	}

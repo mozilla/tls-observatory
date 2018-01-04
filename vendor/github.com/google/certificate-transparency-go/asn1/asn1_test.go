@@ -31,7 +31,7 @@ var boolTestData = []boolTest{
 
 func TestParseBool(t *testing.T) {
 	for i, test := range boolTestData {
-		ret, err := parseBool(test.in)
+		ret, err := parseBool(test.in, "fieldname")
 		if (err == nil) != test.ok {
 			t.Errorf("#%d: Incorrect error result (did fail? %v, expected: %v)", i, err == nil, test.ok)
 		}
@@ -64,7 +64,7 @@ var int64TestData = []int64Test{
 
 func TestParseInt64(t *testing.T) {
 	for i, test := range int64TestData {
-		ret, err := parseInt64(test.in)
+		ret, err := parseInt64(test.in, "fieldname")
 		if (err == nil) != test.ok {
 			t.Errorf("#%d: Incorrect error result (did fail? %v, expected: %v)", i, err == nil, test.ok)
 		}
@@ -97,7 +97,7 @@ var int32TestData = []int32Test{
 
 func TestParseInt32(t *testing.T) {
 	for i, test := range int32TestData {
-		ret, err := parseInt32(test.in)
+		ret, err := parseInt32(test.in, "fieldname")
 		if (err == nil) != test.ok {
 			t.Errorf("#%d: Incorrect error result (did fail? %v, expected: %v)", i, err == nil, test.ok)
 		}
@@ -125,7 +125,7 @@ var bigIntTests = []struct {
 
 func TestParseBigInt(t *testing.T) {
 	for i, test := range bigIntTests {
-		ret, err := parseBigInt(test.in)
+		ret, err := parseBigInt(test.in, "fieldname")
 		if (err == nil) != test.ok {
 			t.Errorf("#%d: Incorrect error result (did fail? %v, expected: %v)", i, err == nil, test.ok)
 		}
@@ -133,7 +133,7 @@ func TestParseBigInt(t *testing.T) {
 			if ret.String() != test.base10 {
 				t.Errorf("#%d: bad result from %x, got %s want %s", i, test.in, ret.String(), test.base10)
 			}
-			e, err := makeBigInt(ret)
+			e, err := makeBigInt(ret, "fieldname")
 			if err != nil {
 				t.Errorf("%d: err=%q", i, err)
 				continue
@@ -165,7 +165,7 @@ var bitStringTestData = []bitStringTest{
 
 func TestBitString(t *testing.T) {
 	for i, test := range bitStringTestData {
-		ret, err := parseBitString(test.in)
+		ret, err := parseBitString(test.in, "fieldname")
 		if (err == nil) != test.ok {
 			t.Errorf("#%d: Incorrect error result (did fail? %v, expected: %v)", i, err == nil, test.ok)
 		}
@@ -241,7 +241,7 @@ var objectIdentifierTestData = []objectIdentifierTest{
 
 func TestObjectIdentifier(t *testing.T) {
 	for i, test := range objectIdentifierTestData {
-		ret, err := parseObjectIdentifier(test.in)
+		ret, err := parseObjectIdentifier(test.in, "fieldname")
 		if (err == nil) != test.ok {
 			t.Errorf("#%d: Incorrect error result (did fail? %v, expected: %v)", i, err == nil, test.ok)
 		}
@@ -395,7 +395,7 @@ var tagAndLengthData = []tagAndLengthTest{
 
 func TestParseTagAndLength(t *testing.T) {
 	for i, test := range tagAndLengthData {
-		tagAndLength, _, err := parseTagAndLength(test.in, 0)
+		tagAndLength, _, err := parseTagAndLength(test.in, 0, "fieldname")
 		if (err == nil) != test.ok {
 			t.Errorf("#%d: Incorrect error result (did pass? %v, expected: %v)", i, err == nil, test.ok)
 		}
@@ -430,8 +430,10 @@ var parseFieldParametersTestData []parseFieldParametersTest = []parseFieldParame
 	{"optional,explicit", fieldParameters{optional: true, explicit: true, tag: new(int)}},
 	{"default:42", fieldParameters{defaultValue: newInt64(42)}},
 	{"tag:17", fieldParameters{tag: newInt(17)}},
-	{"optional,explicit,default:42,tag:17", fieldParameters{optional: true, explicit: true, defaultValue: newInt64(42), tag: newInt(17)}},
-	{"optional,explicit,default:42,tag:17,rubbish1", fieldParameters{true, true, false, newInt64(42), newInt(17), 0, 0, false, false}},
+	{"optional,explicit,default:42,tag:17",
+		fieldParameters{optional: true, explicit: true, defaultValue: newInt64(42), tag: newInt(17)}},
+	{"optional,explicit,default:42,tag:17,rubbish1",
+		fieldParameters{optional: true, explicit: true, defaultValue: newInt64(42), tag: newInt(17)}},
 	{"set", fieldParameters{set: true}},
 }
 
@@ -474,6 +476,12 @@ type TestSet struct {
 	Ints []int `asn1:"set"`
 }
 
+type TestAuthKeyID struct {
+	ID           []byte   `asn1:"optional,tag:0"`
+	Issuer       RawValue `asn1:"optional,tag:1"`
+	SerialNumber *big.Int `asn1:"optional,tag:2"`
+}
+
 var unmarshalTestData = []struct {
 	in  []byte
 	out interface{}
@@ -496,6 +504,9 @@ var unmarshalTestData = []struct {
 	{[]byte{0x30, 0x0b, 0x13, 0x03, 0x66, 0x6f, 0x6f, 0x02, 0x01, 0x22, 0x02, 0x01, 0x33}, &TestElementsAfterString{"foo", 0x22, 0x33}},
 	{[]byte{0x30, 0x05, 0x02, 0x03, 0x12, 0x34, 0x56}, &TestBigInt{big.NewInt(0x123456)}},
 	{[]byte{0x30, 0x0b, 0x31, 0x09, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02, 0x02, 0x01, 0x03}, &TestSet{Ints: []int{1, 2, 3}}},
+	{[]byte{0x30, 0x0e, 0x80, 0x04, 0x01, 0x02, 0x03, 0x04, 0x82, 0x06, 0x01, 0x22, 0x33, 0x44, 0x55, 0x66},
+		&TestAuthKeyID{ID: []byte{0x01, 0x02, 0x03, 0x04}, SerialNumber: big.NewInt(0x12233445566)}},
+	{[]byte{0x30, 0x06, 0x80, 0x04, 0x01, 0x02, 0x03, 0x04}, &TestAuthKeyID{ID: []byte{0x01, 0x02, 0x03, 0x04}}},
 }
 
 func TestUnmarshal(t *testing.T) {
@@ -597,7 +608,7 @@ func TestRawStructs(t *testing.T) {
 	}
 }
 
-func TestCouleBeISO8859_1(t *testing.T) {
+func TestCouldBeISO8859_1(t *testing.T) {
 	for i := 0; i < 0xff; i++ {
 		b := []byte("StringWithA")
 		b = append(b, byte(i))
@@ -620,7 +631,7 @@ func TestCouleBeISO8859_1(t *testing.T) {
 	}
 }
 
-func TestCouleBeT61(t *testing.T) {
+func TestCouldBeT61(t *testing.T) {
 	for i := 0; i < 255; i++ {
 		b := []byte("StringWithA")
 		b = append(b, byte(i))
@@ -1042,7 +1053,7 @@ type exported struct {
 }
 
 func TestUnexportedStructField(t *testing.T) {
-	want := StructuralError{"struct contains unexported fields"}
+	want := StructuralError{"struct contains unexported fields", "y"}
 
 	_, err := Marshal(unexported{X: 5, y: 1})
 	if err != want {
