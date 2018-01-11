@@ -151,6 +151,7 @@ runs:
         - download-origin.cdn.mozilla.net
         - download-installer-origin.cdn.mozilla.net
         - download.cdn.mozilla.net
+        - download-akamai.cdn.mozilla.net
         - download-cloudfront.cdn.mozilla.net
         - download-installer-cloudfront.cdn.mozilla.net
         - download-sha1.cdn.mozilla.net
