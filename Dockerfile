@@ -1,4 +1,4 @@
-FROM golang:latest
+FROM golang:1.11
 MAINTAINER Julien Vehent
 COPY . $GOPATH/src/github.com/mozilla/tls-observatory
 RUN go install github.com/mozilla/tls-observatory/tlsobs-api && \
