@@ -214,7 +214,7 @@ func (r Run) evaluate(id int64, notifchan chan Notification, wg *sync.WaitGroup)
 func getCert(id int64) (cert certificate.Certificate, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("getCert(id=%q) -> %v", e)
+			err = fmt.Errorf("getCert(id=%q) -> %v", id, e)
 		}
 	}()
 	resp, err := http.Get(fmt.Sprintf("%s/api/v1/certificate?id=%d", observatory, id))
