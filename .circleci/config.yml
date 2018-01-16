@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/mozilla/tls-observatory
     docker:
-      - image: nvor/golang_devel_4b3a3bd3aa
+      - image: nvor/circleci_golang
       - image: circleci/postgres:9.6-alpine
         environment:
           POSTGRES_USER: postgres
