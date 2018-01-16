@@ -49,8 +49,10 @@ runs:
 
         # Crash report (socorro)
         - crash-stats.mozilla.com
+        - crash-stats.allizom.org
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
+        - crash-reports.allizom.org
         - symbols.mozilla.org
 
         # everything.me
