@@ -75,6 +75,9 @@ runs:
         - firefox.settings.services.mozilla.com
         - webextensions.settings.services.mozilla.com
 
+        # Firefox TV Redirects (Bug 1434653)
+        - ftv.cdn.mozilla.net
+
         # Hopscotch
         - hopscotch.cdn.mozilla.net
         - hopscotch.services.mozilla.com
