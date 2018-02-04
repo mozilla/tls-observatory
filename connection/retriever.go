@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"os/exec"
+	"strings"
 )
 
 type NoTLSConnErr string
@@ -16,9 +17,19 @@ func (f NoTLSConnErr) Error() string {
 	return fmt.Sprintf("No TLS Conn Received")
 }
 
+func separateDomainPort(domain string) (string, string) {
+	var domainPort = strings.SplitN(domain, ":", 2)
+	if len(domainPort) == 2 {
+		return domainPort[0], domainPort[1]
+	}
+	return domain, "443"
+}
+
 func Connect(domain, cipherscanbinPath string) ([]byte, error) {
 
-	ip := getRandomIP(domain)
+	var domainName, port = separateDomainPort(domain)
+
+	ip := getRandomIP(domainName)
 
 	if ip == "" {
 		e := fmt.Errorf("Could not resolve ip for: ", domain)
@@ -26,7 +37,7 @@ func Connect(domain, cipherscanbinPath string) ([]byte, error) {
 		return nil, e
 	}
 
-	cmd := cipherscanbinPath + " --no-tolerance -j --curves -servername " + domain + " " + ip + ":443 "
+	cmd := cipherscanbinPath + " --no-tolerance -j --curves -servername " + domain + " " + ip + ":" + port
 	log.Println(cmd)
 	comm := exec.Command("bash", "-c", cmd)
 	var out bytes.Buffer

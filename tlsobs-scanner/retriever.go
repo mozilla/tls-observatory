@@ -21,12 +21,22 @@ func (f NoTLSCertsErr) Error() string {
 	return fmt.Sprintf("No TLS Certs Received")
 }
 
+func separateDomainPort(domain string) (string, string) {
+	var domainPort = strings.SplitN(domain, ":", 2)
+	if len(domainPort) == 2 {
+		return domainPort[0], domainPort[1]
+	}
+	return domain, "443"
+}
+
 //HandleCert is the main function called to verify certificates.
 //It retrieves certificates and feeds them to handleCertChain. It then returns
 //its result.
 func handleCert(domain string) (int64, int64, *certificate.Chain, error) {
 
-	certs, ip, err := retrieveCertFromHost(domain, "443", true)
+	var domainName, port = separateDomainPort(domain)
+
+	certs, ip, err := retrieveCertFromHost(domainName, port, true)
 
 	if err != nil {
 		log.WithFields(logrus.Fields{
@@ -81,7 +91,7 @@ func retrieveCertFromHost(domainName, port string, skipVerify bool) ([]*x509.Cer
 	}
 	defer conn.Close()
 
-	ip = strings.TrimSuffix(conn.RemoteAddr().String(), ":443")
+	ip = strings.TrimSuffix(conn.RemoteAddr().String(), ":"+port)
 
 	certs := conn.ConnectionState().PeerCertificates
 
