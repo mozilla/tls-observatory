@@ -1006,11 +1006,8 @@ func BuildPrecertTBS(tbsData []byte, preIssuer *Certificate) ([]byte, error) {
 				break
 			}
 		}
-		if issuerKeyID == nil {
-			return nil, fmt.Errorf("issuer has no auth-key-id extension")
-		}
 
-		// Check the issuer has the CT EKU.
+		// Check the preIssuer has the CT EKU.
 		seenCTEKU := false
 		for _, eku := range preIssuer.ExtKeyUsage {
 			if eku == ExtKeyUsageCertificateTransparency {
@@ -1029,12 +1026,21 @@ func BuildPrecertTBS(tbsData []byte, preIssuer *Certificate) ([]byte, error) {
 				break
 			}
 		}
-		if keyAt < 0 {
-			return nil, fmt.Errorf("pre-cert has no authority-key-id extension to update")
-		}
-		tbs.Extensions[keyAt].Value = issuerKeyID
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal new auth key ID: %v", err)
+		if keyAt >= 0 {
+			// PreCert has an auth-key-id; replace it with the value from the preIssuer
+			if issuerKeyID != nil {
+				tbs.Extensions[keyAt].Value = issuerKeyID
+			} else {
+				tbs.Extensions = append(tbs.Extensions[:keyAt], tbs.Extensions[keyAt+1:]...)
+			}
+		} else if issuerKeyID != nil {
+			// PreCert did not have an auth-key-id, but the preIssuer does, so add it at the end.
+			authKeyIDExt := pkix.Extension{
+				Id:       OIDExtensionAuthorityKeyId,
+				Critical: false,
+				Value:    issuerKeyID,
+			}
+			tbs.Extensions = append(tbs.Extensions, authKeyIDExt)
 		}
 	}
 

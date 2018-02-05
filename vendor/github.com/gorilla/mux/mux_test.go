@@ -25,7 +25,7 @@ func (r *Route) GoString() string {
 }
 
 func (r *routeRegexp) GoString() string {
-	return fmt.Sprintf("&routeRegexp{template: %q, matchHost: %t, matchQuery: %t, strictSlash: %t, regexp: regexp.MustCompile(%q), reverse: %q, varsN: %v, varsR: %v", r.template, r.matchHost, r.matchQuery, r.strictSlash, r.regexp.String(), r.reverse, r.varsN, r.varsR)
+	return fmt.Sprintf("&routeRegexp{template: %q, regexpType: %v, options: %v, regexp: regexp.MustCompile(%q), reverse: %q, varsN: %v, varsR: %v", r.template, r.regexpType, r.options, r.regexp.String(), r.reverse, r.varsN, r.varsR)
 }
 
 type routeTest struct {
@@ -2246,6 +2246,15 @@ func TestMethodsSubrouterPathVariable(t *testing.T) {
 	for _, test := range tests {
 		testMethodsSubrouter(t, test)
 	}
+}
+
+func ExampleSetURLVars() {
+	req, _ := http.NewRequest("GET", "/foo", nil)
+	req = SetURLVars(req, map[string]string{"foo": "bar"})
+
+	fmt.Println(Vars(req)["foo"])
+
+	// Output: bar
 }
 
 // testMethodsSubrouter runs an individual methodsSubrouterTest.
