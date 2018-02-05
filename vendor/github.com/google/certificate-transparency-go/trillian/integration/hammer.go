@@ -38,8 +38,6 @@ import (
 	ct "github.com/google/certificate-transparency-go"
 )
 
-const defaultEmitSeconds = 10
-
 const (
 	// How many STHs and SCTs to hold on to.
 	sthCount = 10
@@ -48,8 +46,6 @@ const (
 	// How far beyond current tree size to request for invalid requests.
 	invalidStretch = int64(1000000)
 )
-
-var maxRetryDuration = 60 * time.Second
 
 var (
 	// Metrics are all per-log (label "logid"), but may also be
@@ -108,6 +104,9 @@ type HammerConfig struct {
 	EPBias HammerBias
 	// Range of how many entries to get.
 	MinGetEntries, MaxGetEntries int
+	// OversizedGetEntries governs whether get-entries requests that go beyond the
+	// current tree size are allowed (with a truncated response expected).
+	OversizedGetEntries bool
 	// Number of operations to perform.
 	Operations uint64
 	// Rate limiter
@@ -119,6 +118,8 @@ type HammerConfig struct {
 	EmitInterval time.Duration
 	// IgnoreErrors controls whether a hammer run fails immediately on any error.
 	IgnoreErrors bool
+	// MaxRetryDuration governs how long to keep retrying when IgnoreErrors is true.
+	MaxRetryDuration time.Duration
 	// NotAfterOverride is used as cert and precert's NotAfter if not zeroed.
 	// It takes precedence over automatic NotAfter fixing for temporal logs.
 	NotAfterOverride time.Time
@@ -268,17 +269,20 @@ func newHammerState(cfg *HammerConfig) (*hammerState, error) {
 		mf = monitoring.InertMetricFactory{}
 	}
 	once.Do(func() { setupMetrics(mf) })
-	if cfg.MinGetEntries == 0 {
+	if cfg.MinGetEntries <= 0 {
 		cfg.MinGetEntries = 1
 	}
 	if cfg.MaxGetEntries <= cfg.MinGetEntries {
 		cfg.MaxGetEntries = cfg.MinGetEntries + 300
 	}
-	if cfg.EmitInterval == 0 {
-		cfg.EmitInterval = defaultEmitSeconds * time.Second
+	if cfg.EmitInterval <= 0 {
+		cfg.EmitInterval = 10 * time.Second
 	}
 	if cfg.Limiter == nil {
 		cfg.Limiter = unLimited{}
+	}
+	if cfg.MaxRetryDuration <= 0 {
+		cfg.MaxRetryDuration = 60 * time.Second
 	}
 
 	notAfter, err := getNotAfter(cfg)
@@ -564,28 +568,34 @@ func (s *hammerState) getEntries(ctx context.Context) error {
 		s.needOps(ctfe.GetSTHName)
 		return errSkip{}
 	}
-	// Entry indices are zero-based.
-	first := rand.Intn(int(s.sth[0].TreeSize))
+	// Entry indices are zero-based, and may or may not be allowed to extend
+	// beyond current tree size (RFC 6962 s4.6).
+	first := rand.Intn(int(s.lastTreeSize()))
 	span := s.cfg.MaxGetEntries - s.cfg.MinGetEntries
 	count := s.cfg.MinGetEntries + rand.Intn(int(span))
 	last := first + count
-	if last >= int(s.sth[0].TreeSize) {
+
+	if !s.cfg.OversizedGetEntries && last >= int(s.sth[0].TreeSize) {
 		last = int(s.sth[0].TreeSize) - 1
 		count = last - first + 1
 	}
+
 	entries, err := s.client().GetEntries(ctx, int64(first), int64(last))
 	if err != nil {
 		return fmt.Errorf("failed to get-entries(%d,%d): %v", first, last, err)
 	}
 	for i, entry := range entries {
+		if want := int64(first + i); entry.Index != want {
+			return fmt.Errorf("leaf[%d].LeafIndex=%d; want %d", i, entry.Index, want)
+		}
 		leaf := entry.Leaf
-		ts := leaf.TimestampedEntry
 		if leaf.Version != 0 {
 			return fmt.Errorf("leaf[%d].Version=%v; want V1(0)", i, leaf.Version)
 		}
 		if leaf.LeafType != ct.TimestampedEntryLeafType {
 			return fmt.Errorf("leaf[%d].Version=%v; want TimestampedEntryLeafType", i, leaf.LeafType)
 		}
+		ts := leaf.TimestampedEntry
 		if ts.EntryType != ct.X509LogEntryType && ts.EntryType != ct.PrecertLogEntryType {
 			return fmt.Errorf("leaf[%d].ts.EntryType=%v; want {X509,Precert}LogEntryType", i, ts.EntryType)
 		}
@@ -725,7 +735,7 @@ func (s *hammerState) retryOneOp(ctx context.Context) error {
 
 	glog.V(3).Infof("perform %s operation", ep)
 	status := http.StatusOK
-	deadline := time.Now().Add(maxRetryDuration)
+	deadline := time.Now().Add(s.cfg.MaxRetryDuration)
 
 	var err error
 	done := false
@@ -757,8 +767,8 @@ func (s *hammerState) retryOneOp(ctx context.Context) error {
 
 		s.mu.Unlock()
 
-		if time.Now().After(deadline) {
-			glog.Warningf("%s: gave up retrying failed op %v after %v, returning last err %v", s.cfg.LogCfg.Prefix, ep, maxRetryDuration, err)
+		if err != nil && time.Now().After(deadline) {
+			glog.Warningf("%s: gave up retrying failed op %v after %v, returning last err %v", s.cfg.LogCfg.Prefix, ep, s.cfg.MaxRetryDuration, err)
 			done = true
 		}
 	}
