@@ -296,23 +296,24 @@ func (s scanner) scan(scanID int64, cipherscan string) {
 					"worker_name": res.WorkerName,
 					"errors":      res.Errors,
 				}).Error("Worker returned with errors")
-			}
-			_, err = db.Exec("INSERT INTO analysis(scan_id,worker_name,output,success) VALUES($1,$2,$3,$4)",
-				scanID, res.WorkerName, res.Result, res.Success)
-			if err != nil {
+			} else {
+				_, err = db.Exec("INSERT INTO analysis(scan_id,worker_name,output,success) VALUES($1,$2,$3,$4)",
+					scanID, res.WorkerName, res.Result, res.Success)
+				if err != nil {
+					log.WithFields(logrus.Fields{
+						"scan_id": scanID,
+						"error":   err.Error(),
+					}).Error("Could not insert worker results in database")
+					continue
+				}
+				if s.metricsSender != nil {
+					s.metricsSender.NewAnalysis()
+				}
 				log.WithFields(logrus.Fields{
-					"scan_id": scanID,
-					"error":   err.Error(),
-				}).Error("Could not insert worker results in database")
-				continue
+					"scan_id":     scanID,
+					"worker_name": res.WorkerName,
+				}).Info("Results from worker stored in database")
 			}
-			if s.metricsSender != nil {
-				s.metricsSender.NewAnalysis()
-			}
-			log.WithFields(logrus.Fields{
-				"scan_id":     scanID,
-				"worker_name": res.WorkerName,
-			}).Info("Results from worker stored in database")
 		}
 	}
 updatecompletion:
