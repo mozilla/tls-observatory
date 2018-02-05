@@ -14,17 +14,17 @@ Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.or
       * [tlsobs-scanner](#tlsobs-scanner)
       * [tlsobs-runner](#tlsobs-runner)
   * [API Endpoints](#api-endpoints)
-    * [POST /api/v1/scan](#post-/api/v1/scan)
-    * [GET /api/v1/results](#get-/api/v1/results)
-    * [GET /api/v1/certificate](#get-/api/v1/certificate)
-    * [POST /api/v1/certificate](#post-/api/v1/certificate)
-    * [GET /api/v1/paths](#get-/api/v1/paths)
-    * [GET /api/v1/truststore](#get-/api/v1/truststore)
-    * [GET /api/v1/issuereecount](#get-/api/v1/issuereecount)
-    * [GET /api/v1/__heartbeat__](#get-/api/v1/__heartbeat__)
-    * [GET /api/v1/__stats__](#get-/api/v1/__stats__)
+    * [POST /api/v1/scan](#post-apiv1scan)
+    * [GET /api/v1/results](#get-apiv1results)
+    * [GET /api/v1/certificate](#get-apiv1certificate)
+    * [POST /api/v1/certificate](#post-apiv1certificate)
+    * [GET /api/v1/paths](#get-apiv1paths)
+    * [GET /api/v1/truststore](#get-apiv1truststore)
+    * [GET /api/v1/issuereecount](#get-apiv1issuereecount)
+    * [GET /api/v1/__heartbeat__](#get-apiv1heartbeat)
+    * [GET /api/v1/__stats__](#get-apiv1stats)
   * [Database Queries](#database-queries)
-  * [Core contributors](#core-contributors)
+  * [Core contributors](#contributors)
   * [License](#license)
 
 ## Getting started
@@ -549,7 +549,7 @@ WHERE has_tls=true
 GROUP BY has_tls, output->>'level'
 ORDER BY COUNT(DISTINCT(target)) DESC;
 
- count | Mozilla Configuration 
+ count | Mozilla Configuration
 -------+-----------------------
   3689 | intermediate
   1906 | non compliant
@@ -575,7 +575,7 @@ WHERE jsonb_typeof(conn_info) = 'object'
                     AND timestamp > NOW() - INTERVAL '1 month')
   AND timestamp > NOW() - INTERVAL '1 month';
   ```
-  
+
 ### Count end-entity certificates by issuer organizations
 ```sql
 SELECT COUNT(*), issuer#>'{o}'->>0
