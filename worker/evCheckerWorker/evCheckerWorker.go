@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"regexp"
 
 	"encoding/base64"
 	"encoding/pem"
@@ -40,7 +41,13 @@ type params struct {
 	RootCertificate string
 }
 
+var portRe = regexp.MustCompile("(.*):([0-9]{1,})$")
+
 func (w evWorker) Run(in worker.Input, res chan worker.Result) {
+	if portRe.MatchString(in.Target) {
+		w.error(res, "EV check does not run on target that have a port specified")
+		return
+	}
 	scan, err := in.DBHandle.GetScanByID(in.Scanid)
 	if err != nil {
 		w.error(res, "Could not get scan: %s", err)
@@ -55,6 +62,11 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 	if err != nil {
 		w.error(res, "Could not map parameters to struct: %s", err)
 	}
+	if params.OID == "" {
+		w.error(res, "Missing OID parameter, skipping EV check")
+		return
+	}
+
 	file, err := ioutil.TempFile("", "")
 	for _, cert := range in.CertificateChain.Certs {
 		cert, err := base64.StdEncoding.DecodeString(cert)
