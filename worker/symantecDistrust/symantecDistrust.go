@@ -108,56 +108,68 @@ type distrustedCert struct {
 	SHA256 string
 }
 
+type result struct {
+	IsDistrusted bool     `json:"isDistrusted"`
+	Reasons      []string `json:"reasons"`
+}
+
 func (w runner) Run(in worker.Input, res chan worker.Result) {
-	// assume we don't trust the chain unless we find one we trust
-	trust := false
+	var (
+		r       result
+		reasons []string
+	)
 	paths, err := in.DBHandle.GetCertPaths(&in.Certificate)
 	if err != nil {
 		w.error(res, "failed to retrieve certificate paths: %v", err)
 	}
-	trust, reason := evalPaths(paths)
-	var out string
-	if trust {
-		out = "not impacted"
-		if reason != "" {
-			out += ", but blacklisted certs found in path: " + reason
-		}
-	} else {
-		out = "impacted by blacklisted certs: " + reason
-	}
-	outB, _ := json.Marshal(out)
+	r.IsDistrusted, reasons = evalPaths(paths)
+	r.Reasons = append(r.Reasons, reasons...)
+	out, _ := json.Marshal(r)
 	res <- worker.Result{
 		Success:    true,
 		WorkerName: workerName,
 		Errors:     nil,
-		Result:     outB,
+		Result:     out,
 	}
 }
 
-func evalPaths(paths certificate.Paths) (trust bool, reason string) {
-	blacklisted, name := evalBlacklist(paths.Cert.Hashes.SHA256)
-	if blacklisted {
-		return false, name
+// evalPaths recursively processes certificate paths and checks each entity
+// against the list of blacklisted symantec certs
+func evalPaths(paths certificate.Paths) (distrust bool, reasons []string) {
+	// assume distrust and change that if we find a trusted path
+	distrust = true
+	if evalBlacklist(paths.Cert.Hashes.SHA256) {
+		reasons = append(reasons, fmt.Sprintf("path uses a blacklisted cert: %s (id=%d)", paths.Cert.Subject.String(), paths.Cert.ID))
+		return
+	}
+	if len(paths.Parents) == 0 {
+		// if is not directly distrusted and doesn't have any parent, set distrust to false
+		distrust = false
+		return
 	}
 	for _, parent := range paths.Parents {
-		var theirReason string
-		trust, theirReason = evalPaths(parent)
-		reason += theirReason
-	}
-	if reason == "" {
-		// we haven't found any reason to distrust the chain
-		trust = true
+		theirDistrust, theirReasons := evalPaths(parent)
+		reasons = append(reasons, theirReasons...)
+		if !theirDistrust {
+			// if we find a parent that's not ditrusted, make sure it's in the Firefox
+			// truststore, and if so, it's a valid path, and distrust should be false
+			if parent.Cert.CA && len(parent.Parents) == 0 && parent.Cert.ValidationInfo["mozilla"].IsValid {
+				distrust = false
+			} else {
+				reasons = append(reasons, fmt.Sprintf("path uses a root not trusted by Mozilla: %s (id=%d)", parent.Cert.Subject.String(), parent.Cert.ID))
+			}
+		}
 	}
 	return
 }
 
-func evalBlacklist(hash string) (bool, string) {
+func evalBlacklist(hash string) bool {
 	for _, item := range blacklist {
 		if strings.ToUpper(hash) == strings.ToUpper(item.SHA256) {
-			return true, item.Name
+			return true
 		}
 	}
-	return false, ""
+	return false
 }
 func (w runner) error(res chan worker.Result, messageFormat string, args ...interface{}) {
 	out, _ := json.Marshal(fmt.Sprintf(messageFormat, args...))
@@ -168,8 +180,32 @@ func (w runner) error(res chan worker.Result, messageFormat string, args ...inte
 	}
 }
 
-func (w runner) AnalysisPrinter(r []byte, printAll interface{}) ([]string, error) {
-	var results []string
-	results = append(results, "* Symantec distrust: "+string(r))
+func (w runner) AnalysisPrinter(input []byte, printAll interface{}) (results []string, err error) {
+	var (
+		r          result
+		addReasons bool
+	)
+	err = json.Unmarshal(input, &r)
+	if err != nil {
+		err = fmt.Errorf("Symantec distrust worker: failed to parse results: %v", err)
+		return
+	}
+	if r.IsDistrusted {
+		results = append(results, "* Symantec distrust: impacted")
+		addReasons = true
+	} else {
+		if len(r.Reasons) > 0 {
+			results = append(results, "* Symantec distrust: not impacted, but found paths with distrusted certs")
+			addReasons = true
+		} else {
+			results = append(results, "* Symantec distrust: not impacted")
+		}
+	}
+	if addReasons {
+		for _, reason := range r.Reasons {
+			results = append(results, fmt.Sprintf("  - %s", reason))
+		}
+		results = append(results, "  - for details, read https://wiki.mozilla.org/CA/Upcoming_Distrust_Actions")
+	}
 	return results, nil
 }
