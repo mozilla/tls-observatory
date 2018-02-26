@@ -225,6 +225,7 @@
         "endpoints" : {
           "ap-southeast-1" : { },
           "ap-southeast-2" : { },
+          "eu-central-1" : { },
           "eu-west-1" : { },
           "eu-west-2" : { },
           "us-east-1" : { },
@@ -279,6 +280,11 @@
         }
       },
       "cloudhsmv2" : {
+        "defaults" : {
+          "credentialScope" : {
+            "service" : "cloudhsm"
+          }
+        },
         "endpoints" : {
           "ap-northeast-1" : { },
           "ap-south-1" : { },
@@ -390,6 +396,7 @@
           "eu-central-1" : { },
           "eu-west-1" : { },
           "eu-west-2" : { },
+          "eu-west-3" : { },
           "sa-east-1" : { },
           "us-east-1" : { },
           "us-east-2" : { },
@@ -400,6 +407,7 @@
       "codestar" : {
         "endpoints" : {
           "ap-northeast-1" : { },
+          "ap-northeast-2" : { },
           "ap-southeast-1" : { },
           "ap-southeast-2" : { },
           "ca-central-1" : { },
@@ -512,6 +520,8 @@
         "endpoints" : {
           "ap-northeast-1" : { },
           "ap-south-1" : { },
+          "ap-southeast-1" : { },
+          "ap-southeast-2" : { },
           "eu-west-1" : { },
           "sa-east-1" : { },
           "us-east-1" : { },
@@ -952,6 +962,7 @@
           "eu-central-1" : { },
           "eu-west-1" : { },
           "us-east-1" : { },
+          "us-east-2" : { },
           "us-west-1" : { },
           "us-west-2" : { }
         }
@@ -996,6 +1007,15 @@
       },
       "kinesisanalytics" : {
         "endpoints" : {
+          "eu-west-1" : { },
+          "us-east-1" : { },
+          "us-west-2" : { }
+        }
+      },
+      "kinesisvideo" : {
+        "endpoints" : {
+          "ap-northeast-1" : { },
+          "eu-central-1" : { },
           "eu-west-1" : { },
           "us-east-1" : { },
           "us-west-2" : { }
@@ -1081,6 +1101,41 @@
       "marketplacecommerceanalytics" : {
         "endpoints" : {
           "us-east-1" : { }
+        }
+      },
+      "mediaconvert" : {
+        "endpoints" : {
+          "ap-northeast-1" : { },
+          "ap-south-1" : { },
+          "ap-southeast-1" : { },
+          "ap-southeast-2" : { },
+          "eu-central-1" : { },
+          "eu-west-1" : { },
+          "us-east-1" : { },
+          "us-west-1" : { },
+          "us-west-2" : { }
+        }
+      },
+      "medialive" : {
+        "endpoints" : {
+          "ap-northeast-1" : { },
+          "ap-southeast-1" : { },
+          "ap-southeast-2" : { },
+          "eu-west-1" : { },
+          "us-east-1" : { },
+          "us-west-2" : { }
+        }
+      },
+      "mediapackage" : {
+        "endpoints" : {
+          "ap-northeast-1" : { },
+          "ap-southeast-1" : { },
+          "ap-southeast-2" : { },
+          "eu-central-1" : { },
+          "eu-west-1" : { },
+          "eu-west-3" : { },
+          "us-east-1" : { },
+          "us-west-2" : { }
         }
       },
       "metering.marketplace" : {
@@ -1392,6 +1447,14 @@
           "us-west-2" : { }
         }
       },
+      "servicediscovery" : {
+        "endpoints" : {
+          "eu-west-1" : { },
+          "us-east-1" : { },
+          "us-east-2" : { },
+          "us-west-2" : { }
+        }
+      },
       "shield" : {
         "defaults" : {
           "protocols" : [ "https" ],
@@ -1411,6 +1474,7 @@
           "ca-central-1" : { },
           "eu-central-1" : { },
           "eu-west-1" : { },
+          "eu-west-2" : { },
           "eu-west-3" : { },
           "us-east-1" : { },
           "us-east-2" : { },
@@ -1423,6 +1487,7 @@
           "ap-northeast-1" : { },
           "ap-south-1" : { },
           "ap-southeast-2" : { },
+          "ca-central-1" : { },
           "eu-central-1" : { },
           "eu-west-1" : { },
           "eu-west-2" : { },
@@ -1503,7 +1568,9 @@
       "states" : {
         "endpoints" : {
           "ap-northeast-1" : { },
+          "ap-southeast-1" : { },
           "ap-southeast-2" : { },
+          "ca-central-1" : { },
           "eu-central-1" : { },
           "eu-west-1" : { },
           "eu-west-2" : { },
@@ -1676,6 +1743,8 @@
       "waf-regional" : {
         "endpoints" : {
           "ap-northeast-1" : { },
+          "ap-southeast-2" : { },
+          "eu-central-1" : { },
           "eu-west-1" : { },
           "us-east-1" : { },
           "us-west-1" : { },
@@ -1952,6 +2021,11 @@
           "cn-northwest-1" : { }
         }
       },
+      "sms" : {
+        "endpoints" : {
+          "cn-north-1" : { }
+        }
+      },
       "snowball" : {
         "endpoints" : {
           "cn-north-1" : { }
@@ -2101,6 +2175,11 @@
           "us-gov-west-1" : { }
         }
       },
+      "ecr" : {
+        "endpoints" : {
+          "us-gov-west-1" : { }
+        }
+      },
       "ecs" : {
         "endpoints" : {
           "us-gov-west-1" : { }
@@ -2128,6 +2207,11 @@
           "us-gov-west-1" : {
             "protocols" : [ "http", "https" ]
           }
+        }
+      },
+      "es" : {
+        "endpoints" : {
+          "us-gov-west-1" : { }
         }
       },
       "events" : {

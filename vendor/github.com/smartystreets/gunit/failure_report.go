@@ -48,17 +48,20 @@ func (this *failureReport) ParseTestName(name string) {
 	if partCount < 3 {
 		return
 	}
-	if !strings.HasPrefix(parts[last], "Test") {
-		return
+
+
+	if method := parts[last]; prefix(method, "Test") || prefix(method, "Setup") || prefix(method, "Teardown") {
+		this.Method = method
+		this.Fixture = parts[last-1]
+		this.Package = strings.Join(parts[0:last-1], ".")
 	}
-	this.Method = parts[last]
-	this.Fixture = parts[last-1]
-	this.Package = strings.Join(parts[0:last-1], ".")
 }
+
+var prefix = strings.HasPrefix
 
 func (this failureReport) String() string {
 	buffer := new(bytes.Buffer)
-	fmt.Fprintf(buffer, "Test:     %s.%s()\n", this.Fixture, this.Method)
+	fmt.Fprintf(buffer, "Method:   %s.%s()\n", this.Fixture, this.Method)
 	for i, stack := range this.Stack {
 		fmt.Fprintf(buffer, "(%d):      %s\n", len(this.Stack)-i-1, stack)
 	}

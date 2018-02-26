@@ -18,7 +18,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -26,25 +25,30 @@ import (
 	"github.com/google/certificate-transparency-go/x509util"
 )
 
-var root = flag.String("root", "", "Root CA certificate file")
-var intermediate = flag.String("intermediate", "", "Intermediate CA certificate file")
-var verbose = flag.Bool("verbose", false, "Verbose output")
-var validate = flag.Bool("validate", false, "Validate certificate signatures")
-var timecheck = flag.Bool("timecheck", false, "Check current validity of certificate")
-var revokecheck = flag.Bool("check_revocation", false, "Check revocation status of certificate")
+var (
+	root                      = flag.String("root", "", "Root CA certificate file")
+	intermediate              = flag.String("intermediate", "", "Intermediate CA certificate file")
+	verbose                   = flag.Bool("verbose", false, "Verbose output")
+	validate                  = flag.Bool("validate", false, "Validate certificate signatures")
+	timecheck                 = flag.Bool("timecheck", false, "Check current validity of certificate")
+	revokecheck               = flag.Bool("check_revocation", false, "Check revocation status of certificate")
+	ignoreUnknownCriticalExts = flag.Bool("ignore_unknown_critical_exts", false, "Ignore unknown-critical-extension errors")
+)
 
 func addCerts(filename string, pool *x509.CertPool) {
 	if filename != "" {
-		data, err := ioutil.ReadFile(filename)
+		dataList, err := x509util.ReadPossiblePEMFile(filename, "CERTIFICATE")
 		if err != nil {
 			log.Fatalf("Failed to read certificate file: %v\n", err)
 		}
-		roots, err := x509.ParseCertificates(data)
-		if err != nil {
-			log.Fatalf("Failed to parse certificate from %s: %v\n", filename, err)
-		}
-		for _, cert := range roots {
-			pool.AddCert(cert)
+		for _, data := range dataList {
+			certs, err := x509.ParseCertificates(data)
+			if err != nil {
+				log.Fatalf("Failed to parse certificate from %s: %v\n", filename, err)
+			}
+			for _, cert := range certs {
+				pool.AddCert(cert)
+			}
 		}
 	}
 }
@@ -78,6 +82,11 @@ func main() {
 			for _, cert := range certs {
 				if *verbose {
 					fmt.Print(x509util.CertificateToString(cert))
+				}
+				if *ignoreUnknownCriticalExts {
+					// We don't want failures from Verify due to unknown critical extensions,
+					// so clear them out.
+					cert.UnhandledCriticalExtensions = nil
 				}
 				if *validate {
 					_, err := cert.Verify(opts)
