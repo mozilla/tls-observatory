@@ -218,7 +218,7 @@ func evalPaths(paths certificate.Paths) (distrust bool, reasons []string) {
 		} else {
 			// when the parent is a root that is not blacklisted, but it isn't trusted by mozilla,
 			// then flag the chain as distrusted anyway
-			if parent.Cert.CA && len(parent.Parents) == 0 && !parent.Cert.ValidationInfo["mozilla"].IsValid {
+			if parent.Cert.CA && len(parent.Parents) == 0 && !parent.Cert.ValidationInfo["Mozilla"].IsValid {
 				reasons = append(reasons, fmt.Sprintf("path uses a root not trusted by Mozilla: %s (id=%d)", parent.Cert.Subject.String(), parent.Cert.ID))
 			} else {
 				distrust = false
