@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"crypto"
 	"time"
+	"encoding/base64"
 )
 
 var workerName = "ocspStatusWorker"
@@ -41,43 +42,44 @@ type params struct {
 func (w ocspStatusWorker) Run(in worker.Input, res chan worker.Result) {
 	out, err := json.Marshal(in.Params)
 
-	conn, err := tls.Dial("tcp", in.Connection.ScanIP + ":443", nil)
-	if err != nil {w.error(res, "Could not connect to server: %s", err)}
-	defer conn.Close()
-
-	issuerCertificate := conn.ConnectionState().PeerCertificates[1]
-	certificate := conn.ConnectionState().PeerCertificates[0]
+	rawCert := base64.DecodeString(worker.Input.CertificateChain.Certs[0])
+	certificate := x509.ParseCertificate(rawCert)
+	rawIssuerCert := base64.DecodeString(worker.Input.CertificateChain.Certs[1])
+	issuerCertificate := x509.ParseCertificate(rawIssuerCert)
 
 	opts := &ocsp.RequestOptions{Hash: crypto.SHA256}
 	req, err := ocsp.CreateRequest(certificate, issuerCertificate, opts)
-	if err != nil {w.error(res, "Could not create OCSP request: %s", err)}
+	if err != nil {
+		w.error(res, "Could not create OCSP request: %s", err)
+		return;
+	}
 
 	httpResponse, err := http.Post(certificate.OCSPServer[0], "application/ocsp-request", bytes.NewReader(req))
-	if err != nil {log.Fatal(err)}
+	if err != nil {
+		w.error(res, "Could not POST read HTTP request: %s", err)
+		return;
+	}
 
 	output, err := ioutil.ReadAll(httpResponse.Body)
-	if err != nil {w.error(res, "Could not read HTTP response body: %s", err)}
+	if err != nil {
+		w.error(res, "Could not read HTTP response body: %s", err)
+		return;
+	}
 
 	OCSPResponse, err := ocsp.ParseResponse(output, issuerCertificate)
-	if err != nil {w.error(res, "Could not parse OCSP response: %s", err)}
+	if err != nil {
+		w.error(res, "Could not parse OCSP response: %s", err)
+		return
+	}
 
 	status := OCSPStatus{ Status:OCSPResponse.Status, RevokedAt:OCSPResponse.RevokedAt }
 
 	out, _ = json.Marshal(status)
-
-	res <- worker.Result{
-		Success:    true,
-		WorkerName: workerName,
-		Errors:     nil,
-		Result:     out,
-	}
-}
-
-func (w ocspStatusWorker) error(res chan worker.Result, messageFormat string, args ...interface{}) {
-	out, _ := json.Marshal(fmt.Sprintf(messageFormat, args...))
+	
 	res <- worker.Result{
 		Success:    false,
 		WorkerName: workerName,
+		Errors:     nil,
 		Result:     out,
 	}
 }
