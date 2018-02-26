@@ -24,74 +24,145 @@ func init() {
 type runner struct {
 }
 
+// DER hashes of blacklisted roots
 var blacklist = []string{
 	//   "/C=US/O=GeoTrust Inc./CN=GeoTrust Global CA",
 	"FF856A2D251DCD88D36656F450126798CFABAADE40799C722DE4D2B5DB36A73A",
+
 	//   "/C=US/O=GeoTrust Inc./OU=(c) 2007 GeoTrust Inc. - For authorized use only/CN=GeoTrust Primary Certification Authority - G2",
 	"5EDB7AC43B82A06A8761E8D7BE4979EBF2611F7DD79BF91C1C6B566A219ED766",
+
 	//   "/C=US/O=GeoTrust Inc./OU=(c) 2008 GeoTrust Inc. - For authorized use only/CN=GeoTrust Primary Certification Authority - G3",
 	"B478B812250DF878635C2AA7EC7D155EAA625EE82916E2CD294361886CD1FBD4",
+
 	//   "/C=US/O=GeoTrust Inc./CN=GeoTrust Primary Certification Authority",
 	"37D51006C512EAAB626421F1EC8C92013FC5F82AE98EE533EB4619B8DEB4D06C",
+
 	//   "/C=US/O=GeoTrust Inc./CN=GeoTrust Universal CA",
 	"A0459B9F63B22559F5FA5D4C6DB3F9F72FF19342033578F073BF1D1B46CBB912",
+
 	//   "/C=US/O=GeoTrust Inc./CN=GeoTrust Universal CA 2",
 	"A0234F3BC8527CA5628EEC81AD5D69895DA5680DC91D1CB8477F33F878B95B0B",
+
 	//   "/C=US/O=Symantec Corporation/OU=Symantec Trust Network/CN=Symantec Class 1 Public Primary Certification Authority - G4",
 	"363F3C849EAB03B0A2A0F636D7B86D04D3AC7FCFE26A0A9121AB9795F6E176DF",
+
 	//   "/C=US/O=Symantec Corporation/OU=Symantec Trust Network/CN=Symantec Class 1 Public Primary Certification Authority - G6",
 	"9D190B2E314566685BE8A889E27AA8C7D7AE1D8AADDBA3C1ECF9D24863CD34B9",
+
 	//   "/C=US/O=Symantec Corporation/OU=Symantec Trust Network/CN=Symantec Class 2 Public Primary Certification Authority - G4",
 	"FE863D0822FE7A2353FA484D5924E875656D3DC9FB58771F6F616F9D571BC592",
+
 	//   "/C=US/O=Symantec Corporation/OU=Symantec Trust Network/CN=Symantec Class 2 Public Primary Certification Authority - G6",
 	"CB627D18B58AD56DDE331A30456BC65C601A4E9B18DEDCEA08E7DAAA07815FF0",
+
 	//   "/C=US/O=thawte, Inc./OU=Certification Services Division/OU=(c) 2006 thawte, Inc. - For authorized use only/CN=thawte Primary Root CA",
 	"8D722F81A9C113C0791DF136A2966DB26C950A971DB46B4199F4EA54B78BFB9F",
+
 	//   "/C=US/O=thawte, Inc./OU=(c) 2007 thawte, Inc. - For authorized use only/CN=thawte Primary Root CA - G2",
 	"A4310D50AF18A6447190372A86AFAF8B951FFB431D837F1E5688B45971ED1557",
+
 	//   "/C=US/O=thawte, Inc./OU=Certification Services Division/OU=(c) 2008 thawte, Inc. - For authorized use only/CN=thawte Primary Root CA - G3",
 	"4B03F45807AD70F21BFC2CAE71C9FDE4604C064CF5FFB686BAE5DBAAD7FDD34C",
+
 	//   "/C=US/O=VeriSign, Inc./OU=VeriSign Trust Network/OU=(c) 1999 VeriSign, Inc. - For authorized use only/CN=VeriSign Class 1 Public Primary Certification Authority - G3",
 	"CBB5AF185E942A2402F9EACBC0ED5BB876EEA3C1223623D00447E4F3BA554B65",
+
 	//   "/C=US/O=VeriSign, Inc./OU=VeriSign Trust Network/OU=(c) 1999 VeriSign, Inc. - For authorized use only/CN=VeriSign Class 2 Public Primary Certification Authority - G3",
 	"92A9D9833FE1944DB366E8BFAE7A95B6480C2D6C6C2A1BE65D4236B608FCA1BB",
+
 	//   "/C=US/O=VeriSign, Inc./OU=VeriSign Trust Network/OU=(c) 1999 VeriSign, Inc. - For authorized use only/CN=VeriSign Class 3 Public Primary Certification Authority - G3",
 	"EB04CF5EB1F39AFA762F2BB120F296CBA520C1B97DB1589565B81CB9A17B7244",
+
 	//   "/C=US/O=VeriSign, Inc./OU=VeriSign Trust Network/OU=(c) 2007 VeriSign, Inc. - For authorized use only/CN=VeriSign Class 3 Public Primary Certification Authority - G4",
 	"69DDD7EA90BB57C93E135DC85EA6FCD5480B603239BDC454FC758B2A26CF7F79",
+
 	//   "/C=US/O=VeriSign, Inc./OU=VeriSign Trust Network/OU=(c) 2006 VeriSign, Inc. - For authorized use only/CN=VeriSign Class 3 Public Primary Certification Authority - G5",
 	"9ACFAB7E43C8D880D06B262A94DEEEE4B4659989C3D0CAF19BAF6405E41AB7DF",
+
 	//   "/C=US/O=VeriSign, Inc./OU=VeriSign Trust Network/OU=(c) 2008 VeriSign, Inc. - For authorized use only/CN=VeriSign Universal Root Certification Authority",
 	"2399561127A57125DE8CEFEA610DDF2FA078B5C8067F4E828290BFB860E84B3C",
 }
 
+// SPKI hashes of whitelisted intermediates
 var whitelist = []string{
 	// /C=US/O=Google Inc/CN=Google Internet Authority G2
-	"9B759D41E3DE30F9D2F902027D792B65D950A98BBB6D6D56BE7F2528453BF8E9",
+	// SHA256 Fingerprint: 9B:75:9D:41:E3:DE:30:F9:D2:F9:02:02:7D:79:2B:65
+	//                     D9:50:A9:8B:BB:6D:6D:56:BE:7F:25:28:45:3B:F8:E9
+	// https://crt.sh/?id=142951186 (crt.sh ID=142951186)
+	"EC722969CB64200AB6638F68AC538E40ABAB5B19A6485661042A1061C4612776",
+
 	// /C=US/O=Google Inc/CN=Google Internet Authority G2
-	"9F630426DF1D8ABFD80ACE98871BA833AB9742CB34838DE2B5285ED54C0C7DCC",
+	// SHA256 Fingerprint: 9F:63:04:26:DF:1D:8A:BF:D8:0A:CE:98:87:1B:A8:33
+	//                     AB:97:42:CB:34:83:8D:E2:B5:28:5E:D5:4C:0C:7D:CC
+	// https://crt.sh/?id=23635000 (crt.sh ID=23635000)
+	"EC722969CB64200AB6638F68AC538E40ABAB5B19A6485661042A1061C4612776",
+
 	// /CN=Apple IST CA 2 - G1/OU=Certification Authority/O=Apple Inc./C=US
-	"AC2B922ECFD5E01711772FEA8ED372DE9D1E2245FCE3F57A9CDBEC77296A424B",
+	// SHA256 Fingerprint: AC:2B:92:2E:CF:D5:E0:17:11:77:2F:EA:8E:D3:72:DE
+	//                     9D:1E:22:45:FC:E3:F5:7A:9C:DB:EC:77:29:6A:42:4B
+	// https://crt.sh/?id=5250464 (crt.sh ID=5250464)
+	"B5CF82D47EF9823F9AA78F123186C52E8879EA84B0F822C91D83E04279B78FD5",
+
 	// /CN=Apple IST CA 5 - G1/OU=Certification Authority/O=Apple Inc./C=US
-	"3DB76D1DD7D3A759DCCC3F8FA7F68675C080CB095E4881063A6B850FDD68B8BC",
+	// SHA256 Fingerprint: 3D:B7:6D:1D:D7:D3:A7:59:DC:CC:3F:8F:A7:F6:86:75
+	//                     C0:80:CB:09:5E:48:81:06:3A:6B:85:0F:DD:68:B8:BC
+	// https://crt.sh/?id=12716200 (crt.sh ID=12716200)
+	"56E98DEAC006A729AFA2ED79F9E419DF69F451242596D2AAF284C74A855E352E",
+
 	// /CN=Apple IST CA 4 - G1/OU=Certification Authority/O=Apple Inc./C=US
-	"6115F06A338A649E61585210E76F2ECE3989BCA65A62B066040CD7C5F408EDD0",
+	// SHA256 Fingerprint: 61:15:F0:6A:33:8A:64:9E:61:58:52:10:E7:6F:2E:CE
+	//                     39:89:BC:A6:5A:62:B0:66:04:0C:D7:C5:F4:08:ED:D0
+	// https://crt.sh/?id=19602712 (crt.sh ID=19602712)
+	"7289C06DEDD16B71A7DCCA66578572E2E109B11D70AD04C2601B6743BC66D07B",
+
 	// /CN=Apple IST CA 7 - G1/OU=Certification Authority/O=Apple Inc./C=US
-	"17F96609AC6AD0A2D6AB0A21B2D1B5B2946BD04DBF120703D1DEF6FB62F4B661",
+	// SHA256 Fingerprint: 17:F9:66:09:AC:6A:D0:A2:D6:AB:0A:21:B2:D1:B5:B2
+	//                     94:6B:D0:4D:BF:12:07:03:D1:DE:F6:FB:62:F4:B6:61
+	// https://crt.sh/?id=19602724 (crt.sh ID=19602724)
+	"C0554BDE87A075EC13A61F275983AE023957294B454CAF0A9724E3B21B7935BC",
+
 	// /CN=Apple IST CA 8 - G1/OU=Certification Authority/O=Apple Inc./C=US
-	"A4FE7C7F15155F3F0AEF7AAA83CF6E06DEB97CA3F909DF920AC1490882D488ED",
+	// SHA256 Fingerprint: A4:FE:7C:7F:15:15:5F:3F:0A:EF:7A:AA:83:CF:6E:06
+	//                     DE:B9:7C:A3:F9:09:DF:92:0A:C1:49:08:82:D4:88:ED
+	// https://crt.sh/?id=21760447 (crt.sh ID=21760447)
+	"E24F8E8C2185DA2F5E88D4579E817C47BF6EAFBC8505F0F960FD5A0DF4473AD3",
+
 	// /CN=Apple IST CA 3 - G1/OU=Certification Authority/O=Apple Inc./C=US
-	"6DE90978910422A89E26F2DF85971430C3F44CD1785DAD94308F7CA4B6FBE521",
+	// SHA256 Fingerprint: 6D:E9:09:78:91:04:22:A8:9E:26:F2:DF:85:97:14:30
+	//                     C3:F4:4C:D1:78:5D:AD:94:30:8F:7C:A4:B6:FB:E5:21
+	// https://crt.sh/?id=19602706 (crt.sh ID=19602706)
+	"3174D9092F9531C06026BA489891016B436D5EC02623F9AAFE2009ECC3E4D557",
+
 	// /CN=Apple IST CA 6 - G1/OU=Certification Authority/O=Apple Inc./C=US
-	"904FB5A437754B1B32B80EBAE7416DB63D05F56A9939720B7C8E3DCC54F6A3D1",
+	// SHA256 Fingerprint: 90:4F:B5:A4:37:75:4B:1B:32:B8:0E:BA:E7:41:6D:B6
+	//                     3D:05:F5:6A:99:39:72:0B:7C:8E:3D:CC:54:F6:A3:D1
+	// https://crt.sh/?id=19602741 (crt.sh ID=19602741)
+	"FAE46000D8F7042558541E98ACF351279589F83B6D3001C18442E4403D111849",
+
 	// /C=US/O=DigiCert Inc/OU=www.digicert.com/CN=DigiCert Global Root G2
-	"CB3CCBB76031E5E0138F8DD39A23F9DE47FFC35E43C1144CEA27D46A5AB1CB5F",
+	// SHA256 Fingerprint: CB:3C:CB:B7:60:31:E5:E0:13:8F:8D:D3:9A:23:F9:DE
+	//                     47:FF:C3:5E:43:C1:14:4C:EA:27:D4:6A:5A:B1:CB:5F
+	// https://crt.sh/?id=8656329 (crt.sh ID=8656329)
+	"8BB593A93BE1D0E8A822BB887C547890C3E706AAD2DAB76254F97FB36B82FC26",
+
 	// /C=US/O=DigiCert Inc/OU=www.digicert.com/CN=DigiCert Global Root G3
-	"31AD6648F8104138C738F39EA4320133393E3A18CC02296EF97C2AC9EF6731D0",
+	// SHA256 Fingerprint: 31:AD:66:48:F8:10:41:38:C7:38:F3:9E:A4:32:01:33
+	//                     39:3E:3A:18:CC:02:29:6E:F9:7C:2A:C9:EF:67:31:D0
+	// https://crt.sh/?id=8568700 (crt.sh ID=8568700)
+	"B94C198300CEC5C057AD0727B70BBE91816992256439A7B32F4598119DDA9C97",
+
 	// /C=US/O=DigiCert Inc/OU=www.digicert.com/CN=DigiCert Transition ECC Root
-	"45BF04DCA5DE7A6339F1DF835BC9013457B487FDB4308E4080C6423C8E4B2705",
+	// SHA256 Fingerprint: 45:BF:04:DC:A5:DE:7A:63:39:F1:DF:83:5B:C9:01:34
+	//                     57:B4:87:FD:B4:30:8E:40:80:C6:42:3C:8E:4B:27:05
+	// https://crt.sh/?id=281399768 (crt.sh ID=281399768)
+	"7CAC9A0FF315387750BA8BAFDB1C2BC29B3F0BBA16362CA93A90F84DA2DF5F3E",
+
 	// /C=US/O=DigiCert Inc/OU=www.digicert.com/CN=DigiCert Transition RSA Root
-	"E52B44CD1E6A9ADA0A0409D1CC5D73A6F417603D70E6F5DC5483AB8ADAEF3CA4",
+	// SHA256 Fingerprint: E5:2B:44:CD:1E:6A:9A:DA:0A:04:09:D1:CC:5D:73:A6
+	//                     F4:17:60:3D:70:E6:F5:DC:54:83:AB:8A:DA:EF:3C:A4
+	// https://crt.sh/?id=281399766 (crt.sh ID=281399766)
+	"AC50B5FB738AED6CB781CC35FBFFF7786F77109ADA7C08867C04A573FD5CF9EE",
 }
 
 type result struct {
@@ -139,7 +210,7 @@ func evalPaths(paths certificate.Paths) (distrust bool, reasons []string) {
 		if theirDistrust {
 			// if the parent is distrusted, check if the current cert is whitelisted,
 			// and if so, override the distrust decision
-			if evalWhitelist(paths.Cert.Hashes.SHA256) {
+			if evalWhitelist(paths.Cert.Hashes.SHA256SubjectSPKI) {
 				distrust = false
 				reasons = append(reasons, fmt.Sprintf("whitelisted intermediate %s (id=%d) override blacklisting of %d",
 					paths.Cert.Subject.String(), paths.Cert.ID, parent.Cert.ID))
@@ -157,18 +228,21 @@ func evalPaths(paths certificate.Paths) (distrust bool, reasons []string) {
 	return
 }
 
-func evalBlacklist(hash string) bool {
+// check if the DER hash of a cert is blacklisted
+func evalBlacklist(derhash string) bool {
 	for _, blacklisted := range blacklist {
-		if strings.ToUpper(hash) == strings.ToUpper(blacklisted) {
+		if strings.ToUpper(derhash) == strings.ToUpper(blacklisted) {
 			return true
 		}
 	}
 	return false
 }
 
-func evalWhitelist(hash string) bool {
+// check if the SPKI hash of a cert matches the ones in the whitelist.
+// here we use the spki because CAs might create more certs from those whitelisted keys
+func evalWhitelist(spkihash string) bool {
 	for _, whitelisted := range whitelist {
-		if strings.ToUpper(hash) == strings.ToUpper(whitelisted) {
+		if strings.ToUpper(spkihash) == strings.ToUpper(whitelisted) {
 			return true
 		}
 	}
