@@ -28,8 +28,8 @@ func main() {
 		fmt.Printf("\nProcessing batch %d to %d: ", batch*limit, batch*limit+limit)
 		rows, err := db.Query(`SELECT id, raw_cert
 					FROM certificates
-					WHERE sha256_subject_spki IS NULL
-					ORDER BY id ASC LIMIT $1`, limit)
+					WHERE id > $1
+					ORDER BY id ASC LIMIT $2`, batch*limit, limit)
 		if rows != nil {
 			defer rows.Close()
 		}
