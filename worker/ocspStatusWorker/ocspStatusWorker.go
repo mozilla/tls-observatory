@@ -11,7 +11,6 @@ import (
 	"golang.org/x/crypto/ocsp"
 	"bytes"
 	"crypto"
-	"crypto/tls"
 	"time"
 	"encoding/base64"
 )
@@ -41,10 +40,10 @@ type params struct {
 func (w ocspStatusWorker) Run(in worker.Input, resChan chan worker.Result) {
 	res := worker.Result{WorkerName: workerName, Success:false}
 
-	rawCert := base64.DecodeString(worker.Input.CertificateChain.Certs[0])
-	certificate := x509.ParseCertificate(rawCert)
-	rawIssuerCert := base64.DecodeString(worker.Input.CertificateChain.Certs[1])
-	issuerCertificate := x509.ParseCertificate(rawIssuerCert)
+	rawCert, _ := base64.StdEncoding.DecodeString(in.CertificateChain.Certs[0])
+	certificate, _ := x509.ParseCertificate(rawCert)
+	rawIssuerCert, _ := base64.StdEncoding.DecodeString(in.CertificateChain.Certs[1])
+	issuerCertificate, _ := x509.ParseCertificate(rawIssuerCert)
 
 	opts := &ocsp.RequestOptions{Hash: crypto.SHA256}
 	req, err := ocsp.CreateRequest(certificate, issuerCertificate, opts)
