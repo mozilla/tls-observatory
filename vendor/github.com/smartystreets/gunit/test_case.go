@@ -69,11 +69,9 @@ func (this *testCase) runWithSetupAndTeardown() {
 }
 
 func (this *testCase) runSetup() {
-	if this.setup < 0 {
-		return
+	if this.setup >= 0 {
+		this.outerFixture.Method(this.setup).Call(nil)
 	}
-
-	this.outerFixture.Method(this.setup).Call(nil)
 }
 
 func (this *testCase) runTest() {
@@ -81,9 +79,7 @@ func (this *testCase) runTest() {
 }
 
 func (this *testCase) runTeardown() {
-	if this.teardown < 0 {
-		return
+	if this.teardown >= 0 {
+		this.outerFixture.Method(this.teardown).Call(nil)
 	}
-
-	this.outerFixture.Method(this.teardown).Call(nil)
 }

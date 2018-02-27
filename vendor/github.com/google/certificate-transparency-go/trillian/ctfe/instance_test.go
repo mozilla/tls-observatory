@@ -23,9 +23,10 @@ import (
 	// Register PEMKeyFile ProtoHandler
 	_ "github.com/google/trillian/crypto/keys/pem/proto"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	ct "github.com/google/certificate-transparency-go"
+	"github.com/google/certificate-transparency-go"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/configpb"
 	"github.com/google/trillian/crypto/keyspb"
 	"github.com/google/trillian/monitoring"
@@ -155,8 +156,9 @@ func TestSetUpInstance(t *testing.T) {
 		},
 	}
 
+	opts := InstanceOptions{Deadline: time.Second, MetricFactory: monitoring.InertMetricFactory{}}
 	for _, test := range tests {
-		if _, err := SetUpInstance(ctx, nil, &test.cfg, time.Second, monitoring.InertMetricFactory{}); err != nil {
+		if _, err := SetUpInstance(ctx, nil, &test.cfg, opts); err != nil {
 			if test.errStr == "" {
 				t.Errorf("(%v).SetUpInstance()=_,%v; want _,nil", test.desc, err)
 			} else if !strings.Contains(err.Error(), test.errStr) {
@@ -237,8 +239,9 @@ func TestSetUpInstanceSetsValidationOpts(t *testing.T) {
 		},
 	}
 
+	opts := InstanceOptions{Deadline: time.Second, MetricFactory: monitoring.InertMetricFactory{}}
 	for _, test := range tests {
-		h, err := SetUpInstance(ctx, nil, &test.cfg, time.Second, monitoring.InertMetricFactory{})
+		h, err := SetUpInstance(ctx, nil, &test.cfg, opts)
 		if err != nil {
 			t.Errorf("%v: SetUpInstance() = %v, want no error", test.desc, err)
 			continue
@@ -257,6 +260,384 @@ func TestSetUpInstanceSetsValidationOpts(t *testing.T) {
 		}
 		if got, want := gotOpts.acceptOnlyCA, test.cfg.AcceptOnlyCa; got != want {
 			t.Errorf("%v: handler acceptOnlyCA %v, want %v", test.desc, got, want)
+		}
+	}
+}
+
+func TestValidateLogMultiConfig(t *testing.T) {
+	var tests = []struct {
+		desc   string
+		cfg    configpb.LogMultiConfig
+		errStr string
+	}{
+		{
+			desc:   "missing backend name",
+			errStr: "empty backend name",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{BackendSpec: "testspec"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{},
+			},
+		},
+		{
+			desc:   "missing backend spec",
+			errStr: "empty backend_spec",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{},
+			},
+		},
+		{
+			desc:   "missing backend name and spec",
+			errStr: "empty backend name",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{},
+			},
+		},
+		{
+			desc:   "dup backend name",
+			errStr: "duplicate backend name",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "dup", BackendSpec: "testspec"},
+						{Name: "dup", BackendSpec: "testspec"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{},
+			},
+		},
+		{
+			desc:   "dup backend spec",
+			errStr: "duplicate backend spec",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "backend1", BackendSpec: "testspec"},
+						{Name: "backend2", BackendSpec: "testspec"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{},
+			},
+		},
+		{
+			desc:   "missing backend reference",
+			errStr: "empty backend",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log2"},
+					},
+				},
+			},
+		},
+		{
+			desc:   "undefined backend reference",
+			errStr: "undefined backend",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log2", Prefix: "prefix"},
+					},
+				},
+			},
+		},
+		{
+			desc:   "empty log prefix",
+			errStr: "empty prefix",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+						{Name: "log2", BackendSpec: "testspec2"},
+						{Name: "log3", BackendSpec: "testspec3"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log1", Prefix: "prefix1"},
+						{LogBackendName: "log2"},
+						{LogBackendName: "log3", Prefix: "prefix3"},
+					},
+				},
+			},
+		},
+		{
+			desc:   "dup log prefix",
+			errStr: "duplicate prefix",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log1", Prefix: "prefix1", LogId: 1},
+						{LogBackendName: "log1", Prefix: "prefix2", LogId: 2},
+						{LogBackendName: "log1", Prefix: "prefix1", LogId: 3},
+					},
+				},
+			},
+		},
+		{
+			desc:   "dup log ids on same backend",
+			errStr: "dup tree id",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log1", Prefix: "prefix1", LogId: 1},
+						{LogBackendName: "log1", Prefix: "prefix2", LogId: 1},
+						{LogBackendName: "log1", Prefix: "prefix1", LogId: 1},
+					},
+				},
+			},
+		},
+		{
+			desc:   "start timestamp invalid",
+			errStr: "invalid start",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{
+							LogBackendName: "log1",
+							Prefix:         "prefix1",
+							LogId:          1,
+							NotAfterStart:  &timestamp.Timestamp{Seconds: 23, Nanos: -50},
+							NotAfterLimit:  &timestamp.Timestamp{Seconds: 23},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:   "limit timestamp invalid",
+			errStr: "invalid limit",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{
+							LogBackendName: "log1",
+							Prefix:         "prefix1",
+							LogId:          1,
+							NotAfterStart:  &timestamp.Timestamp{Seconds: 23},
+							NotAfterLimit:  &timestamp.Timestamp{Seconds: 23, Nanos: -50},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:   "limit before start",
+			errStr: "before start",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{
+							LogBackendName: "log1",
+							Prefix:         "prefix1",
+							LogId:          1,
+							NotAfterStart:  &timestamp.Timestamp{Seconds: 23},
+							NotAfterLimit:  &timestamp.Timestamp{Seconds: 22},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "valid config",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+						{Name: "log2", BackendSpec: "testspec2"},
+						{Name: "log3", BackendSpec: "testspec3"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log1", Prefix: "prefix1", LogId: 1},
+						{LogBackendName: "log2", Prefix: "prefix2", LogId: 2},
+						{LogBackendName: "log3", Prefix: "prefix3", LogId: 3},
+					},
+				},
+			},
+		},
+		{
+			desc: "valid config dup ids on different backends",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+						{Name: "log2", BackendSpec: "testspec2"},
+						{Name: "log3", BackendSpec: "testspec3"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log1", Prefix: "prefix1", LogId: 999},
+						{LogBackendName: "log2", Prefix: "prefix2", LogId: 999},
+						{LogBackendName: "log3", Prefix: "prefix3", LogId: 999},
+					},
+				},
+			},
+		},
+		{
+			desc: "valid config - only not after start set",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log1", Prefix: "prefix1", LogId: 1, NotAfterStart: &timestamp.Timestamp{Seconds: 23}},
+					},
+				},
+			},
+		},
+		{
+			desc: "valid config - only not after limit set",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{LogBackendName: "log1", Prefix: "prefix1", LogId: 1, NotAfterLimit: &timestamp.Timestamp{Seconds: 23}},
+					},
+				},
+			},
+		},
+		{
+			desc: "valid config with time range",
+			cfg: configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{
+						{Name: "log1", BackendSpec: "testspec1"},
+					},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{
+							LogBackendName: "log1",
+							Prefix:         "prefix1",
+							LogId:          1,
+							NotAfterStart:  &timestamp.Timestamp{Seconds: 23},
+							NotAfterLimit:  &timestamp.Timestamp{Seconds: 24},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		_, err := ValidateLogMultiConfig(&test.cfg)
+
+		if len(test.errStr) == 0 && err != nil {
+			t.Errorf("ValidateLogMultiConfig()=%v, want: nil (%v)", err, test.desc)
+			continue
+		}
+
+		if len(test.errStr) > 0 && (err == nil || !strings.Contains(err.Error(), test.errStr)) {
+			t.Errorf("ValidateLogMultiConfig()=%v, want: %v (%v)", err, test.errStr, test.desc)
+		}
+	}
+}
+
+func TestToMultiLogConfig(t *testing.T) {
+	var tests = []struct {
+		desc string
+		cfg  []*configpb.LogConfig
+		want *configpb.LogMultiConfig
+	}{
+		{
+			desc: "one valid log config",
+			cfg: []*configpb.LogConfig{
+				{LogId: 1, Prefix: "test"},
+			},
+			want: &configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{{Name: "default", BackendSpec: "spec"}},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{{Prefix: "test", LogId: 1, LogBackendName: "default"}},
+				},
+			},
+		},
+		{
+			desc: "three valid log configs",
+			cfg: []*configpb.LogConfig{
+				{LogId: 1, Prefix: "test1"},
+				{LogId: 2, Prefix: "test2"},
+				{LogId: 3, Prefix: "test3"},
+			},
+			want: &configpb.LogMultiConfig{
+				Backends: &configpb.LogBackendSet{
+					Backend: []*configpb.LogBackend{{Name: "default", BackendSpec: "spec"}},
+				},
+				LogConfigs: &configpb.LogConfigSet{
+					Config: []*configpb.LogConfig{
+						{Prefix: "test1", LogId: 1, LogBackendName: "default"},
+						{Prefix: "test2", LogId: 2, LogBackendName: "default"},
+						{Prefix: "test3", LogId: 3, LogBackendName: "default"},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		got := ToMultiLogConfig(test.cfg, "spec")
+
+		if !proto.Equal(got, test.want) {
+			t.Errorf("TestToMultiLogConfig() got: %v, want: %v (%v)", got, test.want, test.desc)
 		}
 	}
 }

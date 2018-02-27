@@ -15,11 +15,13 @@
 package ctfe
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -30,7 +32,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	ct "github.com/google/certificate-transparency-go"
+	"github.com/google/certificate-transparency-go"
 	"github.com/google/certificate-transparency-go/tls"
 	"github.com/google/certificate-transparency-go/trillian/util"
 	"github.com/google/certificate-transparency-go/x509"
@@ -40,6 +42,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// TODO(drysdale): remove this flag once everything has migrated to ByRange
+var getByRange = flag.Bool("by_range", false, "Use trillian.GetEntriesByRange for get-entries processing")
 
 const (
 	// HTTP content type header
@@ -123,8 +128,8 @@ type PathHandlers map[string]AppHandler
 // AppHandler holds a LogContext and a handler function that uses it, and is
 // an implementation of the http.Handler interface.
 type AppHandler struct {
-	Context LogContext
-	Handler func(context.Context, LogContext, http.ResponseWriter, *http.Request) (int, error)
+	Context *LogContext
+	Handler func(context.Context, *LogContext, http.ResponseWriter, *http.Request) (int, error)
 	Name    EntrypointName
 	Method  string // http.MethodGet or http.MethodPost
 }
@@ -137,6 +142,8 @@ func (a AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	label1 := string(a.Name)
 	reqsCounter.Inc(label0, label1)
 	startTime := a.Context.TimeSource.Now()
+	logCtx := a.Context.RequestLog.Start(r.Context())
+	a.Context.RequestLog.LogPrefix(logCtx, a.Context.LogPrefix)
 	defer func() {
 		latency := a.Context.TimeSource.Now().Sub(startTime).Seconds()
 		rspLatency.Observe(latency, label0, label1, strconv.Itoa(status))
@@ -145,6 +152,7 @@ func (a AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != a.Method {
 		glog.Warningf("%s: %s wrong HTTP method: %v", a.Context.LogPrefix, a.Name, r.Method)
 		sendHTTPError(w, http.StatusMethodNotAllowed, fmt.Errorf("method not allowed: %s", r.Method))
+		a.Context.RequestLog.Status(logCtx, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -153,16 +161,18 @@ func (a AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		if err := r.ParseForm(); err != nil {
 			sendHTTPError(w, http.StatusBadRequest, fmt.Errorf("failed to parse form data: %v", err))
+			a.Context.RequestLog.Status(logCtx, http.StatusBadRequest)
 			return
 		}
 	}
 
 	// Many/most of the handlers forward the request on to the Log RPC server; impose a deadline
 	// on this onward request.
-	ctx, cancel := context.WithDeadline(r.Context(), getRPCDeadlineTime(a.Context))
+	ctx, cancel := context.WithDeadline(logCtx, getRPCDeadlineTime(a.Context))
 	defer cancel()
 
 	status, err := a.Handler(ctx, a.Context, w, r)
+	a.Context.RequestLog.Status(ctx, status)
 	glog.V(2).Infof("%s: %s <= status=%d", a.Context.LogPrefix, a.Name, status)
 	rspsCounter.Inc(label0, label1, strconv.Itoa(status))
 	if err != nil {
@@ -204,7 +214,12 @@ type LogContext struct {
 	LogPrefix string
 	// TimeSource is a util.TimeSource that can be injected for testing
 	TimeSource util.TimeSource
+	// RequestLog is a logger for various request / processing / response debug
+	// information.
+	RequestLog RequestLog
 
+	// Instance-wide options
+	instanceOpts InstanceOptions
 	// logID is the tree ID that identifies this log in node storage
 	logID int64
 	// urlPrefix is the prefix for URLs for this log
@@ -217,29 +232,53 @@ type LogContext struct {
 	signer *crypto.Signer
 	// rpcDeadline is the deadline that will be set on all backend RPC requests
 	rpcDeadline time.Duration
+
+	// Cache the last signature generated for an STH, to reduce re-signing
+	// and slightly reduce the chances of being able to fingerprint get-sth
+	// users by their STH signature value.
+	lastSTHMu        sync.RWMutex
+	lastSTHBytes     []byte
+	lastSTHSignature ct.DigitallySigned
 }
 
 // NewLogContext creates a new instance of LogContext.
-func NewLogContext(logID int64, prefix string, validationOpts CertValidationOpts, rpcClient trillian.TrillianLogClient, signer *crypto.Signer, rpcDeadline time.Duration, timeSource util.TimeSource, mf monitoring.MetricFactory) *LogContext {
+func NewLogContext(logID int64, prefix string, validationOpts CertValidationOpts, rpcClient trillian.TrillianLogClient, signer *crypto.Signer, instanceOpts InstanceOptions, timeSource util.TimeSource) *LogContext {
 	ctx := &LogContext{
 		logID:          logID,
 		urlPrefix:      prefix,
 		LogPrefix:      fmt.Sprintf("%s{%d}", prefix, logID),
 		rpcClient:      rpcClient,
 		signer:         signer,
-		rpcDeadline:    rpcDeadline,
 		TimeSource:     timeSource,
+		instanceOpts:   instanceOpts,
 		validationOpts: validationOpts,
+		RequestLog:     instanceOpts.RequestLog,
 	}
-	once.Do(func() { setupMetrics(mf) })
+	once.Do(func() { setupMetrics(instanceOpts.MetricFactory) })
 	knownLogs.Set(1.0, strconv.FormatInt(logID, 10))
 
 	return ctx
 }
 
+func (c *LogContext) setLastSTHSignature(sthBytes []byte, sig ct.DigitallySigned) {
+	c.lastSTHMu.Lock()
+	defer c.lastSTHMu.Unlock()
+	c.lastSTHBytes = sthBytes
+	c.lastSTHSignature = sig
+}
+
+func (c *LogContext) getLastSTHSignature(sthBytes []byte) (ct.DigitallySigned, bool) {
+	c.lastSTHMu.RLock()
+	defer c.lastSTHMu.RUnlock()
+	if !bytes.Equal(sthBytes, c.lastSTHBytes) {
+		return ct.DigitallySigned{}, false
+	}
+	return c.lastSTHSignature, true
+}
+
 // Handlers returns a map from URL paths (with the given prefix) and AppHandler instances
 // to handle those entrypoints.
-func (c LogContext) Handlers(prefix string) PathHandlers {
+func (c *LogContext) Handlers(prefix string) PathHandlers {
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
 	}
@@ -258,7 +297,7 @@ func (c LogContext) Handlers(prefix string) PathHandlers {
 	}
 }
 
-func parseBodyAsJSONChain(c LogContext, r *http.Request) (ct.AddChainRequest, error) {
+func parseBodyAsJSONChain(c *LogContext, r *http.Request) (ct.AddChainRequest, error) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		glog.V(1).Infof("%s: Failed to read request body: %v", c.LogPrefix, err)
@@ -282,7 +321,7 @@ func parseBodyAsJSONChain(c LogContext, r *http.Request) (ct.AddChainRequest, er
 
 // addChainInternal is called by add-chain and add-pre-chain as the logic involved in
 // processing these requests is almost identical
-func addChainInternal(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request, isPrecert bool) (int, error) {
+func addChainInternal(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request, isPrecert bool) (int, error) {
 	var method EntrypointName
 	var etype ct.LogEntryType
 	if isPrecert {
@@ -298,11 +337,17 @@ func addChainInternal(ctx context.Context, c LogContext, w http.ResponseWriter, 
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("failed to parse add-chain body: %v", err)
 	}
+	// Log the DERs now because they might not parse as valid X.509.
+	for _, der := range addChainReq.Chain {
+		c.RequestLog.AddDERToChain(ctx, der)
+	}
 	chain, err := verifyAddChain(c, addChainReq, w, isPrecert)
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("failed to verify add-chain contents: %v", err)
 	}
-
+	for _, cert := range chain {
+		c.RequestLog.AddCertToChain(ctx, cert)
+	}
 	// Get the current time in the form used throughout RFC6962, namely milliseconds since Unix
 	// epoch, and use this throughout.
 	timeMillis := uint64(c.TimeSource.Now().UnixNano() / millisPerNano)
@@ -324,7 +369,7 @@ func addChainInternal(ctx context.Context, c LogContext, w http.ResponseWriter, 
 	rsp, err := c.rpcClient.QueueLeaves(ctx, &req)
 	glog.V(2).Infof("%s: %s <= grpc.QueueLeaves err=%v", c.LogPrefix, method, err)
 	if err != nil {
-		return toHTTPStatus(err), fmt.Errorf("backend QueueLeaves request failed: %v", err)
+		return c.toHTTPStatus(err), fmt.Errorf("backend QueueLeaves request failed: %v", err)
 	}
 	if rsp == nil {
 		return http.StatusInternalServerError, errors.New("missing QueueLeaves response")
@@ -359,11 +404,11 @@ func addChainInternal(ctx context.Context, c LogContext, w http.ResponseWriter, 
 	return http.StatusOK, nil
 }
 
-func addChain(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
+func addChain(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
 	return addChainInternal(ctx, c, w, r, false)
 }
 
-func addPreChain(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
+func addPreChain(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
 	return addChainInternal(ctx, c, w, r, true)
 }
 
@@ -406,14 +451,14 @@ func GetTreeHead(ctx context.Context, client trillian.TrillianLogClient, logID i
 	return &sth, nil
 }
 
-func getSTH(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
+func getSTH(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
 	sth, err := GetTreeHead(ctx, c.rpcClient, c.logID, c.LogPrefix)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 
 	// Add the signature over the STH contents.
-	err = signV1TreeHead(c.signer, sth)
+	err = c.signV1TreeHead(c.signer, sth)
 	if err != nil || len(sth.TreeHeadSignature.Signature) == 0 {
 		return http.StatusInternalServerError, fmt.Errorf("failed to sign tree head: %v", err)
 	}
@@ -444,12 +489,12 @@ func getSTH(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Re
 	return http.StatusOK, nil
 }
 
-func getSTHConsistency(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
+func getSTHConsistency(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
 	first, second, err := parseGetSTHConsistencyRange(r)
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("failed to parse consistency range: %v", err)
 	}
-
+	c.RequestLog.FirstAndSecond(ctx, first, second)
 	var jsonRsp ct.GetSTHConsistencyResponse
 	if first != 0 {
 		req := trillian.GetConsistencyProofRequest{LogId: c.logID, FirstTreeSize: first, SecondTreeSize: second}
@@ -458,7 +503,7 @@ func getSTHConsistency(ctx context.Context, c LogContext, w http.ResponseWriter,
 		rsp, err := c.rpcClient.GetConsistencyProof(ctx, &req)
 		glog.V(2).Infof("%s: GetSTHConsistency <= grpc.GetConsistencyProof err=%v", c.LogPrefix, err)
 		if err != nil {
-			return toHTTPStatus(err), fmt.Errorf("backend GetConsistencyProof request failed: %v", err)
+			return c.toHTTPStatus(err), fmt.Errorf("backend GetConsistencyProof request failed: %v", err)
 		}
 
 		// Additional sanity checks, none of the hashes in the returned path should be empty
@@ -491,7 +536,7 @@ func getSTHConsistency(ctx context.Context, c LogContext, w http.ResponseWriter,
 	return http.StatusOK, nil
 }
 
-func getProofByHash(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
+func getProofByHash(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
 	// Accept any non empty hash that decodes from base64 and let the backend validate it further
 	hash := r.FormValue(getProofParamHash)
 	if len(hash) == 0 {
@@ -506,6 +551,8 @@ func getProofByHash(ctx context.Context, c LogContext, w http.ResponseWriter, r 
 	if err != nil || treeSize < 1 {
 		return http.StatusBadRequest, fmt.Errorf("get-proof-by-hash: missing or invalid tree_size: %v", r.FormValue(getProofParamTreeSize))
 	}
+	c.RequestLog.LeafHash(ctx, leafHash)
+	c.RequestLog.TreeSize(ctx, treeSize)
 
 	// Per RFC 6962 section 4.5 the API returns a single proof. This should be the lowest leaf index
 	// Because we request order by sequence and we only passed one hash then the first result is
@@ -518,7 +565,7 @@ func getProofByHash(ctx context.Context, c LogContext, w http.ResponseWriter, r 
 	}
 	rsp, err := c.rpcClient.GetInclusionProofByHash(ctx, &req)
 	if err != nil {
-		return toHTTPStatus(err), fmt.Errorf("backend GetInclusionProofByHash request failed: %v", err)
+		return c.toHTTPStatus(err), fmt.Errorf("backend GetInclusionProofByHash request failed: %v", err)
 	}
 
 	// Additional sanity checks
@@ -554,7 +601,7 @@ func getProofByHash(ctx context.Context, c LogContext, w http.ResponseWriter, r 
 	return http.StatusOK, nil
 }
 
-func getEntries(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
+func getEntries(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
 	// The first job is to parse the params and make sure they're sensible. We just make
 	// sure the range is valid. We don't do an extra roundtrip to get the current tree
 	// size and prefer to let the backend handle this case
@@ -562,30 +609,56 @@ func getEntries(ctx context.Context, c LogContext, w http.ResponseWriter, r *htt
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("bad range on get-entries request: %v", err)
 	}
+	c.RequestLog.StartAndEnd(ctx, start, end)
 
 	// Now make a request to the backend to get the relevant leaves
-	req := trillian.GetLeavesByIndexRequest{
-		LogId:     c.logID,
-		LeafIndex: buildIndicesForRange(start, end),
-	}
-	rsp, err := c.rpcClient.GetLeavesByIndex(ctx, &req)
-	if err != nil {
-		return toHTTPStatus(err), fmt.Errorf("backend GetLeavesByIndex request failed: %v", err)
-	}
+	var leaves []*trillian.LogLeaf
+	if *getByRange {
+		count := end + 1 - start
+		req := trillian.GetLeavesByRangeRequest{
+			LogId:      c.logID,
+			StartIndex: start,
+			Count:      count,
+		}
+		rsp, err := c.rpcClient.GetLeavesByRange(ctx, &req)
+		if err != nil {
+			return c.toHTTPStatus(err), fmt.Errorf("backend GetLeavesByRange request failed: %v", err)
+		}
+		// Do some sanity checks on the result.
+		if len(rsp.Leaves) > int(count) {
+			return http.StatusInternalServerError, fmt.Errorf("backend returned too many leaves: %d vs [%d,%d]", len(rsp.Leaves), start, end)
+		}
+		for i, leaf := range rsp.Leaves {
+			if leaf.LeafIndex != start+int64(i) {
+				return http.StatusInternalServerError, fmt.Errorf("backend returned unexpected leaf index: rsp.Leaves[%d].LeafIndex=%d for range [%d,%d]", i, leaf.LeafIndex, start, end)
+			}
+		}
+		leaves = rsp.Leaves
+	} else {
+		req := trillian.GetLeavesByIndexRequest{
+			LogId:     c.logID,
+			LeafIndex: buildIndicesForRange(start, end),
+		}
+		rsp, err := c.rpcClient.GetLeavesByIndex(ctx, &req)
+		if err != nil {
+			return c.toHTTPStatus(err), fmt.Errorf("backend GetLeavesByIndex request failed: %v", err)
+		}
 
-	// Trillian doesn't guarantee the returned leaves are in order (they don't need to be
-	// because each leaf comes with an index).  CT doesn't expose an index field and so
-	// needs to return leaves in order.  Therefore, sort the results (and check for missing
-	// or duplicate indices along the way).
-	if err := sortLeafRange(rsp, start, end); err != nil {
-		return http.StatusInternalServerError, fmt.Errorf("backend get-entries range invalid: %v", err)
+		// Trillian doesn't guarantee the returned leaves are in order (they don't need to be
+		// because each leaf comes with an index).  CT doesn't expose an index field and so
+		// needs to return leaves in order.  Therefore, sort the results (and check for missing
+		// or duplicate indices along the way).
+		if err := sortLeafRange(rsp, start, end); err != nil {
+			return http.StatusInternalServerError, fmt.Errorf("backend get-entries range invalid: %v", err)
+		}
+		leaves = rsp.Leaves
 	}
 
 	// Now we've checked the RPC response and it seems to be valid we need
 	// to serialize the leaves in JSON format for the HTTP response. Doing a
 	// round trip via the leaf deserializer gives us another chance to
 	// prevent bad / corrupt data from reaching the client.
-	jsonRsp, err := marshalGetEntriesResponse(c, rsp)
+	jsonRsp, err := marshalGetEntriesResponse(c, leaves)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("failed to process leaves returned from backend: %v", err)
 	}
@@ -605,7 +678,7 @@ func getEntries(ctx context.Context, c LogContext, w http.ResponseWriter, r *htt
 	return http.StatusOK, nil
 }
 
-func getRoots(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
+func getRoots(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
 	// Pull out the raw certificates from the parsed versions
 	rawCerts := make([][]byte, 0, len(c.validationOpts.trustedRoots.RawCertificates()))
 	for _, cert := range c.validationOpts.trustedRoots.RawCertificates() {
@@ -626,17 +699,19 @@ func getRoots(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.
 
 // See RFC 6962 Section 4.8. This is mostly used for debug purposes rather than by normal
 // CT clients.
-func getEntryAndProof(ctx context.Context, c LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
+func getEntryAndProof(ctx context.Context, c *LogContext, w http.ResponseWriter, r *http.Request) (int, error) {
 	// Ensure both numeric params are present and look reasonable.
 	leafIndex, treeSize, err := parseGetEntryAndProofParams(r)
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("failed to parse get-entry-and-proof params: %v", err)
 	}
+	c.RequestLog.LeafIndex(ctx, leafIndex)
+	c.RequestLog.TreeSize(ctx, treeSize)
 
 	req := trillian.GetEntryAndProofRequest{LogId: c.logID, LeafIndex: leafIndex, TreeSize: treeSize}
 	rsp, err := c.rpcClient.GetEntryAndProof(ctx, &req)
 	if err != nil {
-		return toHTTPStatus(err), fmt.Errorf("backend GetEntryAndProof request failed: %v", err)
+		return c.toHTTPStatus(err), fmt.Errorf("backend GetEntryAndProof request failed: %v", err)
 	}
 
 	// Apply some checks that we got reasonable data from the backend
@@ -674,15 +749,15 @@ func sendHTTPError(w http.ResponseWriter, statusCode int, err error) {
 }
 
 // getRPCDeadlineTime calculates the future time an RPC should expire based on our config
-func getRPCDeadlineTime(c LogContext) time.Time {
-	return c.TimeSource.Now().Add(c.rpcDeadline)
+func getRPCDeadlineTime(c *LogContext) time.Time {
+	return c.TimeSource.Now().Add(c.instanceOpts.Deadline)
 }
 
 // verifyAddChain is used by add-chain and add-pre-chain. It does the checks that the supplied
 // cert is of the correct type and chains to a trusted root.
 // TODO(Martin2112): This may not implement all the RFC requirements. Check what is provided
 // by fixchain (called by this code) plus the ones here to make sure that it is compliant.
-func verifyAddChain(c LogContext, req ct.AddChainRequest, w http.ResponseWriter, expectingPrecert bool) ([]*x509.Certificate, error) {
+func verifyAddChain(c *LogContext, req ct.AddChainRequest, w http.ResponseWriter, expectingPrecert bool) ([]*x509.Certificate, error) {
 	// We already checked that the chain is not empty so can move on to verification
 	validPath, err := ValidateChain(req.Chain, c.validationOpts)
 	if err != nil {
@@ -711,7 +786,7 @@ func verifyAddChain(c LogContext, req ct.AddChainRequest, w http.ResponseWriter,
 
 // buildLogLeafForAddChain is also used by add-pre-chain and does the hashing to build a
 // LogLeaf that will be sent to the backend
-func buildLogLeafForAddChain(c LogContext, merkleLeaf ct.MerkleTreeLeaf, chain []*x509.Certificate) (trillian.LogLeaf, error) {
+func buildLogLeafForAddChain(c *LogContext, merkleLeaf ct.MerkleTreeLeaf, chain []*x509.Certificate) (trillian.LogLeaf, error) {
 	leafData, err := tls.Marshal(merkleLeaf)
 	if err != nil {
 		glog.Warningf("%s: Failed to serialize Merkle leaf: %v", c.LogPrefix, err)
@@ -793,7 +868,7 @@ func marshalAndWriteAddChainResponse(sct *ct.SignedCertificateTimestamp, signer 
 		SCTVersion: ct.Version(sct.SCTVersion),
 		Timestamp:  sct.Timestamp,
 		ID:         logID[:],
-		Extensions: "",
+		Extensions: base64.StdEncoding.EncodeToString(sct.Extensions),
 		Signature:  sig,
 	}
 
@@ -933,10 +1008,10 @@ func sortLeafRange(rsp *trillian.GetLeavesByIndexResponse, start, end int64) err
 
 // marshalGetEntriesResponse does the conversion from the backend response to the one we need for
 // an RFC compliant JSON response to the client.
-func marshalGetEntriesResponse(c LogContext, rsp *trillian.GetLeavesByIndexResponse) (ct.GetEntriesResponse, error) {
+func marshalGetEntriesResponse(c *LogContext, leaves []*trillian.LogLeaf) (ct.GetEntriesResponse, error) {
 	jsonRsp := ct.GetEntriesResponse{}
 
-	for _, leaf := range rsp.Leaves {
+	for _, leaf := range leaves {
 		// We're only deserializing it to ensure it's valid, don't need the result. We still
 		// return the data if it fails to deserialize as otherwise the root hash could not
 		// be verified. However this indicates a potentially serious failure in log operation
@@ -972,7 +1047,13 @@ func checkAuditPath(path [][]byte) bool {
 	return true
 }
 
-func toHTTPStatus(err error) int {
+func (c *LogContext) toHTTPStatus(err error) int {
+	if c.instanceOpts.ErrorMapper != nil {
+		if status, ok := c.instanceOpts.ErrorMapper(err); ok {
+			return status
+		}
+	}
+
 	rpcStatus, ok := status.FromError(err)
 	if !ok {
 		return http.StatusInternalServerError

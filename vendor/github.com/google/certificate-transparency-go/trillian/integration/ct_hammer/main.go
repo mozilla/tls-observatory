@@ -18,6 +18,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto"
 	"encoding/base64"
 	"flag"
 	"fmt"
@@ -36,21 +37,26 @@ import (
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/monitoring/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	ct "github.com/google/certificate-transparency-go"
 )
 
 var (
-	httpServers       = flag.String("ct_http_servers", "localhost:8092", "Comma-separated list of (assumed interchangeable) servers, each as address:port")
-	testDir           = flag.String("testdata_dir", "testdata", "Name of directory with test data")
-	metricsEndpoint   = flag.String("metrics_endpoint", "", "Endpoint for serving metrics; if left empty, metrics will not be exposed")
-	seed              = flag.Int64("seed", -1, "Seed for random number generation")
-	logConfig         = flag.String("log_config", "", "File holding log config in JSON")
-	mmd               = flag.Duration("mmd", 2*time.Minute, "MMD for logs")
-	operations        = flag.Uint64("operations", ^uint64(0), "Number of operations to perform")
-	minGetEntries     = flag.Int("min_get_entries", 1, "Minimum get-entries request size")
-	maxGetEntries     = flag.Int("max_get_entries", 500, "Maximum get-entries request size")
-	maxParallelChains = flag.Int("max_parallel_chains", 2, "Maximum number of chains to add in parallel (will always add at least 1 chain)")
-	limit             = flag.Int("rate_limit", 0, "Maximum rate of requests to an individual log; 0 for no rate limit")
-	ignoreErrors      = flag.Bool("ignore_errors", false, "Whether to ignore errors and retry the operation")
+	httpServers         = flag.String("ct_http_servers", "localhost:8092", "Comma-separated list of (assumed interchangeable) servers, each as address:port")
+	testDir             = flag.String("testdata_dir", "testdata", "Name of directory with test data")
+	leafNotAfter        = flag.String("leaf_not_after", "", "Not-After date to use for leaf certs, RFC3339/ISO-8601 format (e.g. 2017-11-26T12:29:19Z)")
+	metricsEndpoint     = flag.String("metrics_endpoint", "", "Endpoint for serving metrics; if left empty, metrics will not be exposed")
+	seed                = flag.Int64("seed", -1, "Seed for random number generation")
+	logConfig           = flag.String("log_config", "", "File holding log config in JSON")
+	mmd                 = flag.Duration("mmd", 2*time.Minute, "MMD for logs")
+	operations          = flag.Uint64("operations", ^uint64(0), "Number of operations to perform")
+	minGetEntries       = flag.Int("min_get_entries", 1, "Minimum get-entries request size")
+	maxGetEntries       = flag.Int("max_get_entries", 500, "Maximum get-entries request size")
+	oversizedGetEntries = flag.Bool("oversized_get_entries", false, "Whether get-entries requests can go beyond log size")
+	maxParallelChains   = flag.Int("max_parallel_chains", 2, "Maximum number of chains to add in parallel (will always add at least 1 chain)")
+	limit               = flag.Int("rate_limit", 0, "Maximum rate of requests to an individual log; 0 for no rate limit")
+	ignoreErrors        = flag.Bool("ignore_errors", false, "Whether to ignore errors and retry the operation")
+	maxRetry            = flag.Duration("max_retry", 60*time.Second, "How long to keep retrying when ignore_errors is set")
 )
 var (
 	addChainBias          = flag.Int("add_chain", 20, "Bias for add-chain operations")
@@ -87,27 +93,45 @@ func main() {
 		glog.Exitf("Failed to read log config: %v", err)
 	}
 
-	// Retrieve the test data.
-	caChain, err := integration.GetChain(*testDir, "int-ca.cert")
-	if err != nil {
-		glog.Exitf("failed to load certificate: %v", err)
+	var caChain, leafChain []ct.ASN1Cert
+	var signer crypto.Signer
+	var leafCert, caCert *x509.Certificate
+	if *testDir != "" {
+		// Retrieve the test data.
+		caChain, err = integration.GetChain(*testDir, "int-ca.cert")
+		if err != nil {
+			glog.Exitf("failed to load certificate: %v", err)
+		}
+		leafChain, err = integration.GetChain(*testDir, "leaf01.chain")
+		if err != nil {
+			glog.Exitf("failed to load certificate: %v", err)
+		}
+		signer, err = integration.MakeSigner(*testDir)
+		if err != nil {
+			glog.Exitf("failed to retrieve signer for re-signing: %v", err)
+		}
+		leafCert, err = x509.ParseCertificate(leafChain[0].Data)
+		if err != nil {
+			glog.Exitf("failed to parse leaf certificate to build precert from: %v", err)
+		}
+		caCert, err = x509.ParseCertificate(caChain[0].Data)
+		if err != nil {
+			glog.Exitf("failed to parse issuer for precert: %v", err)
+		}
+	} else {
+		glog.Warningf("Warning: add-[pre-]chain operations disabled as no test data provided")
+		*addChainBias = 0
+		*addPreChainBias = 0
 	}
-	leafChain, err := integration.GetChain(*testDir, "leaf01.chain")
-	if err != nil {
-		glog.Exitf("failed to load certificate: %v", err)
+
+	var notAfterOverride time.Time
+	if *leafNotAfter != "" {
+		notAfterOverride, err = time.Parse(time.RFC3339, *leafNotAfter)
+		if err != nil {
+			glog.Exitf("Failed to parse leaf notAfter: %v", err)
+		}
 	}
-	signer, err := integration.MakeSigner(*testDir)
-	if err != nil {
-		glog.Exitf("failed to retrieve signer for re-signing: %v", err)
-	}
-	leafCert, err := x509.ParseCertificate(leafChain[0].Data)
-	if err != nil {
-		glog.Exitf("failed to parse leaf certificate to build precert from: %v", err)
-	}
-	caCert, err := x509.ParseCertificate(caChain[0].Data)
-	if err != nil {
-		glog.Exitf("failed to parse issuer for precert: %v", err)
-	}
+
 	bias := integration.HammerBias{
 		Bias: map[ctfe.EntrypointName]int{
 			ctfe.AddChainName:          *addChainBias,
@@ -171,21 +195,24 @@ func main() {
 			glog.Exitf("Failed to create client pool: %v", err)
 		}
 		cfg := integration.HammerConfig{
-			LogCfg:            c,
-			MetricFactory:     mf,
-			MMD:               *mmd,
-			LeafChain:         leafChain,
-			LeafCert:          leafCert,
-			CACert:            caCert,
-			Signer:            signer,
-			ClientPool:        pool,
-			EPBias:            bias,
-			MinGetEntries:     *minGetEntries,
-			MaxGetEntries:     *maxGetEntries,
-			Operations:        *operations,
-			Limiter:           newLimiter(*limit),
-			MaxParallelChains: *maxParallelChains,
-			IgnoreErrors:      *ignoreErrors,
+			LogCfg:              c,
+			MetricFactory:       mf,
+			MMD:                 *mmd,
+			LeafChain:           leafChain,
+			LeafCert:            leafCert,
+			CACert:              caCert,
+			Signer:              signer,
+			ClientPool:          pool,
+			EPBias:              bias,
+			MinGetEntries:       *minGetEntries,
+			MaxGetEntries:       *maxGetEntries,
+			OversizedGetEntries: *oversizedGetEntries,
+			Operations:          *operations,
+			Limiter:             newLimiter(*limit),
+			MaxParallelChains:   *maxParallelChains,
+			IgnoreErrors:        *ignoreErrors,
+			MaxRetryDuration:    *maxRetry,
+			NotAfterOverride:    notAfterOverride,
 		}
 		go func(cfg integration.HammerConfig) {
 			defer wg.Done()

@@ -24,10 +24,14 @@ import (
 
 // signV1TreeHead signs a tree head for CT. The input STH should have been built from a
 // backend response and already checked for validity.
-func signV1TreeHead(signer *crypto.Signer, sth *ct.SignedTreeHead) error {
+func (c *LogContext) signV1TreeHead(signer *crypto.Signer, sth *ct.SignedTreeHead) error {
 	sthBytes, err := ct.SerializeSTHSignatureInput(*sth)
 	if err != nil {
 		return err
+	}
+	if sig, ok := c.getLastSTHSignature(sthBytes); ok {
+		sth.TreeHeadSignature = sig
+		return nil
 	}
 
 	signature, err := signer.Sign(sthBytes)
@@ -43,6 +47,7 @@ func signV1TreeHead(signer *crypto.Signer, sth *ct.SignedTreeHead) error {
 		},
 		Signature: signature.Signature,
 	}
+	c.setLastSTHSignature(sthBytes, sth.TreeHeadSignature)
 	return nil
 }
 
@@ -51,7 +56,7 @@ func buildV1SCT(signer *crypto.Signer, leaf *ct.MerkleTreeLeaf) (*ct.SignedCerti
 	sctInput := ct.SignedCertificateTimestamp{
 		SCTVersion: ct.V1,
 		Timestamp:  leaf.TimestampedEntry.Timestamp,
-		Extensions: ct.CTExtensions{},
+		Extensions: leaf.TimestampedEntry.Extensions,
 	}
 	data, err := ct.SerializeSCTSignatureInput(sctInput, ct.LogEntry{Leaf: *leaf})
 	if err != nil {
@@ -81,7 +86,7 @@ func buildV1SCT(signer *crypto.Signer, leaf *ct.MerkleTreeLeaf) (*ct.SignedCerti
 		SCTVersion: ct.V1,
 		LogID:      ct.LogID{KeyID: logID},
 		Timestamp:  sctInput.Timestamp,
-		Extensions: ct.CTExtensions{},
+		Extensions: sctInput.Extensions,
 		Signature:  digitallySigned,
 	}, nil
 }

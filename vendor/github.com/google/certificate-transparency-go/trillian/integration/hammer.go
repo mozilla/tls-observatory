@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	ct "github.com/google/certificate-transparency-go"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/certificate-transparency-go/client"
 	"github.com/google/certificate-transparency-go/merkletree"
 	"github.com/google/certificate-transparency-go/tls"
@@ -34,9 +34,9 @@ import (
 	"github.com/google/certificate-transparency-go/trillian/ctfe/configpb"
 	"github.com/google/certificate-transparency-go/x509"
 	"github.com/google/trillian/monitoring"
-)
 
-const defaultEmitSeconds = 10
+	ct "github.com/google/certificate-transparency-go"
+)
 
 const (
 	// How many STHs and SCTs to hold on to.
@@ -46,8 +46,6 @@ const (
 	// How far beyond current tree size to request for invalid requests.
 	invalidStretch = int64(1000000)
 )
-
-var maxRetryDuration = 60 * time.Second
 
 var (
 	// Metrics are all per-log (label "logid"), but may also be
@@ -106,6 +104,9 @@ type HammerConfig struct {
 	EPBias HammerBias
 	// Range of how many entries to get.
 	MinGetEntries, MaxGetEntries int
+	// OversizedGetEntries governs whether get-entries requests that go beyond the
+	// current tree size are allowed (with a truncated response expected).
+	OversizedGetEntries bool
 	// Number of operations to perform.
 	Operations uint64
 	// Rate limiter
@@ -117,6 +118,11 @@ type HammerConfig struct {
 	EmitInterval time.Duration
 	// IgnoreErrors controls whether a hammer run fails immediately on any error.
 	IgnoreErrors bool
+	// MaxRetryDuration governs how long to keep retrying when IgnoreErrors is true.
+	MaxRetryDuration time.Duration
+	// NotAfterOverride is used as cert and precert's NotAfter if not zeroed.
+	// It takes precedence over automatic NotAfter fixing for temporal logs.
+	NotAfterOverride time.Time
 }
 
 // HammerBias indicates the bias for selecting different log operations.
@@ -150,7 +156,7 @@ func (hb HammerBias) Invalid(ep ctfe.EntrypointName) bool {
 	if chance <= 0 {
 		return false
 	}
-	return (rand.Intn(chance) == 0)
+	return rand.Intn(chance) == 0
 }
 
 type submittedCert struct {
@@ -214,10 +220,10 @@ func (pc *pendingCerts) canAppend(now time.Time, mmd time.Duration) bool {
 	return now.After(nextTime)
 }
 
-// popIfMMDPassed returns the oldest submitted certificate (and removes it) if the
-// maximum merge delay has passed, i.e. it is expected to be integrated as of now.
-// This function locks mu.
-func (pc *pendingCerts) popIfMMDPassed(now time.Time) *submittedCert {
+// oldestIfMMDPassed returns the oldest submitted certificate if the maximum
+// merge delay has passed, i.e. it is expected to be integrated as of now.  This
+// function locks mu.
+func (pc *pendingCerts) oldestIfMMDPassed(now time.Time) *submittedCert {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
@@ -229,13 +235,20 @@ func (pc *pendingCerts) popIfMMDPassed(now time.Time) *submittedCert {
 		// Oldest cert not due to be integrated yet, so neither will any others.
 		return nil
 	}
+	return submitted
+}
+
+// dropOldest removes the oldest submitted certificate.
+func (pc *pendingCerts) dropOldest() {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
 	// Can pop the oldest cert and shuffle the others along, which make room for
 	// another cert to be stored.
 	for i := 0; i < (sctCount - 1); i++ {
 		pc.certs[i] = pc.certs[i+1]
 	}
 	pc.certs[sctCount-1] = nil
-	return submitted
 }
 
 // hammerState tracks the operations that have been performed during a test run, including
@@ -253,6 +266,8 @@ type hammerState struct {
 	pending pendingCerts
 	// Operations that are required to fix dependencies.
 	nextOp []ctfe.EntrypointName
+	// notAfter is the NotAfter time used for new certs and precerts.
+	notAfter time.Time
 }
 
 func newHammerState(cfg *HammerConfig) (*hammerState, error) {
@@ -261,23 +276,57 @@ func newHammerState(cfg *HammerConfig) (*hammerState, error) {
 		mf = monitoring.InertMetricFactory{}
 	}
 	once.Do(func() { setupMetrics(mf) })
-	if cfg.MinGetEntries == 0 {
+	if cfg.MinGetEntries <= 0 {
 		cfg.MinGetEntries = 1
 	}
 	if cfg.MaxGetEntries <= cfg.MinGetEntries {
 		cfg.MaxGetEntries = cfg.MinGetEntries + 300
 	}
-	if cfg.EmitInterval == 0 {
-		cfg.EmitInterval = defaultEmitSeconds * time.Second
+	if cfg.EmitInterval <= 0 {
+		cfg.EmitInterval = 10 * time.Second
 	}
 	if cfg.Limiter == nil {
 		cfg.Limiter = unLimited{}
 	}
+	if cfg.MaxRetryDuration <= 0 {
+		cfg.MaxRetryDuration = 60 * time.Second
+	}
+
+	notAfter, err := getNotAfter(cfg)
+	if err != nil {
+		return nil, err
+	}
+	glog.Infof("%v: using NotAfter = %v", cfg.LogCfg.Prefix, notAfter)
+
 	state := hammerState{
-		cfg:    cfg,
-		nextOp: make([]ctfe.EntrypointName, 0),
+		cfg:      cfg,
+		nextOp:   make([]ctfe.EntrypointName, 0),
+		notAfter: notAfter,
 	}
 	return &state, nil
+}
+
+// getNotAfter returns the NotAfter time to be used on new certs.
+// If cfg.NotAfterOverride is non-zero, it takes precedence and is returned.
+// If cfg.LogCfg is a temporal log, the halfway point between its NotAfterStart and NotAfterLimit is
+// returned.
+// Otherwise a zeroed time is returned.
+func getNotAfter(cfg *HammerConfig) (time.Time, error) {
+	if cfg.NotAfterOverride.UnixNano() > 0 {
+		return cfg.NotAfterOverride, nil
+	}
+	if cfg.LogCfg.NotAfterStart == nil || cfg.LogCfg.NotAfterLimit == nil {
+		return time.Time{}, nil
+	}
+	start, err := ptypes.Timestamp(cfg.LogCfg.NotAfterStart)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error parsing NotAfterStart for %v: %v", cfg.LogCfg.Prefix, cfg.LogCfg.NotAfterStart)
+	}
+	limit, err := ptypes.Timestamp(cfg.LogCfg.NotAfterLimit)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error parsing NotAfterLimit for %v: %v", cfg.LogCfg.Prefix, cfg.LogCfg.NotAfterLimit)
+	}
+	return time.Unix(0, (limit.UnixNano()-start.UnixNano())/2+start.UnixNano()), nil
 }
 
 func (s *hammerState) client() *client.LogClient {
@@ -322,7 +371,7 @@ func (s *hammerState) addMultiple(ctx context.Context, addOne func(context.Conte
 }
 
 func (s *hammerState) addChain(ctx context.Context) error {
-	chain, err := makeCertChain(s.cfg.LeafChain, s.cfg.LeafCert, s.cfg.CACert, s.cfg.Signer)
+	chain, err := makeCertChain(s.cfg.LeafChain, s.cfg.LeafCert, s.cfg.CACert, s.cfg.Signer, s.notAfter)
 	if err != nil {
 		return fmt.Errorf("failed to make fresh cert: %v", err)
 	}
@@ -356,7 +405,7 @@ func (s *hammerState) addChain(ctx context.Context) error {
 
 func (s *hammerState) addChainInvalid(ctx context.Context) error {
 	// Invalid because it's a pre-cert chain, not a cert chain.
-	chain, _, err := makePrecertChain(s.cfg.LeafChain, s.cfg.CACert, s.cfg.Signer)
+	chain, _, err := makePrecertChain(s.cfg.LeafChain, s.cfg.CACert, s.cfg.Signer, s.notAfter)
 	if err != nil {
 		return fmt.Errorf("failed to make fresh cert: %v", err)
 	}
@@ -368,7 +417,7 @@ func (s *hammerState) addChainInvalid(ctx context.Context) error {
 }
 
 func (s *hammerState) addPreChain(ctx context.Context) error {
-	prechain, tbs, err := makePrecertChain(s.cfg.LeafChain, s.cfg.CACert, s.cfg.Signer)
+	prechain, tbs, err := makePrecertChain(s.cfg.LeafChain, s.cfg.CACert, s.cfg.Signer, s.notAfter)
 	if err != nil {
 		return fmt.Errorf("failed to make fresh pre-cert: %v", err)
 	}
@@ -405,7 +454,7 @@ func (s *hammerState) addPreChain(ctx context.Context) error {
 
 func (s *hammerState) addPreChainInvalid(ctx context.Context) error {
 	// Invalid because it's a cert chain, not a pre-cert chain.
-	prechain, err := makeCertChain(s.cfg.LeafChain, s.cfg.LeafCert, s.cfg.CACert, s.cfg.Signer)
+	prechain, err := makeCertChain(s.cfg.LeafChain, s.cfg.LeafCert, s.cfg.CACert, s.cfg.Signer, s.notAfter)
 	if err != nil {
 		return fmt.Errorf("failed to make fresh pre-cert: %v", err)
 	}
@@ -480,7 +529,7 @@ func (s *hammerState) getSTHConsistencyInvalid(ctx context.Context) error {
 }
 
 func (s *hammerState) getProofByHash(ctx context.Context) error {
-	submitted := s.pending.popIfMMDPassed(time.Now())
+	submitted := s.pending.oldestIfMMDPassed(time.Now())
 	if submitted == nil {
 		// No SCT that is guaranteed to be integrated, so move on.
 		return errSkip{}
@@ -498,6 +547,7 @@ func (s *hammerState) getProofByHash(ctx context.Context) error {
 	if err := Verifier.VerifyInclusionProof(rsp.LeafIndex, int64(sth.TreeSize), rsp.AuditPath, sth.SHA256RootHash[:], submitted.leafData); err != nil {
 		return fmt.Errorf("failed to VerifyInclusionProof(%d, %d)=%v", rsp.LeafIndex, sth.TreeSize, err)
 	}
+	s.pending.dropOldest()
 	return nil
 }
 
@@ -526,28 +576,34 @@ func (s *hammerState) getEntries(ctx context.Context) error {
 		s.needOps(ctfe.GetSTHName)
 		return errSkip{}
 	}
-	// Entry indices are zero-based.
-	first := rand.Intn(int(s.sth[0].TreeSize))
+	// Entry indices are zero-based, and may or may not be allowed to extend
+	// beyond current tree size (RFC 6962 s4.6).
+	first := rand.Intn(int(s.lastTreeSize()))
 	span := s.cfg.MaxGetEntries - s.cfg.MinGetEntries
 	count := s.cfg.MinGetEntries + rand.Intn(int(span))
 	last := first + count
-	if last >= int(s.sth[0].TreeSize) {
+
+	if !s.cfg.OversizedGetEntries && last >= int(s.sth[0].TreeSize) {
 		last = int(s.sth[0].TreeSize) - 1
 		count = last - first + 1
 	}
+
 	entries, err := s.client().GetEntries(ctx, int64(first), int64(last))
 	if err != nil {
 		return fmt.Errorf("failed to get-entries(%d,%d): %v", first, last, err)
 	}
 	for i, entry := range entries {
+		if want := int64(first + i); entry.Index != want {
+			return fmt.Errorf("leaf[%d].LeafIndex=%d; want %d", i, entry.Index, want)
+		}
 		leaf := entry.Leaf
-		ts := leaf.TimestampedEntry
 		if leaf.Version != 0 {
 			return fmt.Errorf("leaf[%d].Version=%v; want V1(0)", i, leaf.Version)
 		}
 		if leaf.LeafType != ct.TimestampedEntryLeafType {
 			return fmt.Errorf("leaf[%d].Version=%v; want TimestampedEntryLeafType", i, leaf.LeafType)
 		}
+		ts := leaf.TimestampedEntry
 		if ts.EntryType != ct.X509LogEntryType && ts.EntryType != ct.PrecertLogEntryType {
 			return fmt.Errorf("leaf[%d].ts.EntryType=%v; want {X509,Precert}LogEntryType", i, ts.EntryType)
 		}
@@ -667,7 +723,9 @@ func (s *hammerState) chooseOp() (ctfe.EntrypointName, bool) {
 	if len(s.nextOp) > 0 {
 		ep := s.nextOp[0]
 		s.nextOp = s.nextOp[1:]
-		return ep, false
+		if s.cfg.EPBias.Bias[ep] > 0 {
+			return ep, false
+		}
 	}
 	ep := s.cfg.EPBias.Choose()
 	return ep, s.cfg.EPBias.Invalid(ep)
@@ -685,7 +743,7 @@ func (s *hammerState) retryOneOp(ctx context.Context) error {
 
 	glog.V(3).Infof("perform %s operation", ep)
 	status := http.StatusOK
-	deadline := time.Now().Add(maxRetryDuration)
+	deadline := time.Now().Add(s.cfg.MaxRetryDuration)
 
 	var err error
 	done := false
@@ -709,7 +767,8 @@ func (s *hammerState) retryOneOp(ctx context.Context) error {
 		default:
 			errs.Inc(s.label(), string(ep))
 			if s.cfg.IgnoreErrors {
-				glog.Warningf("%s: op %v failed after %v (will retry): %v", s.cfg.LogCfg.Prefix, ep, period, err)
+				left := deadline.Sub(time.Now())
+				glog.Warningf("%s: op %v failed after %v (will retry for %v more): %v", s.cfg.LogCfg.Prefix, ep, period, left, err)
 			} else {
 				done = true
 			}
@@ -717,8 +776,8 @@ func (s *hammerState) retryOneOp(ctx context.Context) error {
 
 		s.mu.Unlock()
 
-		if time.Now().After(deadline) {
-			glog.Warningf("%s: gave up retrying failed op %v after %v, returning last err %v", s.cfg.LogCfg.Prefix, ep, maxRetryDuration, err)
+		if err != nil && time.Now().After(deadline) {
+			glog.Warningf("%s: gave up retrying failed op %v after %v, returning last err: %v", s.cfg.LogCfg.Prefix, ep, s.cfg.MaxRetryDuration, err)
 			done = true
 		}
 	}
@@ -735,7 +794,7 @@ func HammerCTLog(cfg HammerConfig) error {
 	ticker := time.NewTicker(cfg.EmitInterval)
 
 	go func(c <-chan time.Time) {
-		for _ = range c {
+		for range c {
 			glog.Info(s.String())
 		}
 	}(ticker.C)

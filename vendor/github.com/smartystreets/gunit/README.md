@@ -86,6 +86,15 @@ Astute observations. `gunit` allows the test author to use a _struct_ as the sco
 
 Enjoy.
 
+### Parallelism
+By default all fixtures are run in parallel as they should be independent, but if you for some reason have fixtures which need to be run sequentially, you can change the `Run()` method to `RunSequential()`, e.g. in the above example
+
+```go
+func TestExampleFixture(t *testing.T) {
+	gunit.RunSequential(new(ExampleFixture), t)
+}
+```
+
 [Advanced Examples](https://github.com/smartystreets/gunit/tree/master/advanced_examples)
 
 ----------------------------------------------------------------------------

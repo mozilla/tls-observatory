@@ -38,7 +38,6 @@ func newFixture(t testingT, verbose bool) *Fixture {
 // from the many assertion functions found in github.com/smartystreets/assertions/should.
 // Example: this.So(actual, should.Equal, expected)
 func (this *Fixture) So(actual interface{}, assert assertion, expected ...interface{}) bool {
-
 	failure := assert(actual, expected...)
 	failed := len(failure) > 0
 	if failed {

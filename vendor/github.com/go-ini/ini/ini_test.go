@@ -16,6 +16,7 @@ package ini_test
 
 import (
 	"bytes"
+	"flag"
 	"io/ioutil"
 	"testing"
 
@@ -46,6 +47,8 @@ const (
 	_FULL_CONF      = "testdata/full.ini"
 	_NOT_FOUND_CONF = "testdata/404.ini"
 )
+
+var update = flag.Bool("update", false, "Update .golden files")
 
 func TestLoad(t *testing.T) {
 	Convey("Load from good data sources", t, func() {
@@ -266,6 +269,19 @@ create_repo="创建了仓库 <a href=\"%s\">%s</a>"`))
 
 				So(f.Section("").Key("create_repo").String(), ShouldEqual, `"创建了仓库 <a href=\"%s\">%s</a>"`)
 			})
+		})
+
+		Convey("Unescape comment symbols inside value", func() {
+			f, err := ini.LoadSources(ini.LoadOptions{
+				IgnoreInlineComment:         true,
+				UnescapeValueCommentSymbols: true,
+			}, []byte(`
+key = test value <span style="color: %s\; background: %s">more text</span>
+`))
+			So(err, ShouldBeNil)
+			So(f, ShouldNotBeNil)
+
+			So(f.Section("").Key("key").String(), ShouldEqual, `test value <span style="color: %s; background: %s">more text</span>`)
 		})
 
 		Convey("Allow unparseable sections", func() {

@@ -30,10 +30,11 @@ import (
 )
 
 // ScannerOptions holds configuration options for the Scanner
-type ScannerOptions struct {
+type ScannerOptions struct { // nolint:golint
 	// Custom matcher for x509 Certificates, functor will be called for each
-	// Certificate found during scanning.
-	Matcher Matcher
+	// Certificate found during scanning.  Should be a Matcher or LeafMatcher
+	// implementation.
+	Matcher interface{}
 
 	// Match precerts only (Matcher still applies to precerts)
 	PrecertOnly bool
@@ -46,6 +47,9 @@ type ScannerOptions struct {
 
 	// Number of concurrent fethers to run
 	ParallelFetch int
+
+	// Number of fetched entries to buffer on their way to the callbacks
+	BufferSize int
 
 	// Log entry index to start fetching & matching at
 	StartIndex int64
@@ -125,6 +129,17 @@ func (s *Scanner) isCertErrorFatal(err error, logEntry *ct.LogEntry, index int64
 func (s *Scanner) processEntry(index int64, entry ct.LeafEntry, foundCert func(*ct.LogEntry), foundPrecert func(*ct.LogEntry)) error {
 	atomic.AddInt64(&s.certsProcessed, 1)
 
+	switch matcher := s.opts.Matcher.(type) {
+	case Matcher:
+		return s.processMatcherEntry(matcher, index, entry, foundCert, foundPrecert)
+	case LeafMatcher:
+		return s.processMatcherLeafEntry(matcher, index, entry, foundCert, foundPrecert)
+	default:
+		return fmt.Errorf("Unexpected matcher type %T", matcher)
+	}
+}
+
+func (s *Scanner) processMatcherEntry(matcher Matcher, index int64, entry ct.LeafEntry, foundCert func(*ct.LogEntry), foundPrecert func(*ct.LogEntry)) error {
 	logEntry, err := ct.LogEntryFromLeaf(index, &entry)
 	if s.isCertErrorFatal(err, logEntry, index) {
 		return fmt.Errorf("failed to parse [pre-]certificate in MerkleTreeLeaf: %v", err)
@@ -136,16 +151,39 @@ func (s *Scanner) processEntry(index int64, entry ct.LeafEntry, foundCert func(*
 			// Only interested in precerts and this is an X.509 cert, early-out.
 			return nil
 		}
-		if s.opts.Matcher.CertificateMatches(logEntry.X509Cert) {
+		if matcher.CertificateMatches(logEntry.X509Cert) {
 			foundCert(logEntry)
 		}
 	case logEntry.Precert != nil:
-		if s.opts.Matcher.PrecertificateMatches(logEntry.Precert) {
+		if matcher.PrecertificateMatches(logEntry.Precert) {
 			foundPrecert(logEntry)
 		}
 		atomic.AddInt64(&s.precertsSeen, 1)
 	default:
 		return fmt.Errorf("saw unknown entry type: %v", logEntry.Leaf.TimestampedEntry.EntryType)
+	}
+	return nil
+}
+
+func (s *Scanner) processMatcherLeafEntry(matcher LeafMatcher, index int64, entry ct.LeafEntry, foundCert func(*ct.LogEntry), foundPrecert func(*ct.LogEntry)) error {
+	if matcher.Matches(&entry) {
+		logEntry, err := ct.LogEntryFromLeaf(index, &entry)
+		if logEntry == nil {
+			return fmt.Errorf("failed to build log entry: %v", err)
+		}
+		switch {
+		case logEntry.X509Cert != nil:
+			if s.opts.PrecertOnly {
+				// Only interested in precerts and this is an X.509 cert, early-out.
+				return nil
+			}
+			foundCert(logEntry)
+		case logEntry.Precert != nil:
+			foundPrecert(logEntry)
+			atomic.AddInt64(&s.precertsSeen, 1)
+		default:
+			return fmt.Errorf("saw unknown entry type: %v", logEntry.Leaf.TimestampedEntry.EntryType)
+		}
 	}
 	return nil
 }
@@ -248,19 +286,34 @@ func (s *Scanner) Scan(ctx context.Context, foundCert func(*ct.LogEntry), foundP
 	}
 	s.Log(fmt.Sprintf("Got STH with %d certs", latestSth.TreeSize))
 
+	// TODO: cleanup Ticker and goroutine on return.
 	ticker := time.NewTicker(time.Second)
 	startTime := time.Now()
-	fetches := make(chan fetchRange, 1000)
-	jobs := make(chan entryInfo, 100000)
+	fetches := make(chan fetchRange)
+	jobs := make(chan entryInfo, s.opts.BufferSize)
 	go func() {
+		slidingWindow := make([]int64, 15)
+		i, previousCount := 0, int64(0)
 		for range ticker.C {
 			certsProcessed := atomic.LoadInt64(&s.certsProcessed)
-			throughput := float64(certsProcessed) / time.Since(startTime).Seconds()
+			slidingWindow[i%15], previousCount = certsProcessed-previousCount, certsProcessed
+
+			windowTotal := int64(0)
+			for _, v := range slidingWindow {
+				windowTotal += v
+			}
+			windowSeconds := 15
+			if i < 15 {
+				windowSeconds = i + 1
+			}
+
+			throughput := float64(windowTotal) / float64(windowSeconds)
 			remainingCerts := int64(latestSth.TreeSize) - int64(s.opts.StartIndex) - certsProcessed
 			remainingSeconds := int(float64(remainingCerts) / throughput)
 			remainingString := humanTime(remainingSeconds)
-			s.Log(fmt.Sprintf("Processed: %d certs (to index %d). Throughput: %3.2f ETA: %s\n", certsProcessed,
+			s.Log(fmt.Sprintf("Processed: %d certs (to index %d). Throughput (last 15s): %3.2f ETA: %s\n", certsProcessed,
 				s.opts.StartIndex+int64(certsProcessed), throughput, remainingString))
+			i++
 		}
 	}()
 

@@ -187,7 +187,6 @@ var PublicKeyAlgorithm = [...]string{
 
 func SHA256SubjectSPKI(cert *x509.Certificate) string {
 	h := sha256.New()
-	h.Write(cert.RawSubject)
 	h.Write(cert.RawSubjectPublicKeyInfo)
 	return fmt.Sprintf("%X", h.Sum(nil))
 }

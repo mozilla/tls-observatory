@@ -13,27 +13,23 @@ import (
 	"crypto/rsa"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
-	"runtime"
-	// START CT CHANGES
-	"github.com/google/certificate-transparency-go/asn1"
-	"github.com/google/certificate-transparency-go/x509/pkix"
-	// END CT CHANGES
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
-	// START CT CHANGES
 	"errors"
-	// END CT CHANGES
 	"fmt"
 	"math/big"
 	"net"
+	"net/url"
 	"os/exec"
 	"reflect"
-	// START CT CHANGES
+	"runtime"
 	"strings"
-	// END CT CHANGES
 	"testing"
 	"time"
+
+	"github.com/google/certificate-transparency-go/asn1"
+	"github.com/google/certificate-transparency-go/x509/pkix"
 )
 
 func TestParsePKCS1PrivateKey(t *testing.T) {
@@ -184,6 +180,125 @@ func TestMarshalRSAPrivateKey(t *testing.T) {
 	}
 }
 
+func TestMarshalRSAPublicKey(t *testing.T) {
+	pub := &rsa.PublicKey{
+		N: fromBase10("16346378922382193400538269749936049106320265317511766357599732575277382844051791096569333808598921852351577762718529818072849191122419410612033592401403764925096136759934497687765453905884149505175426053037420486697072448609022753683683718057795566811401938833367954642951433473337066311978821180526439641496973296037000052546108507805269279414789035461158073156772151892452251106173507240488993608650881929629163465099476849643165682709047462010581308719577053905787496296934240246311806555924593059995202856826239801816771116902778517096212527979497399966526283516447337775509777558018145573127308919204297111496233"),
+		E: 3,
+	}
+	derBytes := MarshalPKCS1PublicKey(pub)
+	pub2, err := ParsePKCS1PublicKey(derBytes)
+	if err != nil {
+		t.Errorf("ParsePKCS1PublicKey: %s", err)
+	}
+	if pub.N.Cmp(pub2.N) != 0 || pub.E != pub2.E {
+		t.Errorf("ParsePKCS1PublicKey = %+v, want %+v", pub, pub2)
+	}
+
+	// It's never been documented that asn1.Marshal/Unmarshal on rsa.PublicKey works,
+	// but it does, and we know of code that depends on it.
+	// Lock that in, even though we'd prefer that people use MarshalPKCS1PublicKey and ParsePKCS1PublicKey.
+	derBytes2, err := asn1.Marshal(*pub)
+	if err != nil {
+		t.Errorf("Marshal(rsa.PublicKey): %v", err)
+	} else if !bytes.Equal(derBytes, derBytes2) {
+		t.Errorf("Marshal(rsa.PublicKey) = %x, want %x", derBytes2, derBytes)
+	}
+	pub3 := new(rsa.PublicKey)
+	rest, err := asn1.Unmarshal(derBytes, pub3)
+	if err != nil {
+		t.Errorf("Unmarshal(rsa.PublicKey): %v", err)
+	}
+	if len(rest) != 0 || pub.N.Cmp(pub3.N) != 0 || pub.E != pub3.E {
+		t.Errorf("Unmarshal(rsa.PublicKey) = %+v, %q want %+v, %q", pub, rest, pub2, []byte(nil))
+	}
+
+	publicKeys := []struct {
+		derBytes          []byte
+		expectedErrSubstr string
+	}{
+		{
+			derBytes: []byte{
+				0x30, 6, // SEQUENCE, 6 bytes
+				0x02, 1, // INTEGER, 1 byte
+				17,
+				0x02, 1, // INTEGER, 1 byte
+				3, // 3
+			},
+		}, {
+			derBytes: []byte{
+				0x30, 6, // SEQUENCE
+				0x02, 1, // INTEGER, 1 byte
+				0xff,    // -1
+				0x02, 1, // INTEGER, 1 byte
+				3,
+			},
+			expectedErrSubstr: "zero or negative",
+		}, {
+			derBytes: []byte{
+				0x30, 6, // SEQUENCE
+				0x02, 1, // INTEGER, 1 byte
+				17,
+				0x02, 1, // INTEGER, 1 byte
+				0xff, // -1
+			},
+			expectedErrSubstr: "zero or negative",
+		}, {
+			derBytes: []byte{
+				0x30, 6, // SEQUENCE
+				0x02, 1, // INTEGER, 1 byte
+				17,
+				0x02, 1, // INTEGER, 1 byte
+				3,
+				1,
+			},
+			expectedErrSubstr: "trailing data",
+		}, {
+			derBytes: []byte{
+				0x30, 9, // SEQUENCE
+				0x02, 1, // INTEGER, 1 byte
+				17,
+				0x02, 4, // INTEGER, 4 bytes
+				0x7f, 0xff, 0xff, 0xff,
+			},
+		}, {
+			derBytes: []byte{
+				0x30, 10, // SEQUENCE
+				0x02, 1, // INTEGER, 1 byte
+				17,
+				0x02, 5, // INTEGER, 5 bytes
+				0x00, 0x80, 0x00, 0x00, 0x00,
+			},
+			// On 64-bit systems, encoding/asn1 will accept the
+			// public exponent, but ParsePKCS1PublicKey will return
+			// an error. On 32-bit systems, encoding/asn1 will
+			// return the error. The common substring of both error
+			// is the word “large”.
+			expectedErrSubstr: "large",
+		},
+	}
+
+	for i, test := range publicKeys {
+		shouldFail := len(test.expectedErrSubstr) > 0
+		pub, err := ParsePKCS1PublicKey(test.derBytes)
+		if shouldFail {
+			if err == nil {
+				t.Errorf("#%d: unexpected success, got %#v", i, pub)
+			} else if !strings.Contains(err.Error(), test.expectedErrSubstr) {
+				t.Errorf("#%d: expected error containing %q, got %s", i, test.expectedErrSubstr, err)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("#%d: unexpected failure: %s", i, err)
+				continue
+			}
+			reserialized := MarshalPKCS1PublicKey(pub)
+			if !bytes.Equal(reserialized, test.derBytes) {
+				t.Errorf("#%d: failed to reserialize: got %x, expected %x", i, reserialized, test.derBytes)
+			}
+		}
+	}
+}
+
 type matchHostnamesTest struct {
 	pattern, host string
 	ok            bool
@@ -294,6 +409,27 @@ func TestCertificateParse(t *testing.T) {
 	}
 }
 
+func TestMismatchedSignatureAlgorithm(t *testing.T) {
+	der, _ := pem.Decode([]byte(rsaPSSSelfSignedPEM))
+	if der == nil {
+		t.Fatal("Failed to find PEM block")
+	}
+
+	cert, err := ParseCertificate(der.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = cert.CheckSignature(ECDSAWithSHA256, nil, nil); err == nil {
+		t.Fatal("CheckSignature unexpectedly return no error")
+	}
+
+	const expectedSubstring = " but have public key of type "
+	if !strings.Contains(err.Error(), expectedSubstring) {
+		t.Errorf("Expected error containing %q, but got %q", expectedSubstring, err)
+	}
+}
+
 var certBytes = "308203223082028ba00302010202106edf0d9499fd4533dd1297fc42a93be1300d06092a864886" +
 	"f70d0101050500304c310b3009060355040613025a4131253023060355040a131c546861777465" +
 	"20436f6e73756c74696e67202850747929204c74642e311630140603550403130d546861777465" +
@@ -336,6 +472,132 @@ var certBytes = "308203223082028ba00302010202106edf0d9499fd4533dd1297fc42a93be13
 	"e9e83994dcab72792f06bfab8170c4a8edea5334edef1e53d906c7562bd15cf4d18a8eb42bb137" +
 	"9048084225c53e8acb7feb6f04d16dc574a2f7a27c7b603c77cd0ece48027f012fb69b37e02a2a" +
 	"36dcd585d6ace53f546f961e05af"
+
+var certWithSCTListPEM = `
+-----BEGIN CERTIFICATE-----
+MIIHkzCCBnugAwIBAgIUHz6ZOwEjk6zhU9v3n2Jo3qeucqYwDQYJKoZIhvcNAQEL
+BQAwSTELMAkGA1UEBhMCQk0xGTAXBgNVBAoTEFF1b1ZhZGlzIExpbWl0ZWQxHzAd
+BgNVBAMTFlF1b1ZhZGlzIEVWIFNTTCBJQ0EgRzEwHhcNMTcwMjA4MTQxNTU3WhcN
+MTgwMjA4MTQyNTAwWjCByzETMBEGCysGAQQBgjc8AgEDEwJHQjEYMBYGA1UEDwwP
+QnVzaW5lc3MgRW50aXR5MREwDwYDVQQFEwhTQzA5NTAwMDELMAkGA1UEBhMCR0Ix
+EjAQBgNVBAgMCUVkaW5idXJnaDESMBAGA1UEBwwJRWRpbmJ1cmdoMSEwHwYDVQQK
+DBhMbG95ZHMgQmFua2luZyBHcm91cCBQTEMxEjAQBgNVBAsMCUdST1VQIElUMjEb
+MBkGA1UEAwwSd3d3Lmxsb3lkc2JhbmsuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOC
+AQ8AMIIBCgKCAQEAyRkzN3UmnYbuIW7V4P5qyF/3iCdJwaw/avb0tpOJTa/svtM2
+9KxtVtgwqAPCSuWgjHh6lx+OzXBOh0cM1+gOvjscIJ7k6J0UKouhxrZ02G6CHiNS
+0P3ztsW1CVYAnEQqnhC+hBSl+Ut7DdcsReOUaUrIbO8T0psfsBnez6VtcLB74Hi0
+y6s2AOwPKG7zRjMcMEylOYyGMrUI4ooGsf7IBzMOdMZpkAMUEe6KZ/8AssZOH7F9
+OacCBcGHwN3qp/AG02+tXGaS9DWCS9/seMWqyhE8YPk+iGV3sFZEueBMxixVObFZ
+0Ezwv3cCel6v2mlA5OweteDI57VG4/7OI45CawIDAQABo4ID7jCCA+owdwYIKwYB
+BQUHAQEEazBpMDgGCCsGAQUFBzAChixodHRwOi8vdHJ1c3QucXVvdmFkaXNnbG9i
+YWwuY29tL3F2ZXZzc2wxLmNydDAtBggrBgEFBQcwAYYhaHR0cDovL2V2Lm9jc3Au
+cXVvdmFkaXNnbG9iYWwuY29tMB0GA1UdDgQWBBSIASoK0Cmqs5B06CJUUzq5nQ6c
+IDAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFFVYhs66fHZOmROpD9Nsn8L10zzj
+MFEGA1UdIARKMEgwRgYMKwYBBAG+WAACZAECMDYwNAYIKwYBBQUHAgEWKGh0dHA6
+Ly93d3cucXVvdmFkaXNnbG9iYWwuY29tL3JlcG9zaXRvcnkwOwYDVR0fBDQwMjAw
+oC6gLIYqaHR0cDovL2NybC5xdW92YWRpc2dsb2JhbC5jb20vcXZldnNzbDEuY3Js
+MA4GA1UdDwEB/wQEAwIFoDAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwEw
+gd8GA1UdEQSB1zCB1IISd3d3Lmxsb3lkc2JhbmsuY29tghRzdGF0aWMuaGFsaWZh
+eC5jby51a4IUd3d3Lmxsb3lkc2JhbmsuY28udWuCFGltYWdlcy5oYWxpZmF4LmNv
+LnVrghh3d3cuYmFua29mc2NvdGxhbmQuY28udWuCD3d3dy5oYWxpZmF4LmNvbYIT
+d3d3Lmxsb3lkc3RzYi5jby51a4IRd3d3Lmxsb3lkc3RzYi5jb22CEXd3dy5oYWxp
+ZmF4LmNvLnVrghZ3d3cuYmFua29mc2NvdGxhbmQuY29tMIIBfgYKKwYBBAHWeQIE
+AgSCAW4EggFqAWgAdgC72d+8H4pxtZOUI5eqkntHOFeVCqtS6BqQlmQ2jh7RhQAA
+AVoeHdwIAAAEAwBHMEUCIQD3fh/6Cp3I44poKfhA7IkhjInvl8qC9JkooycB7NfE
+lgIgMihc8F0Ap1gIU7WUCxWgV0nUxeWp34mp+g0IPnNJ1KcAdgCkuQmQtBhYFIe7
+E6LMZ3AKPDWYBPkb37jjd80OyA3cEAAAAVoeHdwaAAAEAwBHMEUCIA45u9pfeirN
+Hn8K0xHDCUfCihQSFJo0YYmFxYEgO8GEAiEAwDXdmIkkv3lJ1td+RjTzXMBIjp9R
+3Ii1GumOGKe8IqcAdgBWFAaaL9fC7NP14b1Esj7HRna5vJkRXMDvlJhV1onQ3QAA
+AVoeHdxAAAAEAwBHMEUCIEfe5grRiTvaHZJ4e4glbGftZ87n1pQf2lVeyBMUq0Xa
+AiEA/+W+qCcVd3hHVaYJryO67SYCbUBinU5/6je8eDLOEM4wDQYJKoZIhvcNAQEL
+BQADggEBADGdRf8XpQRPzxv+NeUr5i4q49JI8M/umbwSEXkHJmaDD4CDiUGkFUNR
+Tte0HDRvjbu5y9xub09MgdMl84qvfjsph54rUVK7LWVphi6CC21XbRP5gEwKBeA2
+wAZU1IhhWBy6DaW4CjpTu1Ji3FJqHqKklFrZTMSS+xoqfYbbN96q1mJHQhyDdRlC
+JvNuS1lDM0u3+g/MHNpQM1aGZVKtwpzRABIYhydSJrO14TzWJjbKm1UTnKiwvHbt
+p1ATnYNDZKj3Ec8EASXGTHHoorX0jZpMiNxHv4p4BUinsNFttkhudMGbCfbjjqef
+UfUJESblkeQVpcnndMfnsHSahCVd96k=
+-----END CERTIFICATE-----
+`
+
+// The cert above contains the following SCTs, each of which is a TLS-encoded
+// SignedCertificateTimestamp structure from RFC6962 s3.2.
+/*
+   struct {
+       Version sct_version;
+       LogID id;
+       uint64 timestamp;
+       CtExtensions extensions;
+       digitally-signed struct {
+           Version sct_version;
+           SignatureType signature_type = certificate_timestamp;
+           uint64 timestamp;
+           LogEntryType entry_type;
+           select(entry_type) {
+               case x509_entry: ASN.1Cert;
+               case precert_entry: PreCert;
+           } signed_entry;
+          CtExtensions extensions;
+       };
+   } SignedCertificateTimestamp;
+*/
+
+var wantSCTs = []string{
+	("00" + // Version: v1(0)
+		"bbd9dfbc1f8a71b593942397aa927b473857950aab52e81a909664368e1ed185" + // LogID: Google Skydiver
+		"0000015a1e1ddc08" + // Timestamp
+		"0000" + // No Extensions
+		("04" + "03" + // SHA-256, ECDSA
+			("0047" +
+				"3045022100f77e1ffa0a9dc8e38a6829f840ec89218c89ef97ca82f49928a32701ecd7c496022032285cf05d00a7580853b5940b15a05749d4c5e5a9df89a9fa0d083e7349d4a7"))),
+
+	("00" + // Version: v1(0)
+		"a4b90990b418581487bb13a2cc67700a3c359804f91bdfb8e377cd0ec80ddc10" + // LogID: Google Pilot
+		"0000015a1e1ddc1a" +
+		"0000" + // No Extensions
+		("04" + "03" + // SHA-256, ECDSA
+			("0047" +
+				"304502200e39bbda5f7a2acd1e7f0ad311c30947c28a1412149a34618985c581203bc184022100c035dd988924bf7949d6d77e4634f35cc0488e9f51dc88b51ae98e18a7bc22a7"))),
+	("00" + // Version: v1(0)
+		"5614069a2fd7c2ecd3f5e1bd44b23ec74676b9bc99115cc0ef949855d689d0dd" + // LogID: Digicert Log Server
+		"0000015a1e1ddc40" + // Timestamp
+		"0000" + // No Extensions
+		("04" + "03" + // SHA-256, ECDSA
+			("0047" +
+				"3045022047dee60ad1893bda1d92787b88256c67ed67cee7d6941fda555ec81314ab45da022100ffe5bea8271577784755a609af23baed26026d40629d4e7fea37bc7832ce10ce"))),
+}
+
+func TestParseCertificateSCTs(t *testing.T) {
+	pemBlock, _ := pem.Decode([]byte(certWithSCTListPEM))
+	cert, err := ParseCertificate(pemBlock.Bytes)
+	if err != nil {
+		t.Fatalf("ParseCertificate()=_,%v; want _, nil", err)
+	}
+	if len(cert.RawSCT) == 0 {
+		t.Errorf("len(cert.RawSCT)=0, want >0")
+	}
+	for i, got := range cert.SCTList.SCTList {
+		want, _ := hex.DecodeString(wantSCTs[i])
+		if !bytes.Equal(got.Val, want) {
+			t.Errorf("SCT[%d]=%x; want %x", i, got.Val, want)
+		}
+	}
+}
+
+func parseCIDR(s string) *net.IPNet {
+	_, net, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(err)
+	}
+	return net
+}
+
+func parseURI(s string) *url.URL {
+	uri, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	return uri
+}
 
 func TestCreateSelfSignedCertificate(t *testing.T) {
 	random := rand.Reader
@@ -408,12 +670,27 @@ func TestCreateSelfSignedCertificate(t *testing.T) {
 			DNSNames:       []string{"test.example.com"},
 			EmailAddresses: []string{"gopher@golang.org"},
 			IPAddresses:    []net.IP{net.IPv4(127, 0, 0, 1).To4(), net.ParseIP("2001:4860:0:2001::68")},
+			URIs:           []*url.URL{parseURI("https://foo.com/wibble#foo")},
 
-			PolicyIdentifiers:   []asn1.ObjectIdentifier{[]int{1, 2, 3}},
-			PermittedDNSDomains: []string{".example.com", "example.com"},
-			ExcludedDNSDomains:  []string{"bar.example.com"},
+			PolicyIdentifiers:       []asn1.ObjectIdentifier{[]int{1, 2, 3}},
+			PermittedDNSDomains:     []string{".example.com", "example.com"},
+			ExcludedDNSDomains:      []string{"bar.example.com"},
+			PermittedIPRanges:       []*net.IPNet{parseCIDR("192.168.1.1/16"), parseCIDR("1.2.3.4/8")},
+			ExcludedIPRanges:        []*net.IPNet{parseCIDR("2001:db8::/48")},
+			PermittedEmailAddresses: []string{"foo@example.com"},
+			ExcludedEmailAddresses:  []string{".example.com", "example.com"},
+			PermittedURIDomains:     []string{".bar.com", "bar.com"},
+			ExcludedURIDomains:      []string{".bar2.com", "bar2.com"},
 
 			CRLDistributionPoints: []string{"http://crl1.example.com/ca1.crl", "http://crl2.example.com/ca1.crl"},
+
+			RawSCT: []byte{0xde, 0xad}, // Ignored because SCTList provided.
+			SCTList: SignedCertificateTimestampList{
+				SCTList: []SerializedSCT{
+					{Val: []byte{0x01, 0x02, 0x03}},
+					{Val: []byte{0x04, 0x05, 0x06}},
+				},
+			},
 
 			ExtraExtensions: []pkix.Extension{
 				{
@@ -422,7 +699,7 @@ func TestCreateSelfSignedCertificate(t *testing.T) {
 				},
 				// This extension should override the SubjectKeyId, above.
 				{
-					Id:       oidExtensionSubjectKeyId,
+					Id:       OIDExtensionSubjectKeyId,
 					Critical: false,
 					Value:    []byte{0x04, 0x04, 4, 3, 2, 1},
 				},
@@ -453,12 +730,44 @@ func TestCreateSelfSignedCertificate(t *testing.T) {
 			t.Errorf("%s: failed to parse name constraint exclusions: %#v", test.name, cert.ExcludedDNSDomains)
 		}
 
+		if len(cert.PermittedIPRanges) != 2 || cert.PermittedIPRanges[0].String() != "192.168.0.0/16" || cert.PermittedIPRanges[1].String() != "1.0.0.0/8" {
+			t.Errorf("%s: failed to parse IP constraints: %#v", test.name, cert.PermittedIPRanges)
+		}
+
+		if len(cert.ExcludedIPRanges) != 1 || cert.ExcludedIPRanges[0].String() != "2001:db8::/48" {
+			t.Errorf("%s: failed to parse IP constraint exclusions: %#v", test.name, cert.ExcludedIPRanges)
+		}
+
+		if len(cert.PermittedEmailAddresses) != 1 || cert.PermittedEmailAddresses[0] != "foo@example.com" {
+			t.Errorf("%s: failed to parse permitted email addreses: %#v", test.name, cert.PermittedEmailAddresses)
+		}
+
+		if len(cert.ExcludedEmailAddresses) != 2 || cert.ExcludedEmailAddresses[0] != ".example.com" || cert.ExcludedEmailAddresses[1] != "example.com" {
+			t.Errorf("%s: failed to parse excluded email addreses: %#v", test.name, cert.ExcludedEmailAddresses)
+		}
+
+		if len(cert.PermittedURIDomains) != 2 || cert.PermittedURIDomains[0] != ".bar.com" || cert.PermittedURIDomains[1] != "bar.com" {
+			t.Errorf("%s: failed to parse permitted URIs: %#v", test.name, cert.PermittedURIDomains)
+		}
+
+		if len(cert.ExcludedURIDomains) != 2 || cert.ExcludedURIDomains[0] != ".bar2.com" || cert.ExcludedURIDomains[1] != "bar2.com" {
+			t.Errorf("%s: failed to parse excluded URIs: %#v", test.name, cert.ExcludedURIDomains)
+		}
+
 		if cert.Subject.CommonName != commonName {
 			t.Errorf("%s: subject wasn't correctly copied from the template. Got %s, want %s", test.name, cert.Subject.CommonName, commonName)
 		}
 
 		if len(cert.Subject.Country) != 1 || cert.Subject.Country[0] != "NL" {
 			t.Errorf("%s: ExtraNames didn't override Country", test.name)
+		}
+
+		for _, ext := range cert.Extensions {
+			if ext.Id.Equal(OIDExtensionSubjectAltName) {
+				if ext.Critical {
+					t.Fatal("SAN extension is marked critical")
+				}
+			}
 		}
 
 		found := false
@@ -504,12 +813,20 @@ func TestCreateSelfSignedCertificate(t *testing.T) {
 			t.Errorf("%s: SAN emails differ from template. Got %v, want %v", test.name, cert.EmailAddresses, template.EmailAddresses)
 		}
 
+		if len(cert.URIs) != 1 || cert.URIs[0].String() != "https://foo.com/wibble#foo" {
+			t.Errorf("%s: URIs differ from template. Got %v, want %v", test.name, cert.URIs, template.URIs)
+		}
+
 		if !reflect.DeepEqual(cert.IPAddresses, template.IPAddresses) {
 			t.Errorf("%s: SAN IPs differ from template. Got %v, want %v", test.name, cert.IPAddresses, template.IPAddresses)
 		}
 
 		if !reflect.DeepEqual(cert.CRLDistributionPoints, template.CRLDistributionPoints) {
 			t.Errorf("%s: CRL distribution points differ from template. Got %v, want %v", test.name, cert.CRLDistributionPoints, template.CRLDistributionPoints)
+		}
+
+		if !reflect.DeepEqual(cert.SCTList, template.SCTList) {
+			t.Errorf("%s: SCTList differs from template. Got %v, want %v", test.name, cert.SCTList, template.SCTList)
 		}
 
 		if !bytes.Equal(cert.SubjectKeyId, []byte{4, 3, 2, 1}) {
@@ -525,74 +842,6 @@ func TestCreateSelfSignedCertificate(t *testing.T) {
 			if err != nil {
 				t.Errorf("%s: signature verification failed: %s", test.name, err)
 			}
-		}
-	}
-}
-
-func TestUnknownCriticalExtension(t *testing.T) {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatalf("Failed to generate ECDSA key: %s", err)
-	}
-
-	oids := []asn1.ObjectIdentifier{
-		// This OID is in the PKIX arc, but unknown.
-		{2, 5, 29, 999999},
-		// This is a nonsense, unassigned OID.
-		{1, 2, 3, 4},
-	}
-
-	for _, oid := range oids {
-		template := Certificate{
-			SerialNumber: big.NewInt(1),
-			Subject: pkix.Name{
-				CommonName: "foo",
-			},
-			NotBefore: time.Unix(1000, 0),
-			NotAfter:  time.Now().AddDate(1, 0, 0),
-
-			BasicConstraintsValid: true,
-			IsCA: true,
-
-			KeyUsage:    KeyUsageCertSign,
-			ExtKeyUsage: []ExtKeyUsage{ExtKeyUsageServerAuth},
-
-			ExtraExtensions: []pkix.Extension{
-				{
-					Id:       oid,
-					Critical: true,
-					Value:    nil,
-				},
-			},
-		}
-
-		derBytes, err := CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
-		if err != nil {
-			t.Fatalf("failed to create certificate: %s", err)
-		}
-
-		cert, err := ParseCertificate(derBytes)
-		if err != nil {
-			t.Fatalf("Certificate with unknown critical extension was not parsed: %s", err)
-		}
-
-		roots := NewCertPool()
-		roots.AddCert(cert)
-
-		// Setting Roots ensures that Verify won't delegate to the OS
-		// library and thus the correct error should always be
-		// returned.
-		_, err = cert.Verify(VerifyOptions{Roots: roots})
-		if err == nil {
-			t.Fatal("Certificate with unknown critical extension was verified without error")
-		}
-		if _, ok := err.(UnhandledCriticalExtension); !ok {
-			t.Fatalf("Error was %#v, but wanted one of type UnhandledCriticalExtension", err)
-		}
-
-		cert.UnhandledCriticalExtensions = nil
-		if _, err = cert.Verify(VerifyOptions{Roots: roots}); err != nil {
-			t.Errorf("Certificate failed to verify after unhandled critical extensions were cleared: %s", err)
 		}
 	}
 }
@@ -965,8 +1214,6 @@ func TestParsePEMCRL(t *testing.T) {
 	// Can't check the signature here without a package cycle.
 }
 
-// START CT CHANGES
-
 func TestNonFatalErrors(t *testing.T) {
 	nfe := NonFatalErrors{}
 
@@ -1117,7 +1364,153 @@ func TestRemoveCTPoison(t *testing.T) {
 	}
 }
 
-// END CT CHANGES
+func makeCert(t *testing.T, template, issuer *Certificate) *Certificate {
+	t.Helper()
+	certData, err := CreateCertificate(rand.Reader, template, issuer, &testPrivateKey.PublicKey, testPrivateKey)
+	if err != nil {
+		t.Fatalf("failed to create pre-cert: %v", err)
+	}
+	cert, err := ParseCertificate(certData)
+	if err != nil {
+		t.Fatalf("failed to re-parse pre-cert: %v", err)
+	}
+	return cert
+}
+
+func TestBuildPrecertTBS(t *testing.T) {
+	poisonExt := pkix.Extension{Id: OIDExtensionCTPoison, Critical: true, Value: asn1.NullBytes}
+	preIssuerKeyID := []byte{0x19, 0x09, 0x19, 0x70}
+	issuerKeyID := []byte{0x07, 0x07, 0x20, 0x07}
+	preCertTemplate := Certificate{
+		Version:         3,
+		SerialNumber:    big.NewInt(123),
+		Issuer:          pkix.Name{CommonName: "precert Issuer"},
+		Subject:         pkix.Name{CommonName: "precert subject"},
+		NotBefore:       time.Now(),
+		NotAfter:        time.Now().Add(3 * time.Hour),
+		ExtraExtensions: []pkix.Extension{poisonExt},
+		AuthorityKeyId:  preIssuerKeyID,
+	}
+	preIssuerTemplate := Certificate{
+		Version:        3,
+		SerialNumber:   big.NewInt(1234),
+		Issuer:         pkix.Name{CommonName: "real Issuer"},
+		Subject:        pkix.Name{CommonName: "precert Issuer"},
+		NotBefore:      time.Now(),
+		NotAfter:       time.Now().Add(3 * time.Hour),
+		AuthorityKeyId: issuerKeyID,
+		SubjectKeyId:   preIssuerKeyID,
+		ExtKeyUsage:    []ExtKeyUsage{ExtKeyUsageCertificateTransparency},
+	}
+	actualIssuerTemplate := Certificate{
+		Version:      3,
+		SerialNumber: big.NewInt(12345),
+		Issuer:       pkix.Name{CommonName: "real Issuer"},
+		Subject:      pkix.Name{CommonName: "real Issuer"},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(3 * time.Hour),
+		SubjectKeyId: issuerKeyID,
+	}
+	preCertWithAKI := makeCert(t, &preCertTemplate, &preIssuerTemplate)
+	preIssuerWithAKI := makeCert(t, &preIssuerTemplate, &actualIssuerTemplate)
+
+	preIssuerTemplate.AuthorityKeyId = nil
+	actualIssuerTemplate.SubjectKeyId = nil
+	preIssuerWithoutAKI := makeCert(t, &preIssuerTemplate, &actualIssuerTemplate)
+
+	preCertTemplate.AuthorityKeyId = nil
+	preIssuerTemplate.SubjectKeyId = nil
+	preCertWithoutAKI := makeCert(t, &preCertTemplate, &preIssuerTemplate)
+
+	preIssuerTemplate.ExtKeyUsage = nil
+	invalidPreIssuer := makeCert(t, &preIssuerTemplate, &actualIssuerTemplate)
+
+	akiPrefix := []byte{0x30, 0x06, 0x80, 0x04} // SEQUENCE { [0] { ... } }
+	var tests = []struct {
+		name      string
+		tbs       *Certificate
+		preIssuer *Certificate
+		wantAKI   []byte
+		wantErr   bool
+	}{
+		{
+			name:    "no-preIssuer-provided",
+			tbs:     preCertWithAKI,
+			wantAKI: append(akiPrefix, preIssuerKeyID...),
+		},
+		{
+			name:      "both-with-AKI",
+			tbs:       preCertWithAKI,
+			preIssuer: preIssuerWithAKI,
+			wantAKI:   append(akiPrefix, issuerKeyID...),
+		},
+		{
+			name:      "invalid-preIssuer",
+			tbs:       preCertWithAKI,
+			preIssuer: invalidPreIssuer,
+			wantErr:   true,
+		},
+		{
+			name:      "both-without-AKI",
+			tbs:       preCertWithoutAKI,
+			preIssuer: preIssuerWithoutAKI,
+		},
+		{
+			name:      "precert-with-preIssuer-without-AKI",
+			tbs:       preCertWithAKI,
+			preIssuer: preIssuerWithoutAKI,
+		},
+		{
+			name:      "precert-without-preIssuer-with-AKI",
+			tbs:       preCertWithoutAKI,
+			preIssuer: preIssuerWithAKI,
+			wantAKI:   append(akiPrefix, issuerKeyID...),
+		},
+	}
+	for _, test := range tests {
+		got, err := BuildPrecertTBS(test.tbs.RawTBSCertificate, test.preIssuer)
+		if err != nil {
+			if !test.wantErr {
+				t.Errorf("BuildPrecertTBS(%s)=nil,%q; want _,nil", test.name, err)
+			}
+			continue
+		}
+		if test.wantErr {
+			t.Errorf("BuildPrecertTBS(%s)=_,nil; want _,non-nil", test.name)
+		}
+
+		var tbs tbsCertificate
+		if rest, err := asn1.Unmarshal(got, &tbs); err != nil {
+			t.Errorf("BuildPrecertTBS(%s) gave unparsable TBS: %v", test.name, err)
+			continue
+		} else if len(rest) > 0 {
+			t.Errorf("BuildPrecertTBS(%s) gave extra data in DER", test.name)
+		}
+		if test.preIssuer != nil {
+			if got, want := tbs.Issuer.FullBytes, test.preIssuer.RawIssuer; !bytes.Equal(got, want) {
+				t.Errorf("BuildPrecertTBS(%s).Issuer=%x, want %x", test.name, got, want)
+			}
+		}
+		var gotAKI []byte
+		for _, ext := range tbs.Extensions {
+			if ext.Id.Equal(OIDExtensionAuthorityKeyId) {
+				gotAKI = ext.Value
+				break
+			}
+		}
+		if gotAKI != nil {
+			if test.wantAKI != nil {
+				if !reflect.DeepEqual(gotAKI, test.wantAKI) {
+					t.Errorf("BuildPrecertTBS(%s).Extensions[AKI]=%+v, want %+v", test.name, gotAKI, test.wantAKI)
+				}
+			} else {
+				t.Errorf("BuildPrecertTBS(%s).Extensions[AKI]=%+v, want nil", test.name, gotAKI)
+			}
+		} else if test.wantAKI != nil {
+			t.Errorf("BuildPrecertTBS(%s).Extensions[AKI]=nil, want %+v", test.name, test.wantAKI)
+		}
+	}
+}
 
 func TestImports(t *testing.T) {
 	//	testenv.MustHaveGoRun(t)
@@ -1220,7 +1613,7 @@ func marshalAndParseCSR(t *testing.T, template *CertificateRequest) *Certificate
 }
 
 func TestCertificateRequestOverrides(t *testing.T) {
-	sanContents, err := marshalSANs([]string{"foo.example.com"}, nil, nil)
+	sanContents, err := marshalSANs([]string{"foo.example.com"}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1236,7 +1629,7 @@ func TestCertificateRequestOverrides(t *testing.T) {
 		// template.
 		ExtraExtensions: []pkix.Extension{
 			{
-				Id:    oidExtensionSubjectAltName,
+				Id:    OIDExtensionSubjectAltName,
 				Value: sanContents,
 			},
 		},
@@ -1258,7 +1651,7 @@ func TestCertificateRequestOverrides(t *testing.T) {
 			Value: [][]pkix.AttributeTypeAndValue{
 				{
 					{
-						Type:  oidExtensionAuthorityInfoAccess,
+						Type:  OIDExtensionAuthorityInfoAccess,
 						Value: []byte("foo"),
 					},
 				},
@@ -1277,14 +1670,14 @@ func TestCertificateRequestOverrides(t *testing.T) {
 		t.Errorf("bad attributes: %#v\n", csr.Attributes)
 	}
 
-	sanContents2, err := marshalSANs([]string{"foo2.example.com"}, nil, nil)
+	sanContents2, err := marshalSANs([]string{"foo2.example.com"}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Extensions in Attributes should override those in ExtraExtensions.
 	template.Attributes[0].Value[0] = append(template.Attributes[0].Value[0], pkix.AttributeTypeAndValue{
-		Type:  oidExtensionSubjectAltName,
+		Type:  OIDExtensionSubjectAltName,
 		Value: sanContents2,
 	})
 
@@ -1317,7 +1710,7 @@ func TestParseCertificateRequest(t *testing.T) {
 
 		found := false
 		for _, e := range csr.Extensions {
-			if e.Id.Equal(oidExtensionBasicConstraints) {
+			if e.Id.Equal(OIDExtensionBasicConstraints) {
 				found = true
 				break
 			}
@@ -1343,8 +1736,8 @@ func TestCriticalFlagInCSRRequestedExtensions(t *testing.T) {
 		Id    asn1.ObjectIdentifier
 		Value []byte
 	}{
-		{oidExtensionBasicConstraints, fromBase64("MAYBAf8CAQA=")},
-		{oidExtensionKeyUsage, fromBase64("AwIChA==")},
+		{OIDExtensionBasicConstraints, fromBase64("MAYBAf8CAQA=")},
+		{OIDExtensionKeyUsage, fromBase64("AwIChA==")},
 	}
 
 	if n := len(csr.Extensions); n != len(expected) {
@@ -1650,5 +2043,328 @@ func TestSystemCertPool(t *testing.T) {
 	_, err := SystemCertPool()
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+const emptyNameConstraintsPEM = `
+-----BEGIN CERTIFICATE-----
+MIIC1jCCAb6gAwIBAgICEjQwDQYJKoZIhvcNAQELBQAwKDEmMCQGA1UEAxMdRW1w
+dHkgbmFtZSBjb25zdHJhaW50cyBpc3N1ZXIwHhcNMTMwMjAxMDAwMDAwWhcNMjAw
+NTMwMTA0ODM4WjAhMR8wHQYDVQQDExZFbXB0eSBuYW1lIGNvbnN0cmFpbnRzMIIB
+IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwriElUIt3LCqmJObs+yDoWPD
+F5IqgWk6moIobYjPfextZiYU6I3EfvAwoNxPDkN2WowcocUZMJbEeEq5ebBksFnx
+f12gBxlIViIYwZAzu7aFvhDMyPKQI3C8CG0ZSC9ABZ1E3umdA3CEueNOmP/TChNq
+Cl23+BG1Qb/PJkpAO+GfpWSVhTcV53Mf/cKvFHcjGNrxzdSoq9fyW7a6gfcGEQY0
+LVkmwFWUfJ0wT8kaeLr0E0tozkIfo01KNWNzv6NcYP80QOBRDlApWu9ODmEVJHPD
+blx4jzTQ3JLa+4DvBNOjVUOp+mgRmjiW0rLdrxwOxIqIOwNjweMCp/hgxX/hTQID
+AQABoxEwDzANBgNVHR4EBjAEoAChADANBgkqhkiG9w0BAQsFAAOCAQEAWG+/zUMH
+QhP8uNCtgSHyim/vh7wminwAvWgMKxlkLBFns6nZeQqsOV1lABY7U0Zuoqa1Z5nb
+6L+iJa4ElREJOi/erLc9uLwBdDCAR0hUTKD7a6i4ooS39DTle87cUnj0MW1CUa6H
+v5SsvpYW+1XleYJk/axQOOTcy4Es53dvnZsjXH0EA/QHnn7UV+JmlE3rtVxcYp6M
+LYPmRhTioROA/drghicRkiu9hxdPyxkYS16M5g3Zj30jdm+k/6C6PeNtN9YmOOga
+nCOSyFYfGhqOANYzpmuV+oIedAsPpIbfIzN8njYUs1zio+1IoI4o8ddM9sCbtPU8
+o+WoY6IsCKXV/g==
+-----END CERTIFICATE-----`
+
+func TestEmptyNameConstraints(t *testing.T) {
+	block, _ := pem.Decode([]byte(emptyNameConstraintsPEM))
+	_, err := ParseCertificate(block.Bytes)
+	if err == nil {
+		t.Fatal("unexpected success")
+	}
+
+	const expected = "empty name constraints"
+	if str := err.Error(); !strings.Contains(str, expected) {
+		t.Errorf("expected %q in error but got %q", expected, str)
+	}
+}
+
+func TestPKIXNameString(t *testing.T) {
+	pem, err := hex.DecodeString(certBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certs, err := ParseCertificates(pem)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		dn   pkix.Name
+		want string
+	}{
+		{pkix.Name{
+			CommonName:         "Steve Kille",
+			Organization:       []string{"Isode Limited"},
+			OrganizationalUnit: []string{"RFCs"},
+			Locality:           []string{"Richmond"},
+			Province:           []string{"Surrey"},
+			StreetAddress:      []string{"The Square"},
+			PostalCode:         []string{"TW9 1DT"},
+			SerialNumber:       "RFC 2253",
+			Country:            []string{"GB"},
+		}, "SERIALNUMBER=RFC 2253,CN=Steve Kille,OU=RFCs,O=Isode Limited,POSTALCODE=TW9 1DT,STREET=The Square,L=Richmond,ST=Surrey,C=GB"},
+		{certs[0].Subject,
+			"CN=mail.google.com,O=Google Inc,L=Mountain View,ST=California,C=US"},
+		{pkix.Name{
+			Organization: []string{"#Google, Inc. \n-> 'Alphabet\" "},
+			Country:      []string{"US"},
+		}, "O=\\#Google\\, Inc. \n-\\> 'Alphabet\\\"\\ ,C=US"},
+		{pkix.Name{
+			CommonName:   "foo.com",
+			Organization: []string{"Gopher Industries"},
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{Type: asn1.ObjectIdentifier([]int{2, 5, 4, 3}), Value: "bar.com"}},
+		}, "CN=bar.com,O=Gopher Industries"},
+		{pkix.Name{
+			Locality: []string{"Gophertown"},
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{Type: asn1.ObjectIdentifier([]int{1, 2, 3, 4, 5}), Value: "golang.org"}},
+		}, "1.2.3.4.5=#130a676f6c616e672e6f7267,L=Gophertown"},
+	}
+
+	for i, test := range tests {
+		if got := test.dn.String(); got != test.want {
+			t.Errorf("#%d: String() = \n%s\n, want \n%s", i, got, test.want)
+		}
+	}
+}
+
+func TestRDNSequenceString(t *testing.T) {
+	// Test some extra cases that get lost in pkix.Name conversions such as
+	// multi-valued attributes.
+
+	var (
+		oidCountry            = []int{2, 5, 4, 6}
+		oidOrganization       = []int{2, 5, 4, 10}
+		oidOrganizationalUnit = []int{2, 5, 4, 11}
+		oidCommonName         = []int{2, 5, 4, 3}
+	)
+
+	tests := []struct {
+		seq  pkix.RDNSequence
+		want string
+	}{
+		{
+			seq: pkix.RDNSequence{
+				pkix.RelativeDistinguishedNameSET{
+					pkix.AttributeTypeAndValue{Type: oidCountry, Value: "US"},
+				},
+				pkix.RelativeDistinguishedNameSET{
+					pkix.AttributeTypeAndValue{Type: oidOrganization, Value: "Widget Inc."},
+				},
+				pkix.RelativeDistinguishedNameSET{
+					pkix.AttributeTypeAndValue{Type: oidOrganizationalUnit, Value: "Sales"},
+					pkix.AttributeTypeAndValue{Type: oidCommonName, Value: "J. Smith"},
+				},
+			},
+			want: "OU=Sales+CN=J. Smith,O=Widget Inc.,C=US",
+		},
+	}
+
+	for i, test := range tests {
+		if got := test.seq.String(); got != test.want {
+			t.Errorf("#%d: String() = \n%s\n, want \n%s", i, got, test.want)
+		}
+	}
+}
+
+const criticalNameConstraintWithUnknownTypePEM = `
+-----BEGIN CERTIFICATE-----
+MIIC/TCCAeWgAwIBAgICEjQwDQYJKoZIhvcNAQELBQAwKDEmMCQGA1UEAxMdRW1w
+dHkgbmFtZSBjb25zdHJhaW50cyBpc3N1ZXIwHhcNMTMwMjAxMDAwMDAwWhcNMjAw
+NTMwMTA0ODM4WjAhMR8wHQYDVQQDExZFbXB0eSBuYW1lIGNvbnN0cmFpbnRzMIIB
+IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwriElUIt3LCqmJObs+yDoWPD
+F5IqgWk6moIobYjPfextZiYU6I3EfvAwoNxPDkN2WowcocUZMJbEeEq5ebBksFnx
+f12gBxlIViIYwZAzu7aFvhDMyPKQI3C8CG0ZSC9ABZ1E3umdA3CEueNOmP/TChNq
+Cl23+BG1Qb/PJkpAO+GfpWSVhTcV53Mf/cKvFHcjGNrxzdSoq9fyW7a6gfcGEQY0
+LVkmwFWUfJ0wT8kaeLr0E0tozkIfo01KNWNzv6NcYP80QOBRDlApWu9ODmEVJHPD
+blx4jzTQ3JLa+4DvBNOjVUOp+mgRmjiW0rLdrxwOxIqIOwNjweMCp/hgxX/hTQID
+AQABozgwNjA0BgNVHR4BAf8EKjAooCQwIokgIACrzQAAAAAAAAAAAAAAAP////8A
+AAAAAAAAAAAAAAChADANBgkqhkiG9w0BAQsFAAOCAQEAWG+/zUMHQhP8uNCtgSHy
+im/vh7wminwAvWgMKxlkLBFns6nZeQqsOV1lABY7U0Zuoqa1Z5nb6L+iJa4ElREJ
+Oi/erLc9uLwBdDCAR0hUTKD7a6i4ooS39DTle87cUnj0MW1CUa6Hv5SsvpYW+1Xl
+eYJk/axQOOTcy4Es53dvnZsjXH0EA/QHnn7UV+JmlE3rtVxcYp6MLYPmRhTioROA
+/drghicRkiu9hxdPyxkYS16M5g3Zj30jdm+k/6C6PeNtN9YmOOganCOSyFYfGhqO
+ANYzpmuV+oIedAsPpIbfIzN8njYUs1zio+1IoI4o8ddM9sCbtPU8o+WoY6IsCKXV
+/g==
+-----END CERTIFICATE-----`
+
+func TestCriticalNameConstraintWithUnknownType(t *testing.T) {
+	block, _ := pem.Decode([]byte(criticalNameConstraintWithUnknownTypePEM))
+	cert, err := ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("unexpected parsing failure: %s", err)
+	}
+
+	if l := len(cert.UnhandledCriticalExtensions); l != 1 {
+		t.Fatalf("expected one unhandled critical extension, but found %d", l)
+	}
+}
+
+const badIPMaskPEM = `
+-----BEGIN CERTIFICATE-----
+MIICzzCCAbegAwIBAgICEjQwDQYJKoZIhvcNAQELBQAwHTEbMBkGA1UEAxMSQmFk
+IElQIG1hc2sgaXNzdWVyMB4XDTEzMDIwMTAwMDAwMFoXDTIwMDUzMDEwNDgzOFow
+FjEUMBIGA1UEAxMLQmFkIElQIG1hc2swggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw
+ggEKAoIBAQDCuISVQi3csKqYk5uz7IOhY8MXkiqBaTqagihtiM997G1mJhTojcR+
+8DCg3E8OQ3ZajByhxRkwlsR4Srl5sGSwWfF/XaAHGUhWIhjBkDO7toW+EMzI8pAj
+cLwIbRlIL0AFnUTe6Z0DcIS5406Y/9MKE2oKXbf4EbVBv88mSkA74Z+lZJWFNxXn
+cx/9wq8UdyMY2vHN1Kir1/JbtrqB9wYRBjQtWSbAVZR8nTBPyRp4uvQTS2jOQh+j
+TUo1Y3O/o1xg/zRA4FEOUCla704OYRUkc8NuXHiPNNDcktr7gO8E06NVQ6n6aBGa
+OJbSst2vHA7Eiog7A2PB4wKn+GDFf+FNAgMBAAGjIDAeMBwGA1UdHgEB/wQSMBCg
+DDAKhwgBAgME//8BAKEAMA0GCSqGSIb3DQEBCwUAA4IBAQBYb7/NQwdCE/y40K2B
+IfKKb++HvCaKfAC9aAwrGWQsEWezqdl5Cqw5XWUAFjtTRm6iprVnmdvov6IlrgSV
+EQk6L96stz24vAF0MIBHSFRMoPtrqLiihLf0NOV7ztxSePQxbUJRroe/lKy+lhb7
+VeV5gmT9rFA45NzLgSznd2+dmyNcfQQD9AeeftRX4maUTeu1XFxinowtg+ZGFOKh
+E4D92uCGJxGSK72HF0/LGRhLXozmDdmPfSN2b6T/oLo942031iY46BqcI5LIVh8a
+Go4A1jOma5X6gh50Cw+kht8jM3yeNhSzXOKj7Uigjijx10z2wJu09Tyj5ahjoiwI
+pdX+
+-----END CERTIFICATE-----`
+
+func TestBadIPMask(t *testing.T) {
+	block, _ := pem.Decode([]byte(badIPMaskPEM))
+	_, err := ParseCertificate(block.Bytes)
+	if err == nil {
+		t.Fatalf("unexpected success")
+	}
+
+	const expected = "contained invalid mask"
+	if !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected %q in error but got: %s", expected, err)
+	}
+}
+
+const additionalGeneralSubtreePEM = `
+-----BEGIN CERTIFICATE-----
+MIIG4TCCBMmgAwIBAgIRALss+4rLw2Ia7tFFhxE8g5cwDQYJKoZIhvcNAQELBQAw
+bjELMAkGA1UEBhMCTkwxIDAeBgNVBAoMF01pbmlzdGVyaWUgdmFuIERlZmVuc2ll
+MT0wOwYDVQQDDDRNaW5pc3RlcmllIHZhbiBEZWZlbnNpZSBDZXJ0aWZpY2F0aWUg
+QXV0b3JpdGVpdCAtIEcyMB4XDTEzMDMwNjEyMDM0OVoXDTEzMTEzMDEyMDM1MFow
+bDELMAkGA1UEBhMCVVMxFjAUBgNVBAoTDUNlcnRpUGF0aCBMTEMxIjAgBgNVBAsT
+GUNlcnRpZmljYXRpb24gQXV0aG9yaXRpZXMxITAfBgNVBAMTGENlcnRpUGF0aCBC
+cmlkZ2UgQ0EgLSBHMjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANLW
+4kXiRqvwBhJfN9uz12FA+P2D34MPxOt7TGXljm2plJ2CLzvaH8/ymsMdSWdJBS1M
+8FmwvNL1w3A6ZuzksJjPikAu8kY3dcp3mrkk9eCPORDAwGtfsXwZysLiuEaDWpbD
+dHOaHnI6qWU0N6OI+hNX58EjDpIGC1WQdho1tHOTPc5Hf5/hOpM/29v/wr7kySjs
+Z+7nsvkm5rNhuJNzPsLsgzVaJ5/BVyOplZy24FKM8Y43MjR4osZm+a2e0zniqw6/
+rvcjcGYabYaznZfQG1GXoyf2Vea+CCgpgUhlVafgkwEs8izl8rIpvBzXiFAgFQuG
+Ituoy92PJbDs430fA/cCAwEAAaOCAnowggJ2MEUGCCsGAQUFBwEBBDkwNzA1Bggr
+BgEFBQcwAoYpaHR0cDovL2NlcnRzLmNhLm1pbmRlZi5ubC9taW5kZWYtY2EtMi5w
+N2MwHwYDVR0jBBgwFoAUzln9WSPz2M64Rl2HYf2/KD8StmQwDwYDVR0TAQH/BAUw
+AwEB/zCB6QYDVR0gBIHhMIHeMEgGCmCEEAGHawECBQEwOjA4BggrBgEFBQcCARYs
+aHR0cDovL2Nwcy5kcC5jYS5taW5kZWYubmwvbWluZGVmLWNhLWRwLWNwcy8wSAYK
+YIQQAYdrAQIFAjA6MDgGCCsGAQUFBwIBFixodHRwOi8vY3BzLmRwLmNhLm1pbmRl
+Zi5ubC9taW5kZWYtY2EtZHAtY3BzLzBIBgpghBABh2sBAgUDMDowOAYIKwYBBQUH
+AgEWLGh0dHA6Ly9jcHMuZHAuY2EubWluZGVmLm5sL21pbmRlZi1jYS1kcC1jcHMv
+MDkGA1UdHwQyMDAwLqAsoCqGKGh0dHA6Ly9jcmxzLmNhLm1pbmRlZi5ubC9taW5k
+ZWYtY2EtMi5jcmwwDgYDVR0PAQH/BAQDAgEGMEYGA1UdHgEB/wQ8MDqhODA2pDEw
+LzELMAkGA1UEBhMCTkwxIDAeBgNVBAoTF01pbmlzdGVyaWUgdmFuIERlZmVuc2ll
+gQFjMF0GA1UdIQRWMFQwGgYKYIQQAYdrAQIFAQYMKwYBBAGBu1MBAQECMBoGCmCE
+EAGHawECBQIGDCsGAQQBgbtTAQEBAjAaBgpghBABh2sBAgUDBgwrBgEEAYG7UwEB
+AQIwHQYDVR0OBBYEFNDCjBM3M3ZKkag84ei3/aKc0d0UMA0GCSqGSIb3DQEBCwUA
+A4ICAQAQXFn9jF90/DNFf15JhoGtta/0dNInb14PMu3PAjcdrXYCDPpQZOArTUng
+5YT1WuzfmjnXiTsziT3my0r9Mxvz/btKK/lnVOMW4c2q/8sIsIPnnW5ZaRGrsANB
+dNDZkzMYmeG2Pfgvd0AQSOrpE/TVgWfu/+MMRWwX9y6VbooBR7BLv7zMuVH0WqLn
+6OMFth7fqsThlfMSzkE/RDSaU6n3wXAWT1SIqBITtccRjSUQUFm/q3xrb2cwcZA6
+8vdS4hzNd+ttS905ay31Ks4/1Wrm1bH5RhEfRSH0VSXnc0b+z+RyBbmiwtVZqzxE
+u3UQg/rAmtLDclLFEzjp8YDTIRYSLwstDbEXO/0ArdGrQm79HQ8i/3ZbP2357myW
+i15qd6gMJIgGHS4b8Hc7R1K8LQ9Gm1aLKBEWVNGZlPK/cpXThpVmoEyslN2DHCrc
+fbMbjNZpXlTMa+/b9z7Fa4X8dY8u/ELzZuJXJv5Rmqtg29eopFFYDCl0Nkh1XAjo
+QejEoHHUvYV8TThHZr6Z6Ib8CECgTehU4QvepkgDXNoNrKRZBG0JhLjkwxh2whZq
+nvWBfALC2VuNOM6C0rDY+HmhMlVt0XeqnybD9MuQALMit7Z00Cw2CIjNsBI9xBqD
+xKK9CjUb7gzRUWSpB9jGHsvpEMHOzIFhufvH2Bz1XJw+Cl7khw==
+-----END CERTIFICATE-----`
+
+func TestAdditionFieldsInGeneralSubtree(t *testing.T) {
+	// Very rarely, certificates can include additional fields in the
+	// GeneralSubtree structure. This tests that such certificates can be
+	// parsed.
+	block, _ := pem.Decode([]byte(additionalGeneralSubtreePEM))
+	if _, err := ParseCertificate(block.Bytes); err != nil {
+		t.Fatalf("failed to parse certificate: %s", err)
+	}
+}
+
+func TestEmptySubject(t *testing.T) {
+	template := Certificate{
+		SerialNumber: big.NewInt(1),
+		DNSNames:     []string{"example.com"},
+	}
+
+	derBytes, err := CreateCertificate(rand.Reader, &template, &template, &testPrivateKey.PublicKey, testPrivateKey)
+	if err != nil {
+		t.Fatalf("failed to create certificate: %s", err)
+	}
+
+	cert, err := ParseCertificate(derBytes)
+	if err != nil {
+		t.Fatalf("failed to parse certificate: %s", err)
+	}
+
+	for _, ext := range cert.Extensions {
+		if ext.Id.Equal(OIDExtensionSubjectAltName) {
+			if !ext.Critical {
+				t.Fatal("SAN extension is not critical")
+			}
+			return
+		}
+	}
+
+	t.Fatal("SAN extension is missing")
+}
+
+// multipleURLsInCRLDPPEM contains two URLs in a single CRL DistributionPoint
+// structure. It is taken from https://crt.sh/?id=12721534.
+const multipleURLsInCRLDPPEM = `
+-----BEGIN CERTIFICATE-----
+MIIF4TCCBMmgAwIBAgIQc+6uFePfrahUGpXs8lhiTzANBgkqhkiG9w0BAQsFADCB
+8zELMAkGA1UEBhMCRVMxOzA5BgNVBAoTMkFnZW5jaWEgQ2F0YWxhbmEgZGUgQ2Vy
+dGlmaWNhY2lvIChOSUYgUS0wODAxMTc2LUkpMSgwJgYDVQQLEx9TZXJ2ZWlzIFB1
+YmxpY3MgZGUgQ2VydGlmaWNhY2lvMTUwMwYDVQQLEyxWZWdldSBodHRwczovL3d3
+dy5jYXRjZXJ0Lm5ldC92ZXJhcnJlbCAoYykwMzE1MDMGA1UECxMsSmVyYXJxdWlh
+IEVudGl0YXRzIGRlIENlcnRpZmljYWNpbyBDYXRhbGFuZXMxDzANBgNVBAMTBkVD
+LUFDQzAeFw0xNDA5MTgwODIxMDBaFw0zMDA5MTgwODIxMDBaMIGGMQswCQYDVQQG
+EwJFUzEzMDEGA1UECgwqQ09OU09SQ0kgQURNSU5JU1RSQUNJTyBPQkVSVEEgREUg
+Q0FUQUxVTllBMSowKAYDVQQLDCFTZXJ2ZWlzIFDDumJsaWNzIGRlIENlcnRpZmlj
+YWNpw7MxFjAUBgNVBAMMDUVDLUNpdXRhZGFuaWEwggEiMA0GCSqGSIb3DQEBAQUA
+A4IBDwAwggEKAoIBAQDFkHPRZPZlXTWZ5psJhbS/Gx+bxcTpGrlVQHHtIkgGz77y
+TA7UZUFb2EQMncfbOhR0OkvQQn1aMvhObFJSR6nI+caf2D+h/m/InMl1MyH3S0Ak
+YGZZsthnyC6KxqK2A/NApncrOreh70ULkQs45aOKsi1kR1W0zE+iFN+/P19P7AkL
+Rl3bXBCVd8w+DLhcwRrkf1FCDw6cEqaFm3cGgf5cbBDMaVYAweWTxwBZAq2RbQAW
+jE7mledcYghcZa4U6bUmCBPuLOnO8KMFAvH+aRzaf3ws5/ZoOVmryyLLJVZ54peZ
+OwnP9EL4OuWzmXCjBifXR2IAblxs5JYj57tls45nAgMBAAGjggHaMIIB1jASBgNV
+HRMBAf8ECDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQUC2hZPofI
+oxUa4ECCIl+fHbLFNxUwHwYDVR0jBBgwFoAUoMOLRKo3pUW/l4Ba0fF4opvpXY0w
+gdYGA1UdIASBzjCByzCByAYEVR0gADCBvzAxBggrBgEFBQcCARYlaHR0cHM6Ly93
+d3cuYW9jLmNhdC9DQVRDZXJ0L1JlZ3VsYWNpbzCBiQYIKwYBBQUHAgIwfQx7QXF1
+ZXN0IGNlcnRpZmljYXQgw6lzIGVtw6hzIMO6bmljYSBpIGV4Y2x1c2l2YW1lbnQg
+YSBFbnRpdGF0cyBkZSBDZXJ0aWZpY2FjacOzLiBWZWdldSBodHRwczovL3d3dy5h
+b2MuY2F0L0NBVENlcnQvUmVndWxhY2lvMDMGCCsGAQUFBwEBBCcwJTAjBggrBgEF
+BQcwAYYXaHR0cDovL29jc3AuY2F0Y2VydC5jYXQwYgYDVR0fBFswWTBXoFWgU4Yn
+aHR0cDovL2Vwc2NkLmNhdGNlcnQubmV0L2NybC9lYy1hY2MuY3JshihodHRwOi8v
+ZXBzY2QyLmNhdGNlcnQubmV0L2NybC9lYy1hY2MuY3JsMA0GCSqGSIb3DQEBCwUA
+A4IBAQChqFTjlAH5PyIhLjLgEs68CyNNC1+vDuZXRhy22TI83JcvGmQrZosPvVIL
+PsUXx+C06Pfqmh48Q9S89X9K8w1SdJxP/rZeGEoRiKpwvQzM4ArD9QxyC8jirxex
+3Umg9Ai/sXQ+1lBf6xw4HfUUr1WIp7pNHj0ZWLo106urqktcdeAFWme+/klis5fu
+labCSVPuT/QpwakPrtqOhRms8vgpKiXa/eLtL9ZiA28X/Mker0zlAeTA7Z7uAnp6
+oPJTlZu1Gg1ZDJueTWWsLlO+P+Wzm3MRRIbcgdRzm4mdO7ubu26SzX/aQXDhuih+
+eVxXDTCfs7GUlxnjOp5j559X/N0A
+-----END CERTIFICATE-----
+`
+
+func TestMultipleURLsInCRLDP(t *testing.T) {
+	block, _ := pem.Decode([]byte(multipleURLsInCRLDPPEM))
+	cert, err := ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("failed to parse certificate: %s", err)
+	}
+
+	want := []string{
+		"http://epscd.catcert.net/crl/ec-acc.crl",
+		"http://epscd2.catcert.net/crl/ec-acc.crl",
+	}
+	if got := cert.CRLDistributionPoints; !reflect.DeepEqual(got, want) {
+		t.Errorf("CRL distribution points = %#v, want #%v", got, want)
 	}
 }
