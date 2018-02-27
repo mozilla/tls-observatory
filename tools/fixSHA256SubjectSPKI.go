@@ -4,7 +4,9 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
+	"strconv"
 
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/database"
@@ -21,15 +23,20 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// batch side: do 100 certs at a time
+	offset := 0
 	limit := 100
-	batch := 0
+	if len(os.Args) > 1 {
+		offset, err = strconv.Atoi(os.Args[1])
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	for {
-		fmt.Printf("\nProcessing batch %d to %d: ", batch*limit, batch*limit+limit)
+		fmt.Printf("\nProcessing offset %d to %d: ", offset, offset+limit)
 		rows, err := db.Query(`SELECT id, raw_cert
 					FROM certificates
 					WHERE id > $1
-					ORDER BY id ASC LIMIT $2`, batch*limit, limit)
+					ORDER BY id ASC LIMIT $2`, offset, limit)
 		if rows != nil {
 			defer rows.Close()
 		}
@@ -67,6 +74,6 @@ func main() {
 			break
 		}
 		//offset += limit
-		batch++
+		offset += limit
 	}
 }
