@@ -194,15 +194,11 @@ func SHA256SubjectSPKI(cert *x509.Certificate) string {
 func PKPSHA256Hash(cert *x509.Certificate) string {
 	h := sha256.New()
 	switch pub := cert.PublicKey.(type) {
-	case *rsa.PublicKey:
+	case *rsa.PublicKey, *dsa.PublicKey, *ecdsa.PublicKey:
 		der, _ := x509.MarshalPKIXPublicKey(pub)
 		h.Write(der)
-	case *dsa.PublicKey:
-		der, _ := x509.MarshalPKIXPublicKey(pub)
-		h.Write(der)
-	case *ecdsa.PublicKey:
-		der, _ := x509.MarshalPKIXPublicKey(pub)
-		h.Write(der)
+	default:
+		return ""
 	}
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }

@@ -97,13 +97,46 @@ func ValidateChain(rawChain [][]byte, validationOpts CertValidationOpts) ([]*x50
 		KeyUsages:         validationOpts.extKeyUsages,
 	}
 
-	// We don't want failures from Verify due to unknown critical extensions,
+	// We don't want failures from Verify due to unknown critical extensions in the leaf,
 	// so clear them out.
 	chain[0].UnhandledCriticalExtensions = nil
-	chains, err := chain[0].Verify(verifyOpts)
 
+	for i := 1; i < len(chain); i++ {
+		// The PolicyConstraints extension is required to be marked critical
+		// (RFC 5280 s4.2.1.11), but is not parsed by the Go x509 library.
+		// To allow validation of chains where an intermediate has this extension,
+		// remove it from the unknown critical extensions slice.
+		for j, extOID := range chain[i].UnhandledCriticalExtensions {
+			if extOID.Equal(x509.OIDExtensionPolicyConstraints) {
+				chain[i].UnhandledCriticalExtensions = append(chain[i].UnhandledCriticalExtensions[:j], chain[i].UnhandledCriticalExtensions[j+1:]...)
+				break
+			}
+		}
+	}
+
+	// If the first intermediate has the CertificateTransparency EKU, remove it
+	// so that it doesn't affect EKU validity calculations.  In particular, if
+	// the pre-issuer has just the CT EKU, then it should act as if it has an
+	// empty set of EKUs (and so allow any usage in the leaf).
+	var originalEKUs []x509.ExtKeyUsage
+	if len(chain) > 1 {
+		for i, eku := range chain[1].ExtKeyUsage {
+			if eku == x509.ExtKeyUsageCertificateTransparency {
+				originalEKUs = chain[1].ExtKeyUsage
+				chain[1].ExtKeyUsage = append(chain[1].ExtKeyUsage[:i], chain[1].ExtKeyUsage[i+1:]...)
+				break
+			}
+		}
+	}
+
+	chains, err := chain[0].Verify(verifyOpts)
 	if err != nil {
 		return nil, err
+	}
+
+	// Restore any EKUs we have modified.
+	if originalEKUs != nil {
+		chain[1].ExtKeyUsage = originalEKUs
 	}
 
 	if len(chains) == 0 {

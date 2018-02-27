@@ -4650,6 +4650,9 @@ func (c *EC2) CreateSnapshotRequest(input *CreateSnapshotInput) (req *request.Re
 // encrypted. Your encrypted volumes and any associated snapshots always remain
 // protected.
 //
+// You can tag your snapshots during creation. For more information, see Tagging
+// Your Amazon EC2 Resources (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html).
+//
 // For more information, see Amazon Elastic Block Store (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AmazonEBS.html)
 // and Amazon EBS Encryption (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
@@ -8272,7 +8275,7 @@ func (c *EC2) DescribeAccountAttributesRequest(input *DescribeAccountAttributesI
 //
 //    * default-vpc: The ID of the default VPC for your account, or none.
 //
-//    * max-instances: The maximum number of On-Demand instances that you can
+//    * max-instances: The maximum number of On-Demand Instances that you can
 //    run.
 //
 //    * vpc-max-security-groups-per-interface: The maximum number of security
@@ -8385,6 +8388,94 @@ func (c *EC2) DescribeAddresses(input *DescribeAddressesInput) (*DescribeAddress
 // for more information on using Contexts.
 func (c *EC2) DescribeAddressesWithContext(ctx aws.Context, input *DescribeAddressesInput, opts ...request.Option) (*DescribeAddressesOutput, error) {
 	req, out := c.DescribeAddressesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDescribeAggregateIdFormat = "DescribeAggregateIdFormat"
+
+// DescribeAggregateIdFormatRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeAggregateIdFormat operation. The "output" return
+// value will be populated with the request's response once the request complets
+// successfuly.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeAggregateIdFormat for more information on using the DescribeAggregateIdFormat
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeAggregateIdFormatRequest method.
+//    req, resp := client.DescribeAggregateIdFormatRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeAggregateIdFormat
+func (c *EC2) DescribeAggregateIdFormatRequest(input *DescribeAggregateIdFormatInput) (req *request.Request, output *DescribeAggregateIdFormatOutput) {
+	op := &request.Operation{
+		Name:       opDescribeAggregateIdFormat,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribeAggregateIdFormatInput{}
+	}
+
+	output = &DescribeAggregateIdFormatOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeAggregateIdFormat API operation for Amazon Elastic Compute Cloud.
+//
+// Describes the longer ID format settings for all resource types in a specific
+// region. This request is useful for performing a quick audit to determine
+// whether a specific region is fully opted in for longer IDs (17-character
+// IDs).
+//
+// This request only returns information about resource types that support longer
+// IDs.
+//
+// The following resource types support longer IDs: bundle | conversion-task
+// | dhcp-options | elastic-ip-allocation | elastic-ip-association | export-task
+// | flow-log | image | import-task | instance | internet-gateway | network-acl
+// | network-acl-association | network-interface | network-interface-attachment
+// | prefix-list | reservation | route-table | route-table-association | security-group
+// | snapshot | subnet | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
+// | vpc-peering-connection.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Elastic Compute Cloud's
+// API operation DescribeAggregateIdFormat for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeAggregateIdFormat
+func (c *EC2) DescribeAggregateIdFormat(input *DescribeAggregateIdFormatInput) (*DescribeAggregateIdFormatOutput, error) {
+	req, out := c.DescribeAggregateIdFormatRequest(input)
+	return out, req.Send()
+}
+
+// DescribeAggregateIdFormatWithContext is the same as DescribeAggregateIdFormat with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeAggregateIdFormat for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *EC2) DescribeAggregateIdFormatWithContext(ctx aws.Context, input *DescribeAggregateIdFormatInput, opts ...request.Option) (*DescribeAggregateIdFormatOutput, error) {
+	req, out := c.DescribeAggregateIdFormatRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -9666,8 +9757,13 @@ func (c *EC2) DescribeIdFormatRequest(input *DescribeIdFormatInput) (req *reques
 // request only returns information about resource types whose ID formats can
 // be modified; it does not return information about other resource types.
 //
-// The following resource types support longer IDs: instance | reservation |
-// snapshot | volume.
+// The following resource types support longer IDs: bundle | conversion-task
+// | dhcp-options | elastic-ip-allocation | elastic-ip-association | export-task
+// | flow-log | image | import-task | instance | internet-gateway | network-acl
+// | network-acl-association | network-interface | network-interface-attachment
+// | prefix-list | reservation | route-table | route-table-association | security-group
+// | snapshot | subnet | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
+// | vpc-peering-connection.
 //
 // These settings apply to the IAM user who makes the request; they do not apply
 // to the entire AWS account. By default, an IAM user defaults to the same settings
@@ -9755,8 +9851,13 @@ func (c *EC2) DescribeIdentityIdFormatRequest(input *DescribeIdentityIdFormatInp
 // other resource types. For more information, see Resource IDs (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resource-ids.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
-// The following resource types support longer IDs: instance | reservation |
-// snapshot | volume.
+// The following resource types support longer IDs: bundle | conversion-task
+// | dhcp-options | elastic-ip-allocation | elastic-ip-association | export-task
+// | flow-log | image | import-task | instance | internet-gateway | network-acl
+// | network-acl-association | network-interface | network-interface-attachment
+// | prefix-list | reservation | route-table | route-table-association | security-group
+// | snapshot | subnet | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
+// | vpc-peering-connection.
 //
 // These settings apply to the principal specified in the request. They do not
 // apply to the principal that makes the request.
@@ -11514,6 +11615,94 @@ func (c *EC2) DescribePrefixLists(input *DescribePrefixListsInput) (*DescribePre
 // for more information on using Contexts.
 func (c *EC2) DescribePrefixListsWithContext(ctx aws.Context, input *DescribePrefixListsInput, opts ...request.Option) (*DescribePrefixListsOutput, error) {
 	req, out := c.DescribePrefixListsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDescribePrincipalIdFormat = "DescribePrincipalIdFormat"
+
+// DescribePrincipalIdFormatRequest generates a "aws/request.Request" representing the
+// client's request for the DescribePrincipalIdFormat operation. The "output" return
+// value will be populated with the request's response once the request complets
+// successfuly.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribePrincipalIdFormat for more information on using the DescribePrincipalIdFormat
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribePrincipalIdFormatRequest method.
+//    req, resp := client.DescribePrincipalIdFormatRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribePrincipalIdFormat
+func (c *EC2) DescribePrincipalIdFormatRequest(input *DescribePrincipalIdFormatInput) (req *request.Request, output *DescribePrincipalIdFormatOutput) {
+	op := &request.Operation{
+		Name:       opDescribePrincipalIdFormat,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribePrincipalIdFormatInput{}
+	}
+
+	output = &DescribePrincipalIdFormatOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribePrincipalIdFormat API operation for Amazon Elastic Compute Cloud.
+//
+// Describes the ID format settings for the root user and all IAM roles and
+// IAM users that have explicitly specified a longer ID (17-character ID) preference.
+//
+// By default, all IAM roles and IAM users default to the same ID settings as
+// the root user, unless they explicitly override the settings. This request
+// is useful for identifying those IAM users and IAM roles that have overridden
+// the default ID settings.
+//
+// The following resource types support longer IDs: bundle | conversion-task
+// | dhcp-options | elastic-ip-allocation | elastic-ip-association | export-task
+// | flow-log | image | import-task | instance | internet-gateway | network-acl
+// | network-acl-association | network-interface | network-interface-attachment
+// | prefix-list | reservation | route-table | route-table-association | security-group
+// | snapshot | subnet | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
+// | vpc-peering-connection.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Elastic Compute Cloud's
+// API operation DescribePrincipalIdFormat for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribePrincipalIdFormat
+func (c *EC2) DescribePrincipalIdFormat(input *DescribePrincipalIdFormatInput) (*DescribePrincipalIdFormatOutput, error) {
+	req, out := c.DescribePrincipalIdFormatRequest(input)
+	return out, req.Send()
+}
+
+// DescribePrincipalIdFormatWithContext is the same as DescribePrincipalIdFormat with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribePrincipalIdFormat for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *EC2) DescribePrincipalIdFormatWithContext(ctx aws.Context, input *DescribePrincipalIdFormatInput, opts ...request.Option) (*DescribePrincipalIdFormatOutput, error) {
+	req, out := c.DescribePrincipalIdFormatRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -17435,8 +17624,16 @@ func (c *EC2) ModifyIdFormatRequest(input *ModifyIdFormatInput) (req *request.Re
 //
 // Modifies the ID format for the specified resource on a per-region basis.
 // You can specify that resources should receive longer IDs (17-character IDs)
-// when they are created. The following resource types support longer IDs: instance
-// | reservation | snapshot | volume.
+// when they are created.
+//
+// This request can only be used to modify longer ID settings for resource types
+// that are within the opt-in period. Resources currently in their opt-in period
+// include: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+// | elastic-ip-association | export-task | flow-log | image | import-task |
+// internet-gateway | network-acl | network-acl-association | network-interface
+// | network-interface-attachment | prefix-list | route-table | route-table-association
+// | security-group | subnet | subnet-cidr-block-association | vpc | vpc-cidr-block-association
+// | vpc-peering-connection.
 //
 // This setting applies to the IAM user who makes the request; it does not apply
 // to the entire AWS account. By default, an IAM user defaults to the same settings
@@ -17528,8 +17725,16 @@ func (c *EC2) ModifyIdentityIdFormatRequest(input *ModifyIdentityIdFormatInput) 
 // user for an account. You can specify that resources should receive longer
 // IDs (17-character IDs) when they are created.
 //
-// The following resource types support longer IDs: instance | reservation |
-// snapshot | volume. For more information, see Resource IDs (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resource-ids.html)
+// This request can only be used to modify longer ID settings for resource types
+// that are within the opt-in period. Resources currently in their opt-in period
+// include: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+// | elastic-ip-association | export-task | flow-log | image | import-task |
+// internet-gateway | network-acl | network-acl-association | network-interface
+// | network-interface-attachment | prefix-list | route-table | route-table-association
+// | security-group | subnet | subnet-cidr-block-association | vpc | vpc-cidr-block-association
+// | vpc-peering-connection..
+//
+// For more information, see Resource IDs (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resource-ids.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // This setting applies to the principal specified in the request; it does not
@@ -22266,7 +22471,6 @@ func (c *EC2) UpdateSecurityGroupRuleDescriptionsIngressWithContext(ctx aws.Cont
 }
 
 // Contains the parameters for accepting the quote.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AcceptReservedInstancesExchangeQuoteRequest
 type AcceptReservedInstancesExchangeQuoteInput struct {
 	_ struct{} `type:"structure"`
 
@@ -22339,7 +22543,6 @@ func (s *AcceptReservedInstancesExchangeQuoteInput) SetTargetConfigurations(v []
 }
 
 // The result of the exchange and whether it was successful.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AcceptReservedInstancesExchangeQuoteResult
 type AcceptReservedInstancesExchangeQuoteOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -22363,7 +22566,6 @@ func (s *AcceptReservedInstancesExchangeQuoteOutput) SetExchangeId(v string) *Ac
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AcceptVpcEndpointConnectionsRequest
 type AcceptVpcEndpointConnectionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -22428,7 +22630,6 @@ func (s *AcceptVpcEndpointConnectionsInput) SetVpcEndpointIds(v []*string) *Acce
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AcceptVpcEndpointConnectionsResult
 type AcceptVpcEndpointConnectionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -22453,7 +22654,6 @@ func (s *AcceptVpcEndpointConnectionsOutput) SetUnsuccessful(v []*UnsuccessfulIt
 }
 
 // Contains the parameters for AcceptVpcPeeringConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AcceptVpcPeeringConnectionRequest
 type AcceptVpcPeeringConnectionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -22491,7 +22691,6 @@ func (s *AcceptVpcPeeringConnectionInput) SetVpcPeeringConnectionId(v string) *A
 }
 
 // Contains the output of AcceptVpcPeeringConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AcceptVpcPeeringConnectionResult
 type AcceptVpcPeeringConnectionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -22516,7 +22715,6 @@ func (s *AcceptVpcPeeringConnectionOutput) SetVpcPeeringConnection(v *VpcPeering
 }
 
 // Describes an account attribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AccountAttribute
 type AccountAttribute struct {
 	_ struct{} `type:"structure"`
 
@@ -22550,7 +22748,6 @@ func (s *AccountAttribute) SetAttributeValues(v []*AccountAttributeValue) *Accou
 }
 
 // Describes a value of an account attribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AccountAttributeValue
 type AccountAttributeValue struct {
 	_ struct{} `type:"structure"`
 
@@ -22575,7 +22772,6 @@ func (s *AccountAttributeValue) SetAttributeValue(v string) *AccountAttributeVal
 }
 
 // Describes a running instance in a Spot Fleet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ActiveInstance
 type ActiveInstance struct {
 	_ struct{} `type:"structure"`
 
@@ -22629,7 +22825,6 @@ func (s *ActiveInstance) SetSpotInstanceRequestId(v string) *ActiveInstance {
 }
 
 // Describes an Elastic IP address.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Address
 type Address struct {
 	_ struct{} `type:"structure"`
 
@@ -22728,7 +22923,6 @@ func (s *Address) SetTags(v []*Tag) *Address {
 }
 
 // Contains the parameters for AllocateAddress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AllocateAddressRequest
 type AllocateAddressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -22776,7 +22970,6 @@ func (s *AllocateAddressInput) SetDryRun(v bool) *AllocateAddressInput {
 }
 
 // Contains the output of AllocateAddress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AllocateAddressResult
 type AllocateAddressOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -22821,7 +23014,6 @@ func (s *AllocateAddressOutput) SetPublicIp(v string) *AllocateAddressOutput {
 }
 
 // Contains the parameters for AllocateHosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AllocateHostsRequest
 type AllocateHostsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -22916,7 +23108,6 @@ func (s *AllocateHostsInput) SetQuantity(v int64) *AllocateHostsInput {
 }
 
 // Contains the output of AllocateHosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AllocateHostsResult
 type AllocateHostsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -22942,7 +23133,6 @@ func (s *AllocateHostsOutput) SetHostIds(v []*string) *AllocateHostsOutput {
 }
 
 // Describes a principal.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AllowedPrincipal
 type AllowedPrincipal struct {
 	_ struct{} `type:"structure"`
 
@@ -22975,7 +23165,6 @@ func (s *AllowedPrincipal) SetPrincipalType(v string) *AllowedPrincipal {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssignIpv6AddressesRequest
 type AssignIpv6AddressesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23035,7 +23224,6 @@ func (s *AssignIpv6AddressesInput) SetNetworkInterfaceId(v string) *AssignIpv6Ad
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssignIpv6AddressesResult
 type AssignIpv6AddressesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -23069,7 +23257,6 @@ func (s *AssignIpv6AddressesOutput) SetNetworkInterfaceId(v string) *AssignIpv6A
 }
 
 // Contains the parameters for AssignPrivateIpAddresses.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssignPrivateIpAddressesRequest
 type AssignPrivateIpAddressesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23142,7 +23329,6 @@ func (s *AssignPrivateIpAddressesInput) SetSecondaryPrivateIpAddressCount(v int6
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssignPrivateIpAddressesOutput
 type AssignPrivateIpAddressesOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -23158,7 +23344,6 @@ func (s AssignPrivateIpAddressesOutput) GoString() string {
 }
 
 // Contains the parameters for AssociateAddress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateAddressRequest
 type AssociateAddressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23251,7 +23436,6 @@ func (s *AssociateAddressInput) SetPublicIp(v string) *AssociateAddressInput {
 }
 
 // Contains the output of AssociateAddress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateAddressResult
 type AssociateAddressOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -23277,7 +23461,6 @@ func (s *AssociateAddressOutput) SetAssociationId(v string) *AssociateAddressOut
 }
 
 // Contains the parameters for AssociateDhcpOptions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateDhcpOptionsRequest
 type AssociateDhcpOptionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23343,7 +23526,6 @@ func (s *AssociateDhcpOptionsInput) SetVpcId(v string) *AssociateDhcpOptionsInpu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateDhcpOptionsOutput
 type AssociateDhcpOptionsOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -23358,7 +23540,6 @@ func (s AssociateDhcpOptionsOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateIamInstanceProfileRequest
 type AssociateIamInstanceProfileInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23411,7 +23592,6 @@ func (s *AssociateIamInstanceProfileInput) SetInstanceId(v string) *AssociateIam
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateIamInstanceProfileResult
 type AssociateIamInstanceProfileOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -23436,7 +23616,6 @@ func (s *AssociateIamInstanceProfileOutput) SetIamInstanceProfileAssociation(v *
 }
 
 // Contains the parameters for AssociateRouteTable.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateRouteTableRequest
 type AssociateRouteTableInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23502,7 +23681,6 @@ func (s *AssociateRouteTableInput) SetSubnetId(v string) *AssociateRouteTableInp
 }
 
 // Contains the output of AssociateRouteTable.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateRouteTableResult
 type AssociateRouteTableOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -23526,7 +23704,6 @@ func (s *AssociateRouteTableOutput) SetAssociationId(v string) *AssociateRouteTa
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateSubnetCidrBlockRequest
 type AssociateSubnetCidrBlockInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23579,7 +23756,6 @@ func (s *AssociateSubnetCidrBlockInput) SetSubnetId(v string) *AssociateSubnetCi
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateSubnetCidrBlockResult
 type AssociateSubnetCidrBlockOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -23612,7 +23788,6 @@ func (s *AssociateSubnetCidrBlockOutput) SetSubnetId(v string) *AssociateSubnetC
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateVpcCidrBlockRequest
 type AssociateVpcCidrBlockInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23671,7 +23846,6 @@ func (s *AssociateVpcCidrBlockInput) SetVpcId(v string) *AssociateVpcCidrBlockIn
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateVpcCidrBlockResult
 type AssociateVpcCidrBlockOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -23714,7 +23888,6 @@ func (s *AssociateVpcCidrBlockOutput) SetVpcId(v string) *AssociateVpcCidrBlockO
 }
 
 // Contains the parameters for AttachClassicLinkVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachClassicLinkVpcRequest
 type AttachClassicLinkVpcInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23795,7 +23968,6 @@ func (s *AttachClassicLinkVpcInput) SetVpcId(v string) *AttachClassicLinkVpcInpu
 }
 
 // Contains the output of AttachClassicLinkVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachClassicLinkVpcResult
 type AttachClassicLinkVpcOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -23820,7 +23992,6 @@ func (s *AttachClassicLinkVpcOutput) SetReturn(v bool) *AttachClassicLinkVpcOutp
 }
 
 // Contains the parameters for AttachInternetGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachInternetGatewayRequest
 type AttachInternetGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23885,7 +24056,6 @@ func (s *AttachInternetGatewayInput) SetVpcId(v string) *AttachInternetGatewayIn
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachInternetGatewayOutput
 type AttachInternetGatewayOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -23901,7 +24071,6 @@ func (s AttachInternetGatewayOutput) GoString() string {
 }
 
 // Contains the parameters for AttachNetworkInterface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachNetworkInterfaceRequest
 type AttachNetworkInterfaceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -23981,7 +24150,6 @@ func (s *AttachNetworkInterfaceInput) SetNetworkInterfaceId(v string) *AttachNet
 }
 
 // Contains the output of AttachNetworkInterface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachNetworkInterfaceResult
 type AttachNetworkInterfaceOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -24006,7 +24174,6 @@ func (s *AttachNetworkInterfaceOutput) SetAttachmentId(v string) *AttachNetworkI
 }
 
 // Contains the parameters for AttachVolume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachVolumeRequest
 type AttachVolumeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -24087,7 +24254,6 @@ func (s *AttachVolumeInput) SetVolumeId(v string) *AttachVolumeInput {
 }
 
 // Contains the parameters for AttachVpnGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachVpnGatewayRequest
 type AttachVpnGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -24153,7 +24319,6 @@ func (s *AttachVpnGatewayInput) SetVpnGatewayId(v string) *AttachVpnGatewayInput
 }
 
 // Contains the output of AttachVpnGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttachVpnGatewayResult
 type AttachVpnGatewayOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -24178,7 +24343,6 @@ func (s *AttachVpnGatewayOutput) SetVpcAttachment(v *VpcAttachment) *AttachVpnGa
 }
 
 // Describes a value for a resource attribute that is a Boolean value.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttributeBooleanValue
 type AttributeBooleanValue struct {
 	_ struct{} `type:"structure"`
 
@@ -24203,11 +24367,10 @@ func (s *AttributeBooleanValue) SetValue(v bool) *AttributeBooleanValue {
 }
 
 // Describes a value for a resource attribute that is a String.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AttributeValue
 type AttributeValue struct {
 	_ struct{} `type:"structure"`
 
-	// The attribute value. Note that the value is case-sensitive.
+	// The attribute value. The value is case-sensitive.
 	Value *string `locationName:"value" type:"string"`
 }
 
@@ -24228,7 +24391,6 @@ func (s *AttributeValue) SetValue(v string) *AttributeValue {
 }
 
 // Contains the parameters for AuthorizeSecurityGroupEgress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AuthorizeSecurityGroupEgressRequest
 type AuthorizeSecurityGroupEgressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -24346,7 +24508,6 @@ func (s *AuthorizeSecurityGroupEgressInput) SetToPort(v int64) *AuthorizeSecurit
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AuthorizeSecurityGroupEgressOutput
 type AuthorizeSecurityGroupEgressOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -24362,7 +24523,6 @@ func (s AuthorizeSecurityGroupEgressOutput) GoString() string {
 }
 
 // Contains the parameters for AuthorizeSecurityGroupIngress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AuthorizeSecurityGroupIngressRequest
 type AuthorizeSecurityGroupIngressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -24495,7 +24655,6 @@ func (s *AuthorizeSecurityGroupIngressInput) SetToPort(v int64) *AuthorizeSecuri
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AuthorizeSecurityGroupIngressOutput
 type AuthorizeSecurityGroupIngressOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -24511,7 +24670,6 @@ func (s AuthorizeSecurityGroupIngressOutput) GoString() string {
 }
 
 // Describes an Availability Zone.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AvailabilityZone
 type AvailabilityZone struct {
 	_ struct{} `type:"structure"`
 
@@ -24563,7 +24721,6 @@ func (s *AvailabilityZone) SetZoneName(v string) *AvailabilityZone {
 }
 
 // Describes a message about an Availability Zone.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AvailabilityZoneMessage
 type AvailabilityZoneMessage struct {
 	_ struct{} `type:"structure"`
 
@@ -24588,7 +24745,6 @@ func (s *AvailabilityZoneMessage) SetMessage(v string) *AvailabilityZoneMessage 
 }
 
 // The capacity information for instances launched onto the Dedicated Host.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AvailableCapacity
 type AvailableCapacity struct {
 	_ struct{} `type:"structure"`
 
@@ -24621,7 +24777,6 @@ func (s *AvailableCapacity) SetAvailableVCpus(v int64) *AvailableCapacity {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/BlobAttributeValue
 type BlobAttributeValue struct {
 	_ struct{} `type:"structure"`
 
@@ -24646,7 +24801,6 @@ func (s *BlobAttributeValue) SetValue(v []byte) *BlobAttributeValue {
 }
 
 // Describes a block device mapping.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/BlockDeviceMapping
 type BlockDeviceMapping struct {
 	_ struct{} `type:"structure"`
 
@@ -24709,7 +24863,6 @@ func (s *BlockDeviceMapping) SetVirtualName(v string) *BlockDeviceMapping {
 }
 
 // Contains the parameters for BundleInstance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/BundleInstanceRequest
 type BundleInstanceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -24783,7 +24936,6 @@ func (s *BundleInstanceInput) SetStorage(v *Storage) *BundleInstanceInput {
 }
 
 // Contains the output of BundleInstance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/BundleInstanceResult
 type BundleInstanceOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -24808,7 +24960,6 @@ func (s *BundleInstanceOutput) SetBundleTask(v *BundleTask) *BundleInstanceOutpu
 }
 
 // Describes a bundle task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/BundleTask
 type BundleTask struct {
 	_ struct{} `type:"structure"`
 
@@ -24896,7 +25047,6 @@ func (s *BundleTask) SetUpdateTime(v time.Time) *BundleTask {
 }
 
 // Describes an error for BundleInstance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/BundleTaskError
 type BundleTaskError struct {
 	_ struct{} `type:"structure"`
 
@@ -24930,7 +25080,6 @@ func (s *BundleTaskError) SetMessage(v string) *BundleTaskError {
 }
 
 // Contains the parameters for CancelBundleTask.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelBundleTaskRequest
 type CancelBundleTaskInput struct {
 	_ struct{} `type:"structure"`
 
@@ -24982,7 +25131,6 @@ func (s *CancelBundleTaskInput) SetDryRun(v bool) *CancelBundleTaskInput {
 }
 
 // Contains the output of CancelBundleTask.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelBundleTaskResult
 type CancelBundleTaskOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -25007,7 +25155,6 @@ func (s *CancelBundleTaskOutput) SetBundleTask(v *BundleTask) *CancelBundleTaskO
 }
 
 // Contains the parameters for CancelConversionTask.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelConversionRequest
 type CancelConversionTaskInput struct {
 	_ struct{} `type:"structure"`
 
@@ -25067,7 +25214,6 @@ func (s *CancelConversionTaskInput) SetReasonMessage(v string) *CancelConversion
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelConversionTaskOutput
 type CancelConversionTaskOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -25083,7 +25229,6 @@ func (s CancelConversionTaskOutput) GoString() string {
 }
 
 // Contains the parameters for CancelExportTask.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelExportTaskRequest
 type CancelExportTaskInput struct {
 	_ struct{} `type:"structure"`
 
@@ -25122,7 +25267,6 @@ func (s *CancelExportTaskInput) SetExportTaskId(v string) *CancelExportTaskInput
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelExportTaskOutput
 type CancelExportTaskOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -25138,7 +25282,6 @@ func (s CancelExportTaskOutput) GoString() string {
 }
 
 // Contains the parameters for CancelImportTask.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelImportTaskRequest
 type CancelImportTaskInput struct {
 	_ struct{} `type:"structure"`
 
@@ -25184,7 +25327,6 @@ func (s *CancelImportTaskInput) SetImportTaskId(v string) *CancelImportTaskInput
 }
 
 // Contains the output for CancelImportTask.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelImportTaskResult
 type CancelImportTaskOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -25227,7 +25369,6 @@ func (s *CancelImportTaskOutput) SetState(v string) *CancelImportTaskOutput {
 }
 
 // Contains the parameters for CancelReservedInstancesListing.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelReservedInstancesListingRequest
 type CancelReservedInstancesListingInput struct {
 	_ struct{} `type:"structure"`
 
@@ -25267,7 +25408,6 @@ func (s *CancelReservedInstancesListingInput) SetReservedInstancesListingId(v st
 }
 
 // Contains the output of CancelReservedInstancesListing.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelReservedInstancesListingResult
 type CancelReservedInstancesListingOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -25292,7 +25432,6 @@ func (s *CancelReservedInstancesListingOutput) SetReservedInstancesListings(v []
 }
 
 // Describes a Spot Fleet error.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelSpotFleetRequestsError
 type CancelSpotFleetRequestsError struct {
 	_ struct{} `type:"structure"`
 
@@ -25330,7 +25469,6 @@ func (s *CancelSpotFleetRequestsError) SetMessage(v string) *CancelSpotFleetRequ
 }
 
 // Describes a Spot Fleet request that was not successfully canceled.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelSpotFleetRequestsErrorItem
 type CancelSpotFleetRequestsErrorItem struct {
 	_ struct{} `type:"structure"`
 
@@ -25368,7 +25506,6 @@ func (s *CancelSpotFleetRequestsErrorItem) SetSpotFleetRequestId(v string) *Canc
 }
 
 // Contains the parameters for CancelSpotFleetRequests.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelSpotFleetRequestsRequest
 type CancelSpotFleetRequestsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -25435,7 +25572,6 @@ func (s *CancelSpotFleetRequestsInput) SetTerminateInstances(v bool) *CancelSpot
 }
 
 // Contains the output of CancelSpotFleetRequests.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelSpotFleetRequestsResponse
 type CancelSpotFleetRequestsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -25469,7 +25605,6 @@ func (s *CancelSpotFleetRequestsOutput) SetUnsuccessfulFleetRequests(v []*Cancel
 }
 
 // Describes a Spot Fleet request that was successfully canceled.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelSpotFleetRequestsSuccessItem
 type CancelSpotFleetRequestsSuccessItem struct {
 	_ struct{} `type:"structure"`
 
@@ -25518,7 +25653,6 @@ func (s *CancelSpotFleetRequestsSuccessItem) SetSpotFleetRequestId(v string) *Ca
 }
 
 // Contains the parameters for CancelSpotInstanceRequests.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelSpotInstanceRequestsRequest
 type CancelSpotInstanceRequestsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -25570,7 +25704,6 @@ func (s *CancelSpotInstanceRequestsInput) SetSpotInstanceRequestIds(v []*string)
 }
 
 // Contains the output of CancelSpotInstanceRequests.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelSpotInstanceRequestsResult
 type CancelSpotInstanceRequestsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -25595,7 +25728,6 @@ func (s *CancelSpotInstanceRequestsOutput) SetCancelledSpotInstanceRequests(v []
 }
 
 // Describes a request to cancel a Spot Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CancelledSpotInstanceRequest
 type CancelledSpotInstanceRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -25629,7 +25761,6 @@ func (s *CancelledSpotInstanceRequest) SetState(v string) *CancelledSpotInstance
 }
 
 // Describes an IPv4 CIDR block.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CidrBlock
 type CidrBlock struct {
 	_ struct{} `type:"structure"`
 
@@ -25654,7 +25785,6 @@ func (s *CidrBlock) SetCidrBlock(v string) *CidrBlock {
 }
 
 // Describes the ClassicLink DNS support status of a VPC.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ClassicLinkDnsSupport
 type ClassicLinkDnsSupport struct {
 	_ struct{} `type:"structure"`
 
@@ -25688,7 +25818,6 @@ func (s *ClassicLinkDnsSupport) SetVpcId(v string) *ClassicLinkDnsSupport {
 }
 
 // Describes a linked EC2-Classic instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ClassicLinkInstance
 type ClassicLinkInstance struct {
 	_ struct{} `type:"structure"`
 
@@ -25740,7 +25869,6 @@ func (s *ClassicLinkInstance) SetVpcId(v string) *ClassicLinkInstance {
 }
 
 // Describes a Classic Load Balancer.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ClassicLoadBalancer
 type ClassicLoadBalancer struct {
 	_ struct{} `type:"structure"`
 
@@ -25781,7 +25909,6 @@ func (s *ClassicLoadBalancer) SetName(v string) *ClassicLoadBalancer {
 
 // Describes the Classic Load Balancers to attach to a Spot Fleet. Spot Fleet
 // registers the running Spot Instances with these Classic Load Balancers.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ClassicLoadBalancersConfig
 type ClassicLoadBalancersConfig struct {
 	_ struct{} `type:"structure"`
 
@@ -25834,7 +25961,6 @@ func (s *ClassicLoadBalancersConfig) SetClassicLoadBalancers(v []*ClassicLoadBal
 }
 
 // Describes the client-specific data.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ClientData
 type ClientData struct {
 	_ struct{} `type:"structure"`
 
@@ -25886,7 +26012,6 @@ func (s *ClientData) SetUploadStart(v time.Time) *ClientData {
 }
 
 // Contains the parameters for ConfirmProductInstance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ConfirmProductInstanceRequest
 type ConfirmProductInstanceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -25952,7 +26077,6 @@ func (s *ConfirmProductInstanceInput) SetProductCode(v string) *ConfirmProductIn
 }
 
 // Contains the output of ConfirmProductInstance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ConfirmProductInstanceResult
 type ConfirmProductInstanceOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -25988,7 +26112,6 @@ func (s *ConfirmProductInstanceOutput) SetReturn(v bool) *ConfirmProductInstance
 }
 
 // Describes a connection notification for a VPC endpoint or VPC endpoint service.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ConnectionNotification
 type ConnectionNotification struct {
 	_ struct{} `type:"structure"`
 
@@ -26068,7 +26191,6 @@ func (s *ConnectionNotification) SetVpcEndpointId(v string) *ConnectionNotificat
 }
 
 // Describes a conversion task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ConversionTask
 type ConversionTask struct {
 	_ struct{} `type:"structure"`
 
@@ -26153,7 +26275,6 @@ func (s *ConversionTask) SetTags(v []*Tag) *ConversionTask {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CopyFpgaImageRequest
 type CopyFpgaImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -26246,7 +26367,6 @@ func (s *CopyFpgaImageInput) SetSourceRegion(v string) *CopyFpgaImageInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CopyFpgaImageResult
 type CopyFpgaImageOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -26271,7 +26391,6 @@ func (s *CopyFpgaImageOutput) SetFpgaImageId(v string) *CopyFpgaImageOutput {
 }
 
 // Contains the parameters for CopyImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CopyImageRequest
 type CopyImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -26296,14 +26415,34 @@ type CopyImageInput struct {
 	// in the Amazon Elastic Compute Cloud User Guide.
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
-	// The full ARN of the AWS Key Management Service (AWS KMS) CMK to use when
-	// encrypting the snapshots of an image during a copy operation. This parameter
-	// is only required if you want to use a non-default CMK; if this parameter
-	// is not specified, the default CMK for EBS is used. The ARN contains the arn:aws:kms
-	// namespace, followed by the region of the CMK, the AWS account ID of the CMK
-	// owner, the key namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	// An identifier for the AWS Key Management Service (AWS KMS) customer master
+	// key (CMK) to use when creating the encrypted volume. This parameter is only
+	// required if you want to use a non-default CMK; if this parameter is not specified,
+	// the default CMK for EBS is used. If a KmsKeyId is specified, the Encrypted
+	// flag must also be set.
+	//
+	// The CMK identifier may be provided in any of the following formats:
+	//
+	//    * Key ID
+	//
+	//    * Key alias
+	//
+	//    * ARN using key ID. The ID ARN contains the arn:aws:kms namespace, followed
+	//    by the region of the CMK, the AWS account ID of the CMK owner, the key
+	//    namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	//
+	//
+	//    * ARN using key alias. The alias ARN contains the arn:aws:kms namespace,
+	//    followed by the region of the CMK, the AWS account ID of the CMK owner,
+	//    the alias namespace, and then the CMK alias. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
+	//
+	//
+	// AWS parses KmsKeyId asynchronously, meaning that the action you call may
+	// appear to complete even though you provided an invalid identifier. This action
+	// will eventually report failure.
+	//
 	// The specified CMK must exist in the region that the snapshot is being copied
-	// to. If a KmsKeyId is specified, the Encrypted flag must also be set.
+	// to.
 	KmsKeyId *string `locationName:"kmsKeyId" type:"string"`
 
 	// The name of the new AMI in the destination region.
@@ -26400,7 +26539,6 @@ func (s *CopyImageInput) SetSourceRegion(v string) *CopyImageInput {
 }
 
 // Contains the output of CopyImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CopyImageResult
 type CopyImageOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -26425,7 +26563,6 @@ func (s *CopyImageOutput) SetImageId(v string) *CopyImageOutput {
 }
 
 // Contains the parameters for CopySnapshot.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CopySnapshotRequest
 type CopySnapshotInput struct {
 	_ struct{} `type:"structure"`
 
@@ -26457,14 +26594,31 @@ type CopySnapshotInput struct {
 	// the Amazon Elastic Compute Cloud User Guide.
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
-	// The full ARN of the AWS Key Management Service (AWS KMS) CMK to use when
-	// creating the snapshot copy. This parameter is only required if you want to
-	// use a non-default CMK; if this parameter is not specified, the default CMK
-	// for EBS is used. The ARN contains the arn:aws:kms namespace, followed by
-	// the region of the CMK, the AWS account ID of the CMK owner, the key namespace,
-	// and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
-	// The specified CMK must exist in the region that the snapshot is being copied
-	// to. If a KmsKeyId is specified, the Encrypted flag must also be set.
+	// An identifier for the AWS Key Management Service (AWS KMS) customer master
+	// key (CMK) to use when creating the encrypted volume. This parameter is only
+	// required if you want to use a non-default CMK; if this parameter is not specified,
+	// the default CMK for EBS is used. If a KmsKeyId is specified, the Encrypted
+	// flag must also be set.
+	//
+	// The CMK identifier may be provided in any of the following formats:
+	//
+	//    * Key ID
+	//
+	//    * Key alias
+	//
+	//    * ARN using key ID. The ID ARN contains the arn:aws:kms namespace, followed
+	//    by the region of the CMK, the AWS account ID of the CMK owner, the key
+	//    namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	//
+	//
+	//    * ARN using key alias. The alias ARN contains the arn:aws:kms namespace,
+	//    followed by the region of the CMK, the AWS account ID of the CMK owner,
+	//    the alias namespace, and then the CMK alias. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
+	//
+	//
+	// AWS parses KmsKeyId asynchronously, meaning that the action you call may
+	// appear to complete even though you provided an invalid identifier. The action
+	// will eventually fail.
 	KmsKeyId *string `locationName:"kmsKeyId" type:"string"`
 
 	// The pre-signed URL that facilitates copying an encrypted snapshot. This parameter
@@ -26567,7 +26721,6 @@ func (s *CopySnapshotInput) SetSourceSnapshotId(v string) *CopySnapshotInput {
 }
 
 // Contains the output of CopySnapshot.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CopySnapshotResult
 type CopySnapshotOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -26592,7 +26745,6 @@ func (s *CopySnapshotOutput) SetSnapshotId(v string) *CopySnapshotOutput {
 }
 
 // Contains the parameters for CreateCustomerGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateCustomerGatewayRequest
 type CreateCustomerGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -26675,7 +26827,6 @@ func (s *CreateCustomerGatewayInput) SetType(v string) *CreateCustomerGatewayInp
 }
 
 // Contains the output of CreateCustomerGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateCustomerGatewayResult
 type CreateCustomerGatewayOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -26699,7 +26850,6 @@ func (s *CreateCustomerGatewayOutput) SetCustomerGateway(v *CustomerGateway) *Cr
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateDefaultSubnetRequest
 type CreateDefaultSubnetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -26750,7 +26900,6 @@ func (s *CreateDefaultSubnetInput) SetDryRun(v bool) *CreateDefaultSubnetInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateDefaultSubnetResult
 type CreateDefaultSubnetOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -26775,7 +26924,6 @@ func (s *CreateDefaultSubnetOutput) SetSubnet(v *Subnet) *CreateDefaultSubnetOut
 }
 
 // Contains the parameters for CreateDefaultVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateDefaultVpcRequest
 type CreateDefaultVpcInput struct {
 	_ struct{} `type:"structure"`
 
@@ -26803,7 +26951,6 @@ func (s *CreateDefaultVpcInput) SetDryRun(v bool) *CreateDefaultVpcInput {
 }
 
 // Contains the output of CreateDefaultVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateDefaultVpcResult
 type CreateDefaultVpcOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -26828,7 +26975,6 @@ func (s *CreateDefaultVpcOutput) SetVpc(v *Vpc) *CreateDefaultVpcOutput {
 }
 
 // Contains the parameters for CreateDhcpOptions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateDhcpOptionsRequest
 type CreateDhcpOptionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -26880,7 +27026,6 @@ func (s *CreateDhcpOptionsInput) SetDryRun(v bool) *CreateDhcpOptionsInput {
 }
 
 // Contains the output of CreateDhcpOptions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateDhcpOptionsResult
 type CreateDhcpOptionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -26904,7 +27049,6 @@ func (s *CreateDhcpOptionsOutput) SetDhcpOptions(v *DhcpOptions) *CreateDhcpOpti
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateEgressOnlyInternetGatewayRequest
 type CreateEgressOnlyInternetGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -26965,7 +27109,6 @@ func (s *CreateEgressOnlyInternetGatewayInput) SetVpcId(v string) *CreateEgressO
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateEgressOnlyInternetGatewayResult
 type CreateEgressOnlyInternetGatewayOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27000,7 +27143,6 @@ func (s *CreateEgressOnlyInternetGatewayOutput) SetEgressOnlyInternetGateway(v *
 }
 
 // Contains the parameters for CreateFlowLogs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateFlowLogsRequest
 type CreateFlowLogsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27109,7 +27251,6 @@ func (s *CreateFlowLogsInput) SetTrafficType(v string) *CreateFlowLogsInput {
 }
 
 // Contains the output of CreateFlowLogs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateFlowLogsResult
 type CreateFlowLogsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27152,7 +27293,6 @@ func (s *CreateFlowLogsOutput) SetUnsuccessful(v []*UnsuccessfulItem) *CreateFlo
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateFpgaImageRequest
 type CreateFpgaImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27241,7 +27381,6 @@ func (s *CreateFpgaImageInput) SetName(v string) *CreateFpgaImageInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateFpgaImageResult
 type CreateFpgaImageOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27275,7 +27414,6 @@ func (s *CreateFpgaImageOutput) SetFpgaImageId(v string) *CreateFpgaImageOutput 
 }
 
 // Contains the parameters for CreateImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateImageRequest
 type CreateImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27375,7 +27513,6 @@ func (s *CreateImageInput) SetNoReboot(v bool) *CreateImageInput {
 }
 
 // Contains the output of CreateImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateImageResult
 type CreateImageOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27400,7 +27537,6 @@ func (s *CreateImageOutput) SetImageId(v string) *CreateImageOutput {
 }
 
 // Contains the parameters for CreateInstanceExportTask.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateInstanceExportTaskRequest
 type CreateInstanceExportTaskInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27468,7 +27604,6 @@ func (s *CreateInstanceExportTaskInput) SetTargetEnvironment(v string) *CreateIn
 }
 
 // Contains the output for CreateInstanceExportTask.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateInstanceExportTaskResult
 type CreateInstanceExportTaskOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27493,7 +27628,6 @@ func (s *CreateInstanceExportTaskOutput) SetExportTask(v *ExportTask) *CreateIns
 }
 
 // Contains the parameters for CreateInternetGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateInternetGatewayRequest
 type CreateInternetGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27521,7 +27655,6 @@ func (s *CreateInternetGatewayInput) SetDryRun(v bool) *CreateInternetGatewayInp
 }
 
 // Contains the output of CreateInternetGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateInternetGatewayResult
 type CreateInternetGatewayOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27546,7 +27679,6 @@ func (s *CreateInternetGatewayOutput) SetInternetGateway(v *InternetGateway) *Cr
 }
 
 // Contains the parameters for CreateKeyPair.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateKeyPairRequest
 type CreateKeyPairInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27600,7 +27732,6 @@ func (s *CreateKeyPairInput) SetKeyName(v string) *CreateKeyPairInput {
 }
 
 // Describes a key pair.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/KeyPair
 type CreateKeyPairOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27642,7 +27773,6 @@ func (s *CreateKeyPairOutput) SetKeyName(v string) *CreateKeyPairOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateLaunchTemplateRequest
 type CreateLaunchTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27734,7 +27864,6 @@ func (s *CreateLaunchTemplateInput) SetVersionDescription(v string) *CreateLaunc
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateLaunchTemplateResult
 type CreateLaunchTemplateOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27758,7 +27887,6 @@ func (s *CreateLaunchTemplateOutput) SetLaunchTemplate(v *LaunchTemplate) *Creat
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateLaunchTemplateVersionRequest
 type CreateLaunchTemplateVersionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27867,7 +27995,6 @@ func (s *CreateLaunchTemplateVersionInput) SetVersionDescription(v string) *Crea
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateLaunchTemplateVersionResult
 type CreateLaunchTemplateVersionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27892,7 +28019,6 @@ func (s *CreateLaunchTemplateVersionOutput) SetLaunchTemplateVersion(v *LaunchTe
 }
 
 // Contains the parameters for CreateNatGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNatGatewayRequest
 type CreateNatGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -27960,7 +28086,6 @@ func (s *CreateNatGatewayInput) SetSubnetId(v string) *CreateNatGatewayInput {
 }
 
 // Contains the output of CreateNatGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNatGatewayResult
 type CreateNatGatewayOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -27995,7 +28120,6 @@ func (s *CreateNatGatewayOutput) SetNatGateway(v *NatGateway) *CreateNatGatewayO
 }
 
 // Contains the parameters for CreateNetworkAclEntry.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNetworkAclEntryRequest
 type CreateNetworkAclEntryInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28150,7 +28274,6 @@ func (s *CreateNetworkAclEntryInput) SetRuleNumber(v int64) *CreateNetworkAclEnt
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNetworkAclEntryOutput
 type CreateNetworkAclEntryOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -28166,7 +28289,6 @@ func (s CreateNetworkAclEntryOutput) GoString() string {
 }
 
 // Contains the parameters for CreateNetworkAcl.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNetworkAclRequest
 type CreateNetworkAclInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28218,7 +28340,6 @@ func (s *CreateNetworkAclInput) SetVpcId(v string) *CreateNetworkAclInput {
 }
 
 // Contains the output of CreateNetworkAcl.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNetworkAclResult
 type CreateNetworkAclOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -28243,7 +28364,6 @@ func (s *CreateNetworkAclOutput) SetNetworkAcl(v *NetworkAcl) *CreateNetworkAclO
 }
 
 // Contains the parameters for CreateNetworkInterface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNetworkInterfaceRequest
 type CreateNetworkInterfaceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28385,7 +28505,6 @@ func (s *CreateNetworkInterfaceInput) SetSubnetId(v string) *CreateNetworkInterf
 }
 
 // Contains the output of CreateNetworkInterface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNetworkInterfaceResult
 type CreateNetworkInterfaceOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -28410,7 +28529,6 @@ func (s *CreateNetworkInterfaceOutput) SetNetworkInterface(v *NetworkInterface) 
 }
 
 // Contains the parameters for CreateNetworkInterfacePermission.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNetworkInterfacePermissionRequest
 type CreateNetworkInterfacePermissionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28494,7 +28612,6 @@ func (s *CreateNetworkInterfacePermissionInput) SetPermission(v string) *CreateN
 }
 
 // Contains the output of CreateNetworkInterfacePermission.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateNetworkInterfacePermissionResult
 type CreateNetworkInterfacePermissionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -28519,7 +28636,6 @@ func (s *CreateNetworkInterfacePermissionOutput) SetInterfacePermission(v *Netwo
 }
 
 // Contains the parameters for CreatePlacementGroup.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreatePlacementGroupRequest
 type CreatePlacementGroupInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28587,7 +28703,6 @@ func (s *CreatePlacementGroupInput) SetStrategy(v string) *CreatePlacementGroupI
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreatePlacementGroupOutput
 type CreatePlacementGroupOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -28603,7 +28718,6 @@ func (s CreatePlacementGroupOutput) GoString() string {
 }
 
 // Contains the parameters for CreateReservedInstancesListing.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateReservedInstancesListingRequest
 type CreateReservedInstancesListingInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28691,7 +28805,6 @@ func (s *CreateReservedInstancesListingInput) SetReservedInstancesId(v string) *
 }
 
 // Contains the output of CreateReservedInstancesListing.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateReservedInstancesListingResult
 type CreateReservedInstancesListingOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -28716,7 +28829,6 @@ func (s *CreateReservedInstancesListingOutput) SetReservedInstancesListings(v []
 }
 
 // Contains the parameters for CreateRoute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateRouteRequest
 type CreateRouteInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28844,7 +28956,6 @@ func (s *CreateRouteInput) SetVpcPeeringConnectionId(v string) *CreateRouteInput
 }
 
 // Contains the output of CreateRoute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateRouteResult
 type CreateRouteOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -28869,7 +28980,6 @@ func (s *CreateRouteOutput) SetReturn(v bool) *CreateRouteOutput {
 }
 
 // Contains the parameters for CreateRouteTable.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateRouteTableRequest
 type CreateRouteTableInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28921,7 +29031,6 @@ func (s *CreateRouteTableInput) SetVpcId(v string) *CreateRouteTableInput {
 }
 
 // Contains the output of CreateRouteTable.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateRouteTableResult
 type CreateRouteTableOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -28946,7 +29055,6 @@ func (s *CreateRouteTableOutput) SetRouteTable(v *RouteTable) *CreateRouteTableO
 }
 
 // Contains the parameters for CreateSecurityGroup.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateSecurityGroupRequest
 type CreateSecurityGroupInput struct {
 	_ struct{} `type:"structure"`
 
@@ -28969,7 +29077,7 @@ type CreateSecurityGroupInput struct {
 
 	// The name of the security group.
 	//
-	// Constraints: Up to 255 characters in length
+	// Constraints: Up to 255 characters in length. Cannot start with sg-.
 	//
 	// Constraints for EC2-Classic: ASCII characters
 	//
@@ -29033,7 +29141,6 @@ func (s *CreateSecurityGroupInput) SetVpcId(v string) *CreateSecurityGroupInput 
 }
 
 // Contains the output of CreateSecurityGroup.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateSecurityGroupResult
 type CreateSecurityGroupOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -29058,7 +29165,6 @@ func (s *CreateSecurityGroupOutput) SetGroupId(v string) *CreateSecurityGroupOut
 }
 
 // Contains the parameters for CreateSnapshot.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateSnapshotRequest
 type CreateSnapshotInput struct {
 	_ struct{} `type:"structure"`
 
@@ -29070,6 +29176,9 @@ type CreateSnapshotInput struct {
 	// the required permissions, the error response is DryRunOperation. Otherwise,
 	// it is UnauthorizedOperation.
 	DryRun *bool `locationName:"dryRun" type:"boolean"`
+
+	// The tags to apply to the snapshot during creation.
+	TagSpecifications []*TagSpecification `locationName:"TagSpecification" locationNameList:"item" type:"list"`
 
 	// The ID of the EBS volume.
 	//
@@ -29112,6 +29221,12 @@ func (s *CreateSnapshotInput) SetDryRun(v bool) *CreateSnapshotInput {
 	return s
 }
 
+// SetTagSpecifications sets the TagSpecifications field's value.
+func (s *CreateSnapshotInput) SetTagSpecifications(v []*TagSpecification) *CreateSnapshotInput {
+	s.TagSpecifications = v
+	return s
+}
+
 // SetVolumeId sets the VolumeId field's value.
 func (s *CreateSnapshotInput) SetVolumeId(v string) *CreateSnapshotInput {
 	s.VolumeId = &v
@@ -29119,7 +29234,6 @@ func (s *CreateSnapshotInput) SetVolumeId(v string) *CreateSnapshotInput {
 }
 
 // Contains the parameters for CreateSpotDatafeedSubscription.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateSpotDatafeedSubscriptionRequest
 type CreateSpotDatafeedSubscriptionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -29180,7 +29294,6 @@ func (s *CreateSpotDatafeedSubscriptionInput) SetPrefix(v string) *CreateSpotDat
 }
 
 // Contains the output of CreateSpotDatafeedSubscription.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateSpotDatafeedSubscriptionResult
 type CreateSpotDatafeedSubscriptionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -29205,7 +29318,6 @@ func (s *CreateSpotDatafeedSubscriptionOutput) SetSpotDatafeedSubscription(v *Sp
 }
 
 // Contains the parameters for CreateSubnet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateSubnetRequest
 type CreateSubnetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -29293,7 +29405,6 @@ func (s *CreateSubnetInput) SetVpcId(v string) *CreateSubnetInput {
 }
 
 // Contains the output of CreateSubnet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateSubnetResult
 type CreateSubnetOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -29318,7 +29429,6 @@ func (s *CreateSubnetOutput) SetSubnet(v *Subnet) *CreateSubnetOutput {
 }
 
 // Contains the parameters for CreateTags.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateTagsRequest
 type CreateTagsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -29385,7 +29495,6 @@ func (s *CreateTagsInput) SetTags(v []*Tag) *CreateTagsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateTagsOutput
 type CreateTagsOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -29401,7 +29510,6 @@ func (s CreateTagsOutput) GoString() string {
 }
 
 // Contains the parameters for CreateVolume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVolumeRequest
 type CreateVolumeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -29433,13 +29541,31 @@ type CreateVolumeInput struct {
 	// Constraint: Range is 100 to 20000 for Provisioned IOPS SSD volumes
 	Iops *int64 `type:"integer"`
 
-	// The full ARN of the AWS Key Management Service (AWS KMS) customer master
+	// An identifier for the AWS Key Management Service (AWS KMS) customer master
 	// key (CMK) to use when creating the encrypted volume. This parameter is only
 	// required if you want to use a non-default CMK; if this parameter is not specified,
-	// the default CMK for EBS is used. The ARN contains the arn:aws:kms namespace,
-	// followed by the region of the CMK, the AWS account ID of the CMK owner, the
-	// key namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
-	// If a KmsKeyId is specified, the Encrypted flag must also be set.
+	// the default CMK for EBS is used. If a KmsKeyId is specified, the Encrypted
+	// flag must also be set.
+	//
+	// The CMK identifier may be provided in any of the following formats:
+	//
+	//    * Key ID
+	//
+	//    * Key alias
+	//
+	//    * ARN using key ID. The ID ARN contains the arn:aws:kms namespace, followed
+	//    by the region of the CMK, the AWS account ID of the CMK owner, the key
+	//    namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	//
+	//
+	//    * ARN using key alias. The alias ARN contains the arn:aws:kms namespace,
+	//    followed by the region of the CMK, the AWS account ID of the CMK owner,
+	//    the alias namespace, and then the CMK alias. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
+	//
+	//
+	// AWS parses KmsKeyId asynchronously, meaning that the action you call may
+	// appear to complete even though you provided an invalid identifier. The action
+	// will eventually fail.
 	KmsKeyId *string `type:"string"`
 
 	// The size of the volume, in GiBs.
@@ -29545,7 +29671,6 @@ func (s *CreateVolumeInput) SetVolumeType(v string) *CreateVolumeInput {
 
 // Describes the user or group to be added or removed from the permissions for
 // a volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVolumePermission
 type CreateVolumePermission struct {
 	_ struct{} `type:"structure"`
 
@@ -29581,7 +29706,6 @@ func (s *CreateVolumePermission) SetUserId(v string) *CreateVolumePermission {
 }
 
 // Describes modifications to the permissions for a volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVolumePermissionModifications
 type CreateVolumePermissionModifications struct {
 	_ struct{} `type:"structure"`
 
@@ -29616,7 +29740,6 @@ func (s *CreateVolumePermissionModifications) SetRemove(v []*CreateVolumePermiss
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcEndpointConnectionNotificationRequest
 type CreateVpcEndpointConnectionNotificationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -29710,7 +29833,6 @@ func (s *CreateVpcEndpointConnectionNotificationInput) SetVpcEndpointId(v string
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcEndpointConnectionNotificationResult
 type CreateVpcEndpointConnectionNotificationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -29745,7 +29867,6 @@ func (s *CreateVpcEndpointConnectionNotificationOutput) SetConnectionNotificatio
 }
 
 // Contains the parameters for CreateVpcEndpoint.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcEndpointRequest
 type CreateVpcEndpointInput struct {
 	_ struct{} `type:"structure"`
 
@@ -29895,7 +30016,6 @@ func (s *CreateVpcEndpointInput) SetVpcId(v string) *CreateVpcEndpointInput {
 }
 
 // Contains the output of CreateVpcEndpoint.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcEndpointResult
 type CreateVpcEndpointOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -29929,7 +30049,6 @@ func (s *CreateVpcEndpointOutput) SetVpcEndpoint(v *VpcEndpoint) *CreateVpcEndpo
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcEndpointServiceConfigurationRequest
 type CreateVpcEndpointServiceConfigurationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30001,7 +30120,6 @@ func (s *CreateVpcEndpointServiceConfigurationInput) SetNetworkLoadBalancerArns(
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcEndpointServiceConfigurationResult
 type CreateVpcEndpointServiceConfigurationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -30036,7 +30154,6 @@ func (s *CreateVpcEndpointServiceConfigurationOutput) SetServiceConfiguration(v 
 }
 
 // Contains the parameters for CreateVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcRequest
 type CreateVpcInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30117,7 +30234,6 @@ func (s *CreateVpcInput) SetInstanceTenancy(v string) *CreateVpcInput {
 }
 
 // Contains the output of CreateVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcResult
 type CreateVpcOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -30142,7 +30258,6 @@ func (s *CreateVpcOutput) SetVpc(v *Vpc) *CreateVpcOutput {
 }
 
 // Contains the parameters for CreateVpcPeeringConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcPeeringConnectionRequest
 type CreateVpcPeeringConnectionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30212,7 +30327,6 @@ func (s *CreateVpcPeeringConnectionInput) SetVpcId(v string) *CreateVpcPeeringCo
 }
 
 // Contains the output of CreateVpcPeeringConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpcPeeringConnectionResult
 type CreateVpcPeeringConnectionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -30237,7 +30351,6 @@ func (s *CreateVpcPeeringConnectionOutput) SetVpcPeeringConnection(v *VpcPeering
 }
 
 // Contains the parameters for CreateVpnConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpnConnectionRequest
 type CreateVpnConnectionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30326,7 +30439,6 @@ func (s *CreateVpnConnectionInput) SetVpnGatewayId(v string) *CreateVpnConnectio
 }
 
 // Contains the output of CreateVpnConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpnConnectionResult
 type CreateVpnConnectionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -30351,7 +30463,6 @@ func (s *CreateVpnConnectionOutput) SetVpnConnection(v *VpnConnection) *CreateVp
 }
 
 // Contains the parameters for CreateVpnConnectionRoute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpnConnectionRouteRequest
 type CreateVpnConnectionRouteInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30404,7 +30515,6 @@ func (s *CreateVpnConnectionRouteInput) SetVpnConnectionId(v string) *CreateVpnC
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpnConnectionRouteOutput
 type CreateVpnConnectionRouteOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -30420,7 +30530,6 @@ func (s CreateVpnConnectionRouteOutput) GoString() string {
 }
 
 // Contains the parameters for CreateVpnGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpnGatewayRequest
 type CreateVpnGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30494,7 +30603,6 @@ func (s *CreateVpnGatewayInput) SetType(v string) *CreateVpnGatewayInput {
 }
 
 // Contains the output of CreateVpnGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreateVpnGatewayResult
 type CreateVpnGatewayOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -30519,7 +30627,6 @@ func (s *CreateVpnGatewayOutput) SetVpnGateway(v *VpnGateway) *CreateVpnGatewayO
 }
 
 // Describes the credit option for CPU usage of a T2 instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreditSpecification
 type CreditSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -30544,7 +30651,6 @@ func (s *CreditSpecification) SetCpuCredits(v string) *CreditSpecification {
 }
 
 // The credit option for CPU usage of a T2 instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CreditSpecificationRequest
 type CreditSpecificationRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -30585,7 +30691,6 @@ func (s *CreditSpecificationRequest) SetCpuCredits(v string) *CreditSpecificatio
 }
 
 // Describes a customer gateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/CustomerGateway
 type CustomerGateway struct {
 	_ struct{} `type:"structure"`
 
@@ -30657,7 +30762,6 @@ func (s *CustomerGateway) SetType(v string) *CustomerGateway {
 }
 
 // Contains the parameters for DeleteCustomerGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteCustomerGatewayRequest
 type DeleteCustomerGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30708,7 +30812,6 @@ func (s *DeleteCustomerGatewayInput) SetDryRun(v bool) *DeleteCustomerGatewayInp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteCustomerGatewayOutput
 type DeleteCustomerGatewayOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -30724,7 +30827,6 @@ func (s DeleteCustomerGatewayOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteDhcpOptions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteDhcpOptionsRequest
 type DeleteDhcpOptionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30775,7 +30877,6 @@ func (s *DeleteDhcpOptionsInput) SetDryRun(v bool) *DeleteDhcpOptionsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteDhcpOptionsOutput
 type DeleteDhcpOptionsOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -30790,7 +30891,6 @@ func (s DeleteDhcpOptionsOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteEgressOnlyInternetGatewayRequest
 type DeleteEgressOnlyInternetGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30841,7 +30941,6 @@ func (s *DeleteEgressOnlyInternetGatewayInput) SetEgressOnlyInternetGatewayId(v 
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteEgressOnlyInternetGatewayResult
 type DeleteEgressOnlyInternetGatewayOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -30866,7 +30965,6 @@ func (s *DeleteEgressOnlyInternetGatewayOutput) SetReturnCode(v bool) *DeleteEgr
 }
 
 // Contains the parameters for DeleteFlowLogs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteFlowLogsRequest
 type DeleteFlowLogsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30906,7 +31004,6 @@ func (s *DeleteFlowLogsInput) SetFlowLogIds(v []*string) *DeleteFlowLogsInput {
 }
 
 // Contains the output of DeleteFlowLogs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteFlowLogsResult
 type DeleteFlowLogsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -30930,7 +31027,6 @@ func (s *DeleteFlowLogsOutput) SetUnsuccessful(v []*UnsuccessfulItem) *DeleteFlo
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteFpgaImageRequest
 type DeleteFpgaImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -30981,7 +31077,6 @@ func (s *DeleteFpgaImageInput) SetFpgaImageId(v string) *DeleteFpgaImageInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteFpgaImageResult
 type DeleteFpgaImageOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -31006,7 +31101,6 @@ func (s *DeleteFpgaImageOutput) SetReturn(v bool) *DeleteFpgaImageOutput {
 }
 
 // Contains the parameters for DeleteInternetGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteInternetGatewayRequest
 type DeleteInternetGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31057,7 +31151,6 @@ func (s *DeleteInternetGatewayInput) SetInternetGatewayId(v string) *DeleteInter
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteInternetGatewayOutput
 type DeleteInternetGatewayOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -31073,7 +31166,6 @@ func (s DeleteInternetGatewayOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteKeyPair.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteKeyPairRequest
 type DeleteKeyPairInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31124,7 +31216,6 @@ func (s *DeleteKeyPairInput) SetKeyName(v string) *DeleteKeyPairInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteKeyPairOutput
 type DeleteKeyPairOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -31139,7 +31230,6 @@ func (s DeleteKeyPairOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteLaunchTemplateRequest
 type DeleteLaunchTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31199,7 +31289,6 @@ func (s *DeleteLaunchTemplateInput) SetLaunchTemplateName(v string) *DeleteLaunc
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteLaunchTemplateResult
 type DeleteLaunchTemplateOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -31223,7 +31312,6 @@ func (s *DeleteLaunchTemplateOutput) SetLaunchTemplate(v *LaunchTemplate) *Delet
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteLaunchTemplateVersionsRequest
 type DeleteLaunchTemplateVersionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31297,7 +31385,6 @@ func (s *DeleteLaunchTemplateVersionsInput) SetVersions(v []*string) *DeleteLaun
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteLaunchTemplateVersionsResult
 type DeleteLaunchTemplateVersionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -31331,7 +31418,6 @@ func (s *DeleteLaunchTemplateVersionsOutput) SetUnsuccessfullyDeletedLaunchTempl
 }
 
 // Describes a launch template version that could not be deleted.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteLaunchTemplateVersionsResponseErrorItem
 type DeleteLaunchTemplateVersionsResponseErrorItem struct {
 	_ struct{} `type:"structure"`
 
@@ -31383,7 +31469,6 @@ func (s *DeleteLaunchTemplateVersionsResponseErrorItem) SetVersionNumber(v int64
 }
 
 // Describes a launch template version that was successfully deleted.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteLaunchTemplateVersionsResponseSuccessItem
 type DeleteLaunchTemplateVersionsResponseSuccessItem struct {
 	_ struct{} `type:"structure"`
 
@@ -31426,7 +31511,6 @@ func (s *DeleteLaunchTemplateVersionsResponseSuccessItem) SetVersionNumber(v int
 }
 
 // Contains the parameters for DeleteNatGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNatGatewayRequest
 type DeleteNatGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31466,7 +31550,6 @@ func (s *DeleteNatGatewayInput) SetNatGatewayId(v string) *DeleteNatGatewayInput
 }
 
 // Contains the output of DeleteNatGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNatGatewayResult
 type DeleteNatGatewayOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -31491,7 +31574,6 @@ func (s *DeleteNatGatewayOutput) SetNatGatewayId(v string) *DeleteNatGatewayOutp
 }
 
 // Contains the parameters for DeleteNetworkAclEntry.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNetworkAclEntryRequest
 type DeleteNetworkAclEntryInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31570,7 +31652,6 @@ func (s *DeleteNetworkAclEntryInput) SetRuleNumber(v int64) *DeleteNetworkAclEnt
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNetworkAclEntryOutput
 type DeleteNetworkAclEntryOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -31586,7 +31667,6 @@ func (s DeleteNetworkAclEntryOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteNetworkAcl.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNetworkAclRequest
 type DeleteNetworkAclInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31637,7 +31717,6 @@ func (s *DeleteNetworkAclInput) SetNetworkAclId(v string) *DeleteNetworkAclInput
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNetworkAclOutput
 type DeleteNetworkAclOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -31653,7 +31732,6 @@ func (s DeleteNetworkAclOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteNetworkInterface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNetworkInterfaceRequest
 type DeleteNetworkInterfaceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31704,7 +31782,6 @@ func (s *DeleteNetworkInterfaceInput) SetNetworkInterfaceId(v string) *DeleteNet
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNetworkInterfaceOutput
 type DeleteNetworkInterfaceOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -31720,7 +31797,6 @@ func (s DeleteNetworkInterfaceOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteNetworkInterfacePermission.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNetworkInterfacePermissionRequest
 type DeleteNetworkInterfacePermissionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31782,7 +31858,6 @@ func (s *DeleteNetworkInterfacePermissionInput) SetNetworkInterfacePermissionId(
 }
 
 // Contains the output for DeleteNetworkInterfacePermission.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteNetworkInterfacePermissionResult
 type DeleteNetworkInterfacePermissionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -31807,7 +31882,6 @@ func (s *DeleteNetworkInterfacePermissionOutput) SetReturn(v bool) *DeleteNetwor
 }
 
 // Contains the parameters for DeletePlacementGroup.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeletePlacementGroupRequest
 type DeletePlacementGroupInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31858,7 +31932,6 @@ func (s *DeletePlacementGroupInput) SetGroupName(v string) *DeletePlacementGroup
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeletePlacementGroupOutput
 type DeletePlacementGroupOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -31874,7 +31947,6 @@ func (s DeletePlacementGroupOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteRoute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteRouteRequest
 type DeleteRouteInput struct {
 	_ struct{} `type:"structure"`
 
@@ -31945,7 +32017,6 @@ func (s *DeleteRouteInput) SetRouteTableId(v string) *DeleteRouteInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteRouteOutput
 type DeleteRouteOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -31961,7 +32032,6 @@ func (s DeleteRouteOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteRouteTable.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteRouteTableRequest
 type DeleteRouteTableInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32012,7 +32082,6 @@ func (s *DeleteRouteTableInput) SetRouteTableId(v string) *DeleteRouteTableInput
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteRouteTableOutput
 type DeleteRouteTableOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32028,7 +32097,6 @@ func (s DeleteRouteTableOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteSecurityGroup.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteSecurityGroupRequest
 type DeleteSecurityGroupInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32074,7 +32142,6 @@ func (s *DeleteSecurityGroupInput) SetGroupName(v string) *DeleteSecurityGroupIn
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteSecurityGroupOutput
 type DeleteSecurityGroupOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32090,7 +32157,6 @@ func (s DeleteSecurityGroupOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteSnapshot.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteSnapshotRequest
 type DeleteSnapshotInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32141,7 +32207,6 @@ func (s *DeleteSnapshotInput) SetSnapshotId(v string) *DeleteSnapshotInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteSnapshotOutput
 type DeleteSnapshotOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32157,7 +32222,6 @@ func (s DeleteSnapshotOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteSpotDatafeedSubscription.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteSpotDatafeedSubscriptionRequest
 type DeleteSpotDatafeedSubscriptionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32184,7 +32248,6 @@ func (s *DeleteSpotDatafeedSubscriptionInput) SetDryRun(v bool) *DeleteSpotDataf
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteSpotDatafeedSubscriptionOutput
 type DeleteSpotDatafeedSubscriptionOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32200,7 +32263,6 @@ func (s DeleteSpotDatafeedSubscriptionOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteSubnet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteSubnetRequest
 type DeleteSubnetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32251,7 +32313,6 @@ func (s *DeleteSubnetInput) SetSubnetId(v string) *DeleteSubnetInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteSubnetOutput
 type DeleteSubnetOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32267,7 +32328,6 @@ func (s DeleteSubnetOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteTags.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteTagsRequest
 type DeleteTagsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32332,7 +32392,6 @@ func (s *DeleteTagsInput) SetTags(v []*Tag) *DeleteTagsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteTagsOutput
 type DeleteTagsOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32348,7 +32407,6 @@ func (s DeleteTagsOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteVolume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVolumeRequest
 type DeleteVolumeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32399,7 +32457,6 @@ func (s *DeleteVolumeInput) SetVolumeId(v string) *DeleteVolumeInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVolumeOutput
 type DeleteVolumeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32414,7 +32471,6 @@ func (s DeleteVolumeOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcEndpointConnectionNotificationsRequest
 type DeleteVpcEndpointConnectionNotificationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32465,7 +32521,6 @@ func (s *DeleteVpcEndpointConnectionNotificationsInput) SetDryRun(v bool) *Delet
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcEndpointConnectionNotificationsResult
 type DeleteVpcEndpointConnectionNotificationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -32489,7 +32544,6 @@ func (s *DeleteVpcEndpointConnectionNotificationsOutput) SetUnsuccessful(v []*Un
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcEndpointServiceConfigurationsRequest
 type DeleteVpcEndpointServiceConfigurationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32540,7 +32594,6 @@ func (s *DeleteVpcEndpointServiceConfigurationsInput) SetServiceIds(v []*string)
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcEndpointServiceConfigurationsResult
 type DeleteVpcEndpointServiceConfigurationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -32565,7 +32618,6 @@ func (s *DeleteVpcEndpointServiceConfigurationsOutput) SetUnsuccessful(v []*Unsu
 }
 
 // Contains the parameters for DeleteVpcEndpoints.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcEndpointsRequest
 type DeleteVpcEndpointsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32617,7 +32669,6 @@ func (s *DeleteVpcEndpointsInput) SetVpcEndpointIds(v []*string) *DeleteVpcEndpo
 }
 
 // Contains the output of DeleteVpcEndpoints.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcEndpointsResult
 type DeleteVpcEndpointsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -32642,7 +32693,6 @@ func (s *DeleteVpcEndpointsOutput) SetUnsuccessful(v []*UnsuccessfulItem) *Delet
 }
 
 // Contains the parameters for DeleteVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcRequest
 type DeleteVpcInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32693,7 +32743,6 @@ func (s *DeleteVpcInput) SetVpcId(v string) *DeleteVpcInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcOutput
 type DeleteVpcOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32709,7 +32758,6 @@ func (s DeleteVpcOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteVpcPeeringConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcPeeringConnectionRequest
 type DeleteVpcPeeringConnectionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32761,7 +32809,6 @@ func (s *DeleteVpcPeeringConnectionInput) SetVpcPeeringConnectionId(v string) *D
 }
 
 // Contains the output of DeleteVpcPeeringConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpcPeeringConnectionResult
 type DeleteVpcPeeringConnectionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -32786,7 +32833,6 @@ func (s *DeleteVpcPeeringConnectionOutput) SetReturn(v bool) *DeleteVpcPeeringCo
 }
 
 // Contains the parameters for DeleteVpnConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpnConnectionRequest
 type DeleteVpnConnectionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32837,7 +32883,6 @@ func (s *DeleteVpnConnectionInput) SetVpnConnectionId(v string) *DeleteVpnConnec
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpnConnectionOutput
 type DeleteVpnConnectionOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32853,7 +32898,6 @@ func (s DeleteVpnConnectionOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteVpnConnectionRoute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpnConnectionRouteRequest
 type DeleteVpnConnectionRouteInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32906,7 +32950,6 @@ func (s *DeleteVpnConnectionRouteInput) SetVpnConnectionId(v string) *DeleteVpnC
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpnConnectionRouteOutput
 type DeleteVpnConnectionRouteOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32922,7 +32965,6 @@ func (s DeleteVpnConnectionRouteOutput) GoString() string {
 }
 
 // Contains the parameters for DeleteVpnGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpnGatewayRequest
 type DeleteVpnGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -32973,7 +33015,6 @@ func (s *DeleteVpnGatewayInput) SetVpnGatewayId(v string) *DeleteVpnGatewayInput
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeleteVpnGatewayOutput
 type DeleteVpnGatewayOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -32989,7 +33030,6 @@ func (s DeleteVpnGatewayOutput) GoString() string {
 }
 
 // Contains the parameters for DeregisterImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeregisterImageRequest
 type DeregisterImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33040,7 +33080,6 @@ func (s *DeregisterImageInput) SetImageId(v string) *DeregisterImageInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DeregisterImageOutput
 type DeregisterImageOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -33056,7 +33095,6 @@ func (s DeregisterImageOutput) GoString() string {
 }
 
 // Contains the parameters for DescribeAccountAttributes.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeAccountAttributesRequest
 type DescribeAccountAttributesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33093,7 +33131,6 @@ func (s *DescribeAccountAttributesInput) SetDryRun(v bool) *DescribeAccountAttri
 }
 
 // Contains the output of DescribeAccountAttributes.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeAccountAttributesResult
 type DescribeAccountAttributesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33118,7 +33155,6 @@ func (s *DescribeAccountAttributesOutput) SetAccountAttributes(v []*AccountAttri
 }
 
 // Contains the parameters for DescribeAddresses.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeAddressesRequest
 type DescribeAddressesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33209,7 +33245,6 @@ func (s *DescribeAddressesInput) SetPublicIps(v []*string) *DescribeAddressesInp
 }
 
 // Contains the output of DescribeAddresses.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeAddressesResult
 type DescribeAddressesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33233,8 +33268,67 @@ func (s *DescribeAddressesOutput) SetAddresses(v []*Address) *DescribeAddressesO
 	return s
 }
 
+type DescribeAggregateIdFormatInput struct {
+	_ struct{} `type:"structure"`
+
+	// Checks whether you have the required permissions for the action, without
+	// actually making the request, and provides an error response. If you have
+	// the required permissions, the error response is DryRunOperation. Otherwise,
+	// it is UnauthorizedOperation.
+	DryRun *bool `type:"boolean"`
+}
+
+// String returns the string representation
+func (s DescribeAggregateIdFormatInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeAggregateIdFormatInput) GoString() string {
+	return s.String()
+}
+
+// SetDryRun sets the DryRun field's value.
+func (s *DescribeAggregateIdFormatInput) SetDryRun(v bool) *DescribeAggregateIdFormatInput {
+	s.DryRun = &v
+	return s
+}
+
+type DescribeAggregateIdFormatOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Information about each resource's ID format.
+	Statuses []*IdFormat `locationName:"statusSet" locationNameList:"item" type:"list"`
+
+	// Indicates whether all resource types in the region are configured to use
+	// longer IDs. This value is only true if all users are configured to use longer
+	// IDs for all resources types in the region.
+	UseLongIdsAggregated *bool `locationName:"useLongIdsAggregated" type:"boolean"`
+}
+
+// String returns the string representation
+func (s DescribeAggregateIdFormatOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeAggregateIdFormatOutput) GoString() string {
+	return s.String()
+}
+
+// SetStatuses sets the Statuses field's value.
+func (s *DescribeAggregateIdFormatOutput) SetStatuses(v []*IdFormat) *DescribeAggregateIdFormatOutput {
+	s.Statuses = v
+	return s
+}
+
+// SetUseLongIdsAggregated sets the UseLongIdsAggregated field's value.
+func (s *DescribeAggregateIdFormatOutput) SetUseLongIdsAggregated(v bool) *DescribeAggregateIdFormatOutput {
+	s.UseLongIdsAggregated = &v
+	return s
+}
+
 // Contains the parameters for DescribeAvailabilityZones.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeAvailabilityZonesRequest
 type DescribeAvailabilityZonesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33290,7 +33384,6 @@ func (s *DescribeAvailabilityZonesInput) SetZoneNames(v []*string) *DescribeAvai
 }
 
 // Contains the output of DescribeAvailabiltyZones.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeAvailabilityZonesResult
 type DescribeAvailabilityZonesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33315,7 +33408,6 @@ func (s *DescribeAvailabilityZonesOutput) SetAvailabilityZones(v []*Availability
 }
 
 // Contains the parameters for DescribeBundleTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeBundleTasksRequest
 type DescribeBundleTasksInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33385,7 +33477,6 @@ func (s *DescribeBundleTasksInput) SetFilters(v []*Filter) *DescribeBundleTasksI
 }
 
 // Contains the output of DescribeBundleTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeBundleTasksResult
 type DescribeBundleTasksOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33410,7 +33501,6 @@ func (s *DescribeBundleTasksOutput) SetBundleTasks(v []*BundleTask) *DescribeBun
 }
 
 // Contains the parameters for DescribeClassicLinkInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeClassicLinkInstancesRequest
 type DescribeClassicLinkInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33501,7 +33591,6 @@ func (s *DescribeClassicLinkInstancesInput) SetNextToken(v string) *DescribeClas
 }
 
 // Contains the output of DescribeClassicLinkInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeClassicLinkInstancesResult
 type DescribeClassicLinkInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33536,7 +33625,6 @@ func (s *DescribeClassicLinkInstancesOutput) SetNextToken(v string) *DescribeCla
 }
 
 // Contains the parameters for DescribeConversionTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeConversionTasksRequest
 type DescribeConversionTasksInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33573,7 +33661,6 @@ func (s *DescribeConversionTasksInput) SetDryRun(v bool) *DescribeConversionTask
 }
 
 // Contains the output for DescribeConversionTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeConversionTasksResult
 type DescribeConversionTasksOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33598,7 +33685,6 @@ func (s *DescribeConversionTasksOutput) SetConversionTasks(v []*ConversionTask) 
 }
 
 // Contains the parameters for DescribeCustomerGateways.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeCustomerGatewaysRequest
 type DescribeCustomerGatewaysInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33676,7 +33762,6 @@ func (s *DescribeCustomerGatewaysInput) SetFilters(v []*Filter) *DescribeCustome
 }
 
 // Contains the output of DescribeCustomerGateways.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeCustomerGatewaysResult
 type DescribeCustomerGatewaysOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33701,7 +33786,6 @@ func (s *DescribeCustomerGatewaysOutput) SetCustomerGateways(v []*CustomerGatewa
 }
 
 // Contains the parameters for DescribeDhcpOptions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeDhcpOptionsRequest
 type DescribeDhcpOptionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33771,7 +33855,6 @@ func (s *DescribeDhcpOptionsInput) SetFilters(v []*Filter) *DescribeDhcpOptionsI
 }
 
 // Contains the output of DescribeDhcpOptions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeDhcpOptionsResult
 type DescribeDhcpOptionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33795,7 +33878,6 @@ func (s *DescribeDhcpOptionsOutput) SetDhcpOptions(v []*DhcpOptions) *DescribeDh
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeEgressOnlyInternetGatewaysRequest
 type DescribeEgressOnlyInternetGatewaysInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33852,7 +33934,6 @@ func (s *DescribeEgressOnlyInternetGatewaysInput) SetNextToken(v string) *Descri
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeEgressOnlyInternetGatewaysResult
 type DescribeEgressOnlyInternetGatewaysOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -33885,7 +33966,6 @@ func (s *DescribeEgressOnlyInternetGatewaysOutput) SetNextToken(v string) *Descr
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeElasticGpusRequest
 type DescribeElasticGpusInput struct {
 	_ struct{} `type:"structure"`
 
@@ -33960,7 +34040,6 @@ func (s *DescribeElasticGpusInput) SetNextToken(v string) *DescribeElasticGpusIn
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeElasticGpusResult
 type DescribeElasticGpusOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34006,7 +34085,6 @@ func (s *DescribeElasticGpusOutput) SetNextToken(v string) *DescribeElasticGpusO
 }
 
 // Contains the parameters for DescribeExportTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeExportTasksRequest
 type DescribeExportTasksInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34031,7 +34109,6 @@ func (s *DescribeExportTasksInput) SetExportTaskIds(v []*string) *DescribeExport
 }
 
 // Contains the output for DescribeExportTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeExportTasksResult
 type DescribeExportTasksOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34056,7 +34133,6 @@ func (s *DescribeExportTasksOutput) SetExportTasks(v []*ExportTask) *DescribeExp
 }
 
 // Contains the parameters for DescribeFlowLogs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeFlowLogsRequest
 type DescribeFlowLogsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34122,7 +34198,6 @@ func (s *DescribeFlowLogsInput) SetNextToken(v string) *DescribeFlowLogsInput {
 }
 
 // Contains the output of DescribeFlowLogs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeFlowLogsResult
 type DescribeFlowLogsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34156,7 +34231,6 @@ func (s *DescribeFlowLogsOutput) SetNextToken(v string) *DescribeFlowLogsOutput 
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeFpgaImageAttributeRequest
 type DescribeFpgaImageAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34221,7 +34295,6 @@ func (s *DescribeFpgaImageAttributeInput) SetFpgaImageId(v string) *DescribeFpga
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeFpgaImageAttributeResult
 type DescribeFpgaImageAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34245,7 +34318,6 @@ func (s *DescribeFpgaImageAttributeOutput) SetFpgaImageAttribute(v *FpgaImageAtt
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeFpgaImagesRequest
 type DescribeFpgaImagesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34369,7 +34441,6 @@ func (s *DescribeFpgaImagesInput) SetOwners(v []*string) *DescribeFpgaImagesInpu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeFpgaImagesResult
 type DescribeFpgaImagesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34403,7 +34474,6 @@ func (s *DescribeFpgaImagesOutput) SetNextToken(v string) *DescribeFpgaImagesOut
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeHostReservationOfferingsRequest
 type DescribeHostReservationOfferingsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34487,7 +34557,6 @@ func (s *DescribeHostReservationOfferingsInput) SetOfferingId(v string) *Describ
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeHostReservationOfferingsResult
 type DescribeHostReservationOfferingsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34521,7 +34590,6 @@ func (s *DescribeHostReservationOfferingsOutput) SetOfferingSet(v []*HostOfferin
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeHostReservationsRequest
 type DescribeHostReservationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34582,7 +34650,6 @@ func (s *DescribeHostReservationsInput) SetNextToken(v string) *DescribeHostRese
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeHostReservationsResult
 type DescribeHostReservationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34617,7 +34684,6 @@ func (s *DescribeHostReservationsOutput) SetNextToken(v string) *DescribeHostRes
 }
 
 // Contains the parameters for DescribeHosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeHostsRequest
 type DescribeHostsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34689,7 +34755,6 @@ func (s *DescribeHostsInput) SetNextToken(v string) *DescribeHostsInput {
 }
 
 // Contains the output of DescribeHosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeHostsResult
 type DescribeHostsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34723,7 +34788,6 @@ func (s *DescribeHostsOutput) SetNextToken(v string) *DescribeHostsOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeIamInstanceProfileAssociationsRequest
 type DescribeIamInstanceProfileAssociationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34796,7 +34860,6 @@ func (s *DescribeIamInstanceProfileAssociationsInput) SetNextToken(v string) *De
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeIamInstanceProfileAssociationsResult
 type DescribeIamInstanceProfileAssociationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34831,11 +34894,15 @@ func (s *DescribeIamInstanceProfileAssociationsOutput) SetNextToken(v string) *D
 }
 
 // Contains the parameters for DescribeIdFormat.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeIdFormatRequest
 type DescribeIdFormatInput struct {
 	_ struct{} `type:"structure"`
 
-	// The type of resource: instance | reservation | snapshot | volume
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// instance | internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | reservation | route-table
+	// | route-table-association | security-group | snapshot | subnet | subnet-cidr-block-association
+	// | volume | vpc | vpc-cidr-block-association | vpc-peering-connection
 	Resource *string `type:"string"`
 }
 
@@ -34856,7 +34923,6 @@ func (s *DescribeIdFormatInput) SetResource(v string) *DescribeIdFormatInput {
 }
 
 // Contains the output of DescribeIdFormat.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeIdFormatResult
 type DescribeIdFormatOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34881,7 +34947,6 @@ func (s *DescribeIdFormatOutput) SetStatuses(v []*IdFormat) *DescribeIdFormatOut
 }
 
 // Contains the parameters for DescribeIdentityIdFormat.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeIdentityIdFormatRequest
 type DescribeIdentityIdFormatInput struct {
 	_ struct{} `type:"structure"`
 
@@ -34891,7 +34956,12 @@ type DescribeIdentityIdFormatInput struct {
 	// PrincipalArn is a required field
 	PrincipalArn *string `locationName:"principalArn" type:"string" required:"true"`
 
-	// The type of resource: instance | reservation | snapshot | volume
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// instance | internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | reservation | route-table
+	// | route-table-association | security-group | snapshot | subnet | subnet-cidr-block-association
+	// | volume | vpc | vpc-cidr-block-association | vpc-peering-connection
 	Resource *string `locationName:"resource" type:"string"`
 }
 
@@ -34931,7 +35001,6 @@ func (s *DescribeIdentityIdFormatInput) SetResource(v string) *DescribeIdentityI
 }
 
 // Contains the output of DescribeIdentityIdFormat.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeIdentityIdFormatResult
 type DescribeIdentityIdFormatOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -34956,7 +35025,6 @@ func (s *DescribeIdentityIdFormatOutput) SetStatuses(v []*IdFormat) *DescribeIde
 }
 
 // Contains the parameters for DescribeImageAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeImageAttributeRequest
 type DescribeImageAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -35026,7 +35094,6 @@ func (s *DescribeImageAttributeInput) SetImageId(v string) *DescribeImageAttribu
 }
 
 // Describes an image attribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImageAttribute
 type DescribeImageAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -35115,7 +35182,6 @@ func (s *DescribeImageAttributeOutput) SetSriovNetSupport(v *AttributeValue) *De
 }
 
 // Contains the parameters for DescribeImages.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeImagesRequest
 type DescribeImagesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -35267,7 +35333,6 @@ func (s *DescribeImagesInput) SetOwners(v []*string) *DescribeImagesInput {
 }
 
 // Contains the output of DescribeImages.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeImagesResult
 type DescribeImagesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -35292,7 +35357,6 @@ func (s *DescribeImagesOutput) SetImages(v []*Image) *DescribeImagesOutput {
 }
 
 // Contains the parameters for DescribeImportImageTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeImportImageTasksRequest
 type DescribeImportImageTasksInput struct {
 	_ struct{} `type:"structure"`
 
@@ -35358,7 +35422,6 @@ func (s *DescribeImportImageTasksInput) SetNextToken(v string) *DescribeImportIm
 }
 
 // Contains the output for DescribeImportImageTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeImportImageTasksResult
 type DescribeImportImageTasksOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -35394,7 +35457,6 @@ func (s *DescribeImportImageTasksOutput) SetNextToken(v string) *DescribeImportI
 }
 
 // Contains the parameters for DescribeImportSnapshotTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeImportSnapshotTasksRequest
 type DescribeImportSnapshotTasksInput struct {
 	_ struct{} `type:"structure"`
 
@@ -35459,7 +35521,6 @@ func (s *DescribeImportSnapshotTasksInput) SetNextToken(v string) *DescribeImpor
 }
 
 // Contains the output for DescribeImportSnapshotTasks.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeImportSnapshotTasksResult
 type DescribeImportSnapshotTasksOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -35495,7 +35556,6 @@ func (s *DescribeImportSnapshotTasksOutput) SetNextToken(v string) *DescribeImpo
 }
 
 // Contains the parameters for DescribeInstanceAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInstanceAttributeRequest
 type DescribeInstanceAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -35563,7 +35623,6 @@ func (s *DescribeInstanceAttributeInput) SetInstanceId(v string) *DescribeInstan
 }
 
 // Describes an instance attribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceAttribute
 type DescribeInstanceAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -35718,7 +35777,6 @@ func (s *DescribeInstanceAttributeOutput) SetUserData(v *AttributeValue) *Descri
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInstanceCreditSpecificationsRequest
 type DescribeInstanceCreditSpecificationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -35790,7 +35848,6 @@ func (s *DescribeInstanceCreditSpecificationsInput) SetNextToken(v string) *Desc
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInstanceCreditSpecificationsResult
 type DescribeInstanceCreditSpecificationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -35825,7 +35882,6 @@ func (s *DescribeInstanceCreditSpecificationsOutput) SetNextToken(v string) *Des
 }
 
 // Contains the parameters for DescribeInstanceStatus.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInstanceStatusRequest
 type DescribeInstanceStatusInput struct {
 	_ struct{} `type:"structure"`
 
@@ -35942,7 +35998,6 @@ func (s *DescribeInstanceStatusInput) SetNextToken(v string) *DescribeInstanceSt
 }
 
 // Contains the output of DescribeInstanceStatus.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInstanceStatusResult
 type DescribeInstanceStatusOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -35977,7 +36032,6 @@ func (s *DescribeInstanceStatusOutput) SetNextToken(v string) *DescribeInstanceS
 }
 
 // Contains the parameters for DescribeInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInstancesRequest
 type DescribeInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -36283,7 +36337,6 @@ func (s *DescribeInstancesInput) SetNextToken(v string) *DescribeInstancesInput 
 }
 
 // Contains the output of DescribeInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInstancesResult
 type DescribeInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -36318,7 +36371,6 @@ func (s *DescribeInstancesOutput) SetReservations(v []*Reservation) *DescribeIns
 }
 
 // Contains the parameters for DescribeInternetGateways.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInternetGatewaysRequest
 type DescribeInternetGatewaysInput struct {
 	_ struct{} `type:"structure"`
 
@@ -36389,7 +36441,6 @@ func (s *DescribeInternetGatewaysInput) SetInternetGatewayIds(v []*string) *Desc
 }
 
 // Contains the output of DescribeInternetGateways.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeInternetGatewaysResult
 type DescribeInternetGatewaysOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -36414,7 +36465,6 @@ func (s *DescribeInternetGatewaysOutput) SetInternetGateways(v []*InternetGatewa
 }
 
 // Contains the parameters for DescribeKeyPairs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeKeyPairsRequest
 type DescribeKeyPairsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -36466,7 +36516,6 @@ func (s *DescribeKeyPairsInput) SetKeyNames(v []*string) *DescribeKeyPairsInput 
 }
 
 // Contains the output of DescribeKeyPairs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeKeyPairsResult
 type DescribeKeyPairsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -36490,7 +36539,6 @@ func (s *DescribeKeyPairsOutput) SetKeyPairs(v []*KeyPairInfo) *DescribeKeyPairs
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeLaunchTemplateVersionsRequest
 type DescribeLaunchTemplateVersionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -36624,7 +36672,6 @@ func (s *DescribeLaunchTemplateVersionsInput) SetVersions(v []*string) *Describe
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeLaunchTemplateVersionsResult
 type DescribeLaunchTemplateVersionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -36658,7 +36705,6 @@ func (s *DescribeLaunchTemplateVersionsOutput) SetNextToken(v string) *DescribeL
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeLaunchTemplatesRequest
 type DescribeLaunchTemplatesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -36748,7 +36794,6 @@ func (s *DescribeLaunchTemplatesInput) SetNextToken(v string) *DescribeLaunchTem
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeLaunchTemplatesResult
 type DescribeLaunchTemplatesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -36783,7 +36828,6 @@ func (s *DescribeLaunchTemplatesOutput) SetNextToken(v string) *DescribeLaunchTe
 }
 
 // Contains the parameters for DescribeMovingAddresses.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeMovingAddressesRequest
 type DescribeMovingAddressesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -36855,7 +36899,6 @@ func (s *DescribeMovingAddressesInput) SetPublicIps(v []*string) *DescribeMoving
 }
 
 // Contains the output of DescribeMovingAddresses.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeMovingAddressesResult
 type DescribeMovingAddressesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -36890,7 +36933,6 @@ func (s *DescribeMovingAddressesOutput) SetNextToken(v string) *DescribeMovingAd
 }
 
 // Contains the parameters for DescribeNatGateways.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNatGatewaysRequest
 type DescribeNatGatewaysInput struct {
 	_ struct{} `type:"structure"`
 
@@ -36972,7 +37014,6 @@ func (s *DescribeNatGatewaysInput) SetNextToken(v string) *DescribeNatGatewaysIn
 }
 
 // Contains the output of DescribeNatGateways.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNatGatewaysResult
 type DescribeNatGatewaysOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -37007,7 +37048,6 @@ func (s *DescribeNatGatewaysOutput) SetNextToken(v string) *DescribeNatGatewaysO
 }
 
 // Contains the parameters for DescribeNetworkAcls.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNetworkAclsRequest
 type DescribeNetworkAclsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37109,7 +37149,6 @@ func (s *DescribeNetworkAclsInput) SetNetworkAclIds(v []*string) *DescribeNetwor
 }
 
 // Contains the output of DescribeNetworkAcls.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNetworkAclsResult
 type DescribeNetworkAclsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -37134,7 +37173,6 @@ func (s *DescribeNetworkAclsOutput) SetNetworkAcls(v []*NetworkAcl) *DescribeNet
 }
 
 // Contains the parameters for DescribeNetworkInterfaceAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNetworkInterfaceAttributeRequest
 type DescribeNetworkInterfaceAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37195,7 +37233,6 @@ func (s *DescribeNetworkInterfaceAttributeInput) SetNetworkInterfaceId(v string)
 }
 
 // Contains the output of DescribeNetworkInterfaceAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNetworkInterfaceAttributeResult
 type DescribeNetworkInterfaceAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -37256,7 +37293,6 @@ func (s *DescribeNetworkInterfaceAttributeOutput) SetSourceDestCheck(v *Attribut
 }
 
 // Contains the parameters for DescribeNetworkInterfacePermissions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNetworkInterfacePermissionsRequest
 type DescribeNetworkInterfacePermissionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37323,7 +37359,6 @@ func (s *DescribeNetworkInterfacePermissionsInput) SetNextToken(v string) *Descr
 }
 
 // Contains the output for DescribeNetworkInterfacePermissions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNetworkInterfacePermissionsResult
 type DescribeNetworkInterfacePermissionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -37357,7 +37392,6 @@ func (s *DescribeNetworkInterfacePermissionsOutput) SetNextToken(v string) *Desc
 }
 
 // Contains the parameters for DescribeNetworkInterfaces.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNetworkInterfacesRequest
 type DescribeNetworkInterfacesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37515,7 +37549,6 @@ func (s *DescribeNetworkInterfacesInput) SetNetworkInterfaceIds(v []*string) *De
 }
 
 // Contains the output of DescribeNetworkInterfaces.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeNetworkInterfacesResult
 type DescribeNetworkInterfacesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -37540,7 +37573,6 @@ func (s *DescribeNetworkInterfacesOutput) SetNetworkInterfaces(v []*NetworkInter
 }
 
 // Contains the parameters for DescribePlacementGroups.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribePlacementGroupsRequest
 type DescribePlacementGroupsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37595,7 +37627,6 @@ func (s *DescribePlacementGroupsInput) SetGroupNames(v []*string) *DescribePlace
 }
 
 // Contains the output of DescribePlacementGroups.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribePlacementGroupsResult
 type DescribePlacementGroupsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -37620,7 +37651,6 @@ func (s *DescribePlacementGroupsOutput) SetPlacementGroups(v []*PlacementGroup) 
 }
 
 // Contains the parameters for DescribePrefixLists.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribePrefixListsRequest
 type DescribePrefixListsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37694,7 +37724,6 @@ func (s *DescribePrefixListsInput) SetPrefixListIds(v []*string) *DescribePrefix
 }
 
 // Contains the output of DescribePrefixLists.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribePrefixListsResult
 type DescribePrefixListsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -37728,8 +37757,99 @@ func (s *DescribePrefixListsOutput) SetPrefixLists(v []*PrefixList) *DescribePre
 	return s
 }
 
+type DescribePrincipalIdFormatInput struct {
+	_ struct{} `type:"structure"`
+
+	// Checks whether you have the required permissions for the action, without
+	// actually making the request, and provides an error response. If you have
+	// the required permissions, the error response is DryRunOperation. Otherwise,
+	// it is UnauthorizedOperation.
+	DryRun *bool `type:"boolean"`
+
+	// The maximum number of results to return in a single call. To retrieve the
+	// remaining results, make another call with the returned NextToken value.
+	MaxResults *int64 `type:"integer"`
+
+	// The token to request the next page of results.
+	NextToken *string `type:"string"`
+
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// instance | internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | reservation | route-table
+	// | route-table-association | security-group | snapshot | subnet | subnet-cidr-block-association
+	// | volume | vpc | vpc-cidr-block-association | vpc-peering-connection
+	Resources []*string `locationName:"Resource" locationNameList:"item" type:"list"`
+}
+
+// String returns the string representation
+func (s DescribePrincipalIdFormatInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribePrincipalIdFormatInput) GoString() string {
+	return s.String()
+}
+
+// SetDryRun sets the DryRun field's value.
+func (s *DescribePrincipalIdFormatInput) SetDryRun(v bool) *DescribePrincipalIdFormatInput {
+	s.DryRun = &v
+	return s
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *DescribePrincipalIdFormatInput) SetMaxResults(v int64) *DescribePrincipalIdFormatInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *DescribePrincipalIdFormatInput) SetNextToken(v string) *DescribePrincipalIdFormatInput {
+	s.NextToken = &v
+	return s
+}
+
+// SetResources sets the Resources field's value.
+func (s *DescribePrincipalIdFormatInput) SetResources(v []*string) *DescribePrincipalIdFormatInput {
+	s.Resources = v
+	return s
+}
+
+type DescribePrincipalIdFormatOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The token to use to retrieve the next page of results. This value is null
+	// when there are no more results to return.
+	NextToken *string `locationName:"nextToken" type:"string"`
+
+	// Information about the ID format settings for the ARN.
+	Principals []*PrincipalIdFormat `locationName:"principalSet" locationNameList:"item" type:"list"`
+}
+
+// String returns the string representation
+func (s DescribePrincipalIdFormatOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribePrincipalIdFormatOutput) GoString() string {
+	return s.String()
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *DescribePrincipalIdFormatOutput) SetNextToken(v string) *DescribePrincipalIdFormatOutput {
+	s.NextToken = &v
+	return s
+}
+
+// SetPrincipals sets the Principals field's value.
+func (s *DescribePrincipalIdFormatOutput) SetPrincipals(v []*PrincipalIdFormat) *DescribePrincipalIdFormatOutput {
+	s.Principals = v
+	return s
+}
+
 // Contains the parameters for DescribeRegions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeRegionsRequest
 type DescribeRegionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37779,7 +37899,6 @@ func (s *DescribeRegionsInput) SetRegionNames(v []*string) *DescribeRegionsInput
 }
 
 // Contains the output of DescribeRegions.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeRegionsResult
 type DescribeRegionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -37804,7 +37923,6 @@ func (s *DescribeRegionsOutput) SetRegions(v []*Region) *DescribeRegionsOutput {
 }
 
 // Contains the parameters for DescribeReservedInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeReservedInstancesRequest
 type DescribeReservedInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37924,7 +38042,6 @@ func (s *DescribeReservedInstancesInput) SetReservedInstancesIds(v []*string) *D
 }
 
 // Contains the parameters for DescribeReservedInstancesListings.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeReservedInstancesListingsRequest
 type DescribeReservedInstancesListingsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -37976,7 +38093,6 @@ func (s *DescribeReservedInstancesListingsInput) SetReservedInstancesListingId(v
 }
 
 // Contains the output of DescribeReservedInstancesListings.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeReservedInstancesListingsResult
 type DescribeReservedInstancesListingsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -38001,7 +38117,6 @@ func (s *DescribeReservedInstancesListingsOutput) SetReservedInstancesListings(v
 }
 
 // Contains the parameters for DescribeReservedInstancesModifications.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeReservedInstancesModificationsRequest
 type DescribeReservedInstancesModificationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -38077,7 +38192,6 @@ func (s *DescribeReservedInstancesModificationsInput) SetReservedInstancesModifi
 }
 
 // Contains the output of DescribeReservedInstancesModifications.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeReservedInstancesModificationsResult
 type DescribeReservedInstancesModificationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -38112,7 +38226,6 @@ func (s *DescribeReservedInstancesModificationsOutput) SetReservedInstancesModif
 }
 
 // Contains the parameters for DescribeReservedInstancesOfferings.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeReservedInstancesOfferingsRequest
 type DescribeReservedInstancesOfferingsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -38322,7 +38435,6 @@ func (s *DescribeReservedInstancesOfferingsInput) SetReservedInstancesOfferingId
 }
 
 // Contains the output of DescribeReservedInstancesOfferings.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeReservedInstancesOfferingsResult
 type DescribeReservedInstancesOfferingsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -38357,7 +38469,6 @@ func (s *DescribeReservedInstancesOfferingsOutput) SetReservedInstancesOfferings
 }
 
 // Contains the output for DescribeReservedInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeReservedInstancesResult
 type DescribeReservedInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -38382,7 +38493,6 @@ func (s *DescribeReservedInstancesOutput) SetReservedInstances(v []*ReservedInst
 }
 
 // Contains the parameters for DescribeRouteTables.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeRouteTablesRequest
 type DescribeRouteTablesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -38495,7 +38605,6 @@ func (s *DescribeRouteTablesInput) SetRouteTableIds(v []*string) *DescribeRouteT
 }
 
 // Contains the output of DescribeRouteTables.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeRouteTablesResult
 type DescribeRouteTablesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -38520,7 +38629,6 @@ func (s *DescribeRouteTablesOutput) SetRouteTables(v []*RouteTable) *DescribeRou
 }
 
 // Contains the parameters for DescribeScheduledInstanceAvailability.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeScheduledInstanceAvailabilityRequest
 type DescribeScheduledInstanceAvailabilityInput struct {
 	_ struct{} `type:"structure"`
 
@@ -38650,7 +38758,6 @@ func (s *DescribeScheduledInstanceAvailabilityInput) SetRecurrence(v *ScheduledI
 }
 
 // Contains the output of DescribeScheduledInstanceAvailability.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeScheduledInstanceAvailabilityResult
 type DescribeScheduledInstanceAvailabilityOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -38685,7 +38792,6 @@ func (s *DescribeScheduledInstanceAvailabilityOutput) SetScheduledInstanceAvaila
 }
 
 // Contains the parameters for DescribeScheduledInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeScheduledInstancesRequest
 type DescribeScheduledInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -38768,7 +38874,6 @@ func (s *DescribeScheduledInstancesInput) SetSlotStartTimeRange(v *SlotStartTime
 }
 
 // Contains the output of DescribeScheduledInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeScheduledInstancesResult
 type DescribeScheduledInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -38802,7 +38907,6 @@ func (s *DescribeScheduledInstancesOutput) SetScheduledInstanceSet(v []*Schedule
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSecurityGroupReferencesRequest
 type DescribeSecurityGroupReferencesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -38853,7 +38957,6 @@ func (s *DescribeSecurityGroupReferencesInput) SetGroupId(v []*string) *Describe
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSecurityGroupReferencesResult
 type DescribeSecurityGroupReferencesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -38878,7 +38981,6 @@ func (s *DescribeSecurityGroupReferencesOutput) SetSecurityGroupReferenceSet(v [
 }
 
 // Contains the parameters for DescribeSecurityGroups.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSecurityGroupsRequest
 type DescribeSecurityGroupsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -38977,7 +39079,8 @@ type DescribeSecurityGroupsInput struct {
 
 	// The maximum number of results to return in a single call. To retrieve the
 	// remaining results, make another request with the returned NextToken value.
-	// This value can be between 5 and 1000.
+	// This value can be between 5 and 1000. If this parameter is not specified,
+	// then all results are returned.
 	MaxResults *int64 `type:"integer"`
 
 	// The token to request the next page of results.
@@ -39031,7 +39134,6 @@ func (s *DescribeSecurityGroupsInput) SetNextToken(v string) *DescribeSecurityGr
 }
 
 // Contains the output of DescribeSecurityGroups.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSecurityGroupsResult
 type DescribeSecurityGroupsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -39066,7 +39168,6 @@ func (s *DescribeSecurityGroupsOutput) SetSecurityGroups(v []*SecurityGroup) *De
 }
 
 // Contains the parameters for DescribeSnapshotAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSnapshotAttributeRequest
 type DescribeSnapshotAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -39132,7 +39233,6 @@ func (s *DescribeSnapshotAttributeInput) SetSnapshotId(v string) *DescribeSnapsh
 }
 
 // Contains the output of DescribeSnapshotAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSnapshotAttributeResult
 type DescribeSnapshotAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -39175,7 +39275,6 @@ func (s *DescribeSnapshotAttributeOutput) SetSnapshotId(v string) *DescribeSnaps
 }
 
 // Contains the parameters for DescribeSnapshots.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSnapshotsRequest
 type DescribeSnapshotsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -39309,7 +39408,6 @@ func (s *DescribeSnapshotsInput) SetSnapshotIds(v []*string) *DescribeSnapshotsI
 }
 
 // Contains the output of DescribeSnapshots.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSnapshotsResult
 type DescribeSnapshotsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -39346,7 +39444,6 @@ func (s *DescribeSnapshotsOutput) SetSnapshots(v []*Snapshot) *DescribeSnapshots
 }
 
 // Contains the parameters for DescribeSpotDatafeedSubscription.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotDatafeedSubscriptionRequest
 type DescribeSpotDatafeedSubscriptionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -39374,7 +39471,6 @@ func (s *DescribeSpotDatafeedSubscriptionInput) SetDryRun(v bool) *DescribeSpotD
 }
 
 // Contains the output of DescribeSpotDatafeedSubscription.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotDatafeedSubscriptionResult
 type DescribeSpotDatafeedSubscriptionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -39399,7 +39495,6 @@ func (s *DescribeSpotDatafeedSubscriptionOutput) SetSpotDatafeedSubscription(v *
 }
 
 // Contains the parameters for DescribeSpotFleetInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotFleetInstancesRequest
 type DescribeSpotFleetInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -39471,7 +39566,6 @@ func (s *DescribeSpotFleetInstancesInput) SetSpotFleetRequestId(v string) *Descr
 }
 
 // Contains the output of DescribeSpotFleetInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotFleetInstancesResponse
 type DescribeSpotFleetInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -39520,7 +39614,6 @@ func (s *DescribeSpotFleetInstancesOutput) SetSpotFleetRequestId(v string) *Desc
 }
 
 // Contains the parameters for DescribeSpotFleetRequestHistory.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotFleetRequestHistoryRequest
 type DescribeSpotFleetRequestHistoryInput struct {
 	_ struct{} `type:"structure"`
 
@@ -39615,7 +39708,6 @@ func (s *DescribeSpotFleetRequestHistoryInput) SetStartTime(v time.Time) *Descri
 }
 
 // Contains the output of DescribeSpotFleetRequestHistory.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotFleetRequestHistoryResponse
 type DescribeSpotFleetRequestHistoryOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -39688,7 +39780,6 @@ func (s *DescribeSpotFleetRequestHistoryOutput) SetStartTime(v time.Time) *Descr
 }
 
 // Contains the parameters for DescribeSpotFleetRequests.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotFleetRequestsRequest
 type DescribeSpotFleetRequestsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -39745,7 +39836,6 @@ func (s *DescribeSpotFleetRequestsInput) SetSpotFleetRequestIds(v []*string) *De
 }
 
 // Contains the output of DescribeSpotFleetRequests.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotFleetRequestsResponse
 type DescribeSpotFleetRequestsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -39782,7 +39872,6 @@ func (s *DescribeSpotFleetRequestsOutput) SetSpotFleetRequestConfigs(v []*SpotFl
 }
 
 // Contains the parameters for DescribeSpotInstanceRequests.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotInstanceRequestsRequest
 type DescribeSpotInstanceRequestsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -39937,7 +40026,6 @@ func (s *DescribeSpotInstanceRequestsInput) SetSpotInstanceRequestIds(v []*strin
 }
 
 // Contains the output of DescribeSpotInstanceRequests.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotInstanceRequestsResult
 type DescribeSpotInstanceRequestsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -39962,7 +40050,6 @@ func (s *DescribeSpotInstanceRequestsOutput) SetSpotInstanceRequests(v []*SpotIn
 }
 
 // Contains the parameters for DescribeSpotPriceHistory.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotPriceHistoryRequest
 type DescribeSpotPriceHistoryInput struct {
 	_ struct{} `type:"structure"`
 
@@ -40082,12 +40169,11 @@ func (s *DescribeSpotPriceHistoryInput) SetStartTime(v time.Time) *DescribeSpotP
 }
 
 // Contains the output of DescribeSpotPriceHistory.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSpotPriceHistoryResult
 type DescribeSpotPriceHistoryOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The token required to retrieve the next set of results. This value is null
-	// when there are no more results to return.
+	// The token required to retrieve the next set of results. This value is an
+	// empty string when there are no more results to return.
 	NextToken *string `locationName:"nextToken" type:"string"`
 
 	// The historical Spot prices.
@@ -40116,7 +40202,6 @@ func (s *DescribeSpotPriceHistoryOutput) SetSpotPriceHistory(v []*SpotPrice) *De
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeStaleSecurityGroupsRequest
 type DescribeStaleSecurityGroupsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -40194,7 +40279,6 @@ func (s *DescribeStaleSecurityGroupsInput) SetVpcId(v string) *DescribeStaleSecu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeStaleSecurityGroupsResult
 type DescribeStaleSecurityGroupsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -40229,7 +40313,6 @@ func (s *DescribeStaleSecurityGroupsOutput) SetStaleSecurityGroupSet(v []*StaleS
 }
 
 // Contains the parameters for DescribeSubnets.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSubnetsRequest
 type DescribeSubnetsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -40321,7 +40404,6 @@ func (s *DescribeSubnetsInput) SetSubnetIds(v []*string) *DescribeSubnetsInput {
 }
 
 // Contains the output of DescribeSubnets.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeSubnetsResult
 type DescribeSubnetsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -40346,7 +40428,6 @@ func (s *DescribeSubnetsOutput) SetSubnets(v []*Subnet) *DescribeSubnetsOutput {
 }
 
 // Contains the parameters for DescribeTags.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeTagsRequest
 type DescribeTagsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -40415,7 +40496,6 @@ func (s *DescribeTagsInput) SetNextToken(v string) *DescribeTagsInput {
 }
 
 // Contains the output of DescribeTags.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeTagsResult
 type DescribeTagsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -40450,7 +40530,6 @@ func (s *DescribeTagsOutput) SetTags(v []*TagDescription) *DescribeTagsOutput {
 }
 
 // Contains the parameters for DescribeVolumeAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVolumeAttributeRequest
 type DescribeVolumeAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -40511,7 +40590,6 @@ func (s *DescribeVolumeAttributeInput) SetVolumeId(v string) *DescribeVolumeAttr
 }
 
 // Contains the output of DescribeVolumeAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVolumeAttributeResult
 type DescribeVolumeAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -40554,7 +40632,6 @@ func (s *DescribeVolumeAttributeOutput) SetVolumeId(v string) *DescribeVolumeAtt
 }
 
 // Contains the parameters for DescribeVolumeStatus.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVolumeStatusRequest
 type DescribeVolumeStatusInput struct {
 	_ struct{} `type:"structure"`
 
@@ -40660,7 +40737,6 @@ func (s *DescribeVolumeStatusInput) SetVolumeIds(v []*string) *DescribeVolumeSta
 }
 
 // Contains the output of DescribeVolumeStatus.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVolumeStatusResult
 type DescribeVolumeStatusOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -40695,7 +40771,6 @@ func (s *DescribeVolumeStatusOutput) SetVolumeStatuses(v []*VolumeStatusItem) *D
 }
 
 // Contains the parameters for DescribeVolumes.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVolumesRequest
 type DescribeVolumesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -40818,7 +40893,6 @@ func (s *DescribeVolumesInput) SetVolumeIds(v []*string) *DescribeVolumesInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVolumesModificationsRequest
 type DescribeVolumesModificationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -40884,7 +40958,6 @@ func (s *DescribeVolumesModificationsInput) SetVolumeIds(v []*string) *DescribeV
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVolumesModificationsResult
 type DescribeVolumesModificationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -40918,7 +40991,6 @@ func (s *DescribeVolumesModificationsOutput) SetVolumesModifications(v []*Volume
 }
 
 // Contains the output of DescribeVolumes.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVolumesResult
 type DescribeVolumesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -40955,7 +41027,6 @@ func (s *DescribeVolumesOutput) SetVolumes(v []*Volume) *DescribeVolumesOutput {
 }
 
 // Contains the parameters for DescribeVpcAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcAttributeRequest
 type DescribeVpcAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41021,7 +41092,6 @@ func (s *DescribeVpcAttributeInput) SetVpcId(v string) *DescribeVpcAttributeInpu
 }
 
 // Contains the output of DescribeVpcAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcAttributeResult
 type DescribeVpcAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41068,7 +41138,6 @@ func (s *DescribeVpcAttributeOutput) SetVpcId(v string) *DescribeVpcAttributeOut
 }
 
 // Contains the parameters for DescribeVpcClassicLinkDnsSupport.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcClassicLinkDnsSupportRequest
 type DescribeVpcClassicLinkDnsSupportInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41130,7 +41199,6 @@ func (s *DescribeVpcClassicLinkDnsSupportInput) SetVpcIds(v []*string) *Describe
 }
 
 // Contains the output of DescribeVpcClassicLinkDnsSupport.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcClassicLinkDnsSupportResult
 type DescribeVpcClassicLinkDnsSupportOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41164,7 +41232,6 @@ func (s *DescribeVpcClassicLinkDnsSupportOutput) SetVpcs(v []*ClassicLinkDnsSupp
 }
 
 // Contains the parameters for DescribeVpcClassicLink.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcClassicLinkRequest
 type DescribeVpcClassicLinkInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41229,7 +41296,6 @@ func (s *DescribeVpcClassicLinkInput) SetVpcIds(v []*string) *DescribeVpcClassic
 }
 
 // Contains the output of DescribeVpcClassicLink.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcClassicLinkResult
 type DescribeVpcClassicLinkOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41253,7 +41319,6 @@ func (s *DescribeVpcClassicLinkOutput) SetVpcs(v []*VpcClassicLink) *DescribeVpc
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointConnectionNotificationsRequest
 type DescribeVpcEndpointConnectionNotificationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41330,7 +41395,6 @@ func (s *DescribeVpcEndpointConnectionNotificationsInput) SetNextToken(v string)
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointConnectionNotificationsResult
 type DescribeVpcEndpointConnectionNotificationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41364,7 +41428,6 @@ func (s *DescribeVpcEndpointConnectionNotificationsOutput) SetNextToken(v string
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointConnectionsRequest
 type DescribeVpcEndpointConnectionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41431,7 +41494,6 @@ func (s *DescribeVpcEndpointConnectionsInput) SetNextToken(v string) *DescribeVp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointConnectionsResult
 type DescribeVpcEndpointConnectionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41465,7 +41527,6 @@ func (s *DescribeVpcEndpointConnectionsOutput) SetVpcEndpointConnections(v []*Vp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointServiceConfigurationsRequest
 type DescribeVpcEndpointServiceConfigurationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41539,7 +41600,6 @@ func (s *DescribeVpcEndpointServiceConfigurationsInput) SetServiceIds(v []*strin
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointServiceConfigurationsResult
 type DescribeVpcEndpointServiceConfigurationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41573,7 +41633,6 @@ func (s *DescribeVpcEndpointServiceConfigurationsOutput) SetServiceConfiguration
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointServicePermissionsRequest
 type DescribeVpcEndpointServicePermissionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41660,7 +41719,6 @@ func (s *DescribeVpcEndpointServicePermissionsInput) SetServiceId(v string) *Des
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointServicePermissionsResult
 type DescribeVpcEndpointServicePermissionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41695,7 +41753,6 @@ func (s *DescribeVpcEndpointServicePermissionsOutput) SetNextToken(v string) *De
 }
 
 // Contains the parameters for DescribeVpcEndpointServices.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointServicesRequest
 type DescribeVpcEndpointServicesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41766,7 +41823,6 @@ func (s *DescribeVpcEndpointServicesInput) SetServiceNames(v []*string) *Describ
 }
 
 // Contains the output of DescribeVpcEndpointServices.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointServicesResult
 type DescribeVpcEndpointServicesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41810,7 +41866,6 @@ func (s *DescribeVpcEndpointServicesOutput) SetServiceNames(v []*string) *Descri
 }
 
 // Contains the parameters for DescribeVpcEndpoints.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointsRequest
 type DescribeVpcEndpointsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41888,7 +41943,6 @@ func (s *DescribeVpcEndpointsInput) SetVpcEndpointIds(v []*string) *DescribeVpcE
 }
 
 // Contains the output of DescribeVpcEndpoints.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcEndpointsResult
 type DescribeVpcEndpointsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -41923,7 +41977,6 @@ func (s *DescribeVpcEndpointsOutput) SetVpcEndpoints(v []*VpcEndpoint) *Describe
 }
 
 // Contains the parameters for DescribeVpcPeeringConnections.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcPeeringConnectionsRequest
 type DescribeVpcPeeringConnectionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42012,7 +42065,6 @@ func (s *DescribeVpcPeeringConnectionsInput) SetVpcPeeringConnectionIds(v []*str
 }
 
 // Contains the output of DescribeVpcPeeringConnections.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcPeeringConnectionsResult
 type DescribeVpcPeeringConnectionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -42037,7 +42089,6 @@ func (s *DescribeVpcPeeringConnectionsOutput) SetVpcPeeringConnections(v []*VpcP
 }
 
 // Contains the parameters for DescribeVpcs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcsRequest
 type DescribeVpcsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42132,7 +42183,6 @@ func (s *DescribeVpcsInput) SetVpcIds(v []*string) *DescribeVpcsInput {
 }
 
 // Contains the output of DescribeVpcs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpcsResult
 type DescribeVpcsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -42157,7 +42207,6 @@ func (s *DescribeVpcsOutput) SetVpcs(v []*Vpc) *DescribeVpcsOutput {
 }
 
 // Contains the parameters for DescribeVpnConnections.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpnConnectionsRequest
 type DescribeVpnConnectionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42248,7 +42297,6 @@ func (s *DescribeVpnConnectionsInput) SetVpnConnectionIds(v []*string) *Describe
 }
 
 // Contains the output of DescribeVpnConnections.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpnConnectionsResult
 type DescribeVpnConnectionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -42273,7 +42321,6 @@ func (s *DescribeVpnConnectionsOutput) SetVpnConnections(v []*VpnConnection) *De
 }
 
 // Contains the parameters for DescribeVpnGateways.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpnGatewaysRequest
 type DescribeVpnGatewaysInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42356,7 +42403,6 @@ func (s *DescribeVpnGatewaysInput) SetVpnGatewayIds(v []*string) *DescribeVpnGat
 }
 
 // Contains the output of DescribeVpnGateways.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DescribeVpnGatewaysResult
 type DescribeVpnGatewaysOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -42381,7 +42427,6 @@ func (s *DescribeVpnGatewaysOutput) SetVpnGateways(v []*VpnGateway) *DescribeVpn
 }
 
 // Contains the parameters for DetachClassicLinkVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachClassicLinkVpcRequest
 type DetachClassicLinkVpcInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42447,7 +42492,6 @@ func (s *DetachClassicLinkVpcInput) SetVpcId(v string) *DetachClassicLinkVpcInpu
 }
 
 // Contains the output of DetachClassicLinkVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachClassicLinkVpcResult
 type DetachClassicLinkVpcOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -42472,7 +42516,6 @@ func (s *DetachClassicLinkVpcOutput) SetReturn(v bool) *DetachClassicLinkVpcOutp
 }
 
 // Contains the parameters for DetachInternetGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachInternetGatewayRequest
 type DetachInternetGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42537,7 +42580,6 @@ func (s *DetachInternetGatewayInput) SetVpcId(v string) *DetachInternetGatewayIn
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachInternetGatewayOutput
 type DetachInternetGatewayOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -42553,7 +42595,6 @@ func (s DetachInternetGatewayOutput) GoString() string {
 }
 
 // Contains the parameters for DetachNetworkInterface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachNetworkInterfaceRequest
 type DetachNetworkInterfaceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42613,7 +42654,6 @@ func (s *DetachNetworkInterfaceInput) SetForce(v bool) *DetachNetworkInterfaceIn
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachNetworkInterfaceOutput
 type DetachNetworkInterfaceOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -42629,7 +42669,6 @@ func (s DetachNetworkInterfaceOutput) GoString() string {
 }
 
 // Contains the parameters for DetachVolume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachVolumeRequest
 type DetachVolumeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42714,7 +42753,6 @@ func (s *DetachVolumeInput) SetVolumeId(v string) *DetachVolumeInput {
 }
 
 // Contains the parameters for DetachVpnGateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachVpnGatewayRequest
 type DetachVpnGatewayInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42779,7 +42817,6 @@ func (s *DetachVpnGatewayInput) SetVpnGatewayId(v string) *DetachVpnGatewayInput
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DetachVpnGatewayOutput
 type DetachVpnGatewayOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -42795,7 +42832,6 @@ func (s DetachVpnGatewayOutput) GoString() string {
 }
 
 // Describes a DHCP configuration option.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DhcpConfiguration
 type DhcpConfiguration struct {
 	_ struct{} `type:"structure"`
 
@@ -42829,7 +42865,6 @@ func (s *DhcpConfiguration) SetValues(v []*AttributeValue) *DhcpConfiguration {
 }
 
 // Describes a set of DHCP options.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DhcpOptions
 type DhcpOptions struct {
 	_ struct{} `type:"structure"`
 
@@ -42872,7 +42907,6 @@ func (s *DhcpOptions) SetTags(v []*Tag) *DhcpOptions {
 }
 
 // Contains the parameters for DisableVgwRoutePropagation.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisableVgwRoutePropagationRequest
 type DisableVgwRoutePropagationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42925,7 +42959,6 @@ func (s *DisableVgwRoutePropagationInput) SetRouteTableId(v string) *DisableVgwR
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisableVgwRoutePropagationOutput
 type DisableVgwRoutePropagationOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -42941,7 +42974,6 @@ func (s DisableVgwRoutePropagationOutput) GoString() string {
 }
 
 // Contains the parameters for DisableVpcClassicLinkDnsSupport.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisableVpcClassicLinkDnsSupportRequest
 type DisableVpcClassicLinkDnsSupportInput struct {
 	_ struct{} `type:"structure"`
 
@@ -42966,7 +42998,6 @@ func (s *DisableVpcClassicLinkDnsSupportInput) SetVpcId(v string) *DisableVpcCla
 }
 
 // Contains the output of DisableVpcClassicLinkDnsSupport.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisableVpcClassicLinkDnsSupportResult
 type DisableVpcClassicLinkDnsSupportOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -42991,7 +43022,6 @@ func (s *DisableVpcClassicLinkDnsSupportOutput) SetReturn(v bool) *DisableVpcCla
 }
 
 // Contains the parameters for DisableVpcClassicLink.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisableVpcClassicLinkRequest
 type DisableVpcClassicLinkInput struct {
 	_ struct{} `type:"structure"`
 
@@ -43043,7 +43073,6 @@ func (s *DisableVpcClassicLinkInput) SetVpcId(v string) *DisableVpcClassicLinkIn
 }
 
 // Contains the output of DisableVpcClassicLink.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisableVpcClassicLinkResult
 type DisableVpcClassicLinkOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -43068,7 +43097,6 @@ func (s *DisableVpcClassicLinkOutput) SetReturn(v bool) *DisableVpcClassicLinkOu
 }
 
 // Contains the parameters for DisassociateAddress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateAddressRequest
 type DisassociateAddressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -43113,7 +43141,6 @@ func (s *DisassociateAddressInput) SetPublicIp(v string) *DisassociateAddressInp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateAddressOutput
 type DisassociateAddressOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -43128,7 +43155,6 @@ func (s DisassociateAddressOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateIamInstanceProfileRequest
 type DisassociateIamInstanceProfileInput struct {
 	_ struct{} `type:"structure"`
 
@@ -43167,7 +43193,6 @@ func (s *DisassociateIamInstanceProfileInput) SetAssociationId(v string) *Disass
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateIamInstanceProfileResult
 type DisassociateIamInstanceProfileOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -43192,7 +43217,6 @@ func (s *DisassociateIamInstanceProfileOutput) SetIamInstanceProfileAssociation(
 }
 
 // Contains the parameters for DisassociateRouteTable.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateRouteTableRequest
 type DisassociateRouteTableInput struct {
 	_ struct{} `type:"structure"`
 
@@ -43244,7 +43268,6 @@ func (s *DisassociateRouteTableInput) SetDryRun(v bool) *DisassociateRouteTableI
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateRouteTableOutput
 type DisassociateRouteTableOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -43259,7 +43282,6 @@ func (s DisassociateRouteTableOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateSubnetCidrBlockRequest
 type DisassociateSubnetCidrBlockInput struct {
 	_ struct{} `type:"structure"`
 
@@ -43298,7 +43320,6 @@ func (s *DisassociateSubnetCidrBlockInput) SetAssociationId(v string) *Disassoci
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateSubnetCidrBlockResult
 type DisassociateSubnetCidrBlockOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -43331,7 +43352,6 @@ func (s *DisassociateSubnetCidrBlockOutput) SetSubnetId(v string) *DisassociateS
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateVpcCidrBlockRequest
 type DisassociateVpcCidrBlockInput struct {
 	_ struct{} `type:"structure"`
 
@@ -43370,7 +43390,6 @@ func (s *DisassociateVpcCidrBlockInput) SetAssociationId(v string) *Disassociate
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateVpcCidrBlockResult
 type DisassociateVpcCidrBlockOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -43413,7 +43432,6 @@ func (s *DisassociateVpcCidrBlockOutput) SetVpcId(v string) *DisassociateVpcCidr
 }
 
 // Describes a disk image.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DiskImage
 type DiskImage struct {
 	_ struct{} `type:"structure"`
 
@@ -43476,7 +43494,6 @@ func (s *DiskImage) SetVolume(v *VolumeDetail) *DiskImage {
 }
 
 // Describes a disk image.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DiskImageDescription
 type DiskImageDescription struct {
 	_ struct{} `type:"structure"`
 
@@ -43541,7 +43558,6 @@ func (s *DiskImageDescription) SetSize(v int64) *DiskImageDescription {
 }
 
 // Describes a disk image.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DiskImageDetail
 type DiskImageDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -43616,7 +43632,6 @@ func (s *DiskImageDetail) SetImportManifestUrl(v string) *DiskImageDetail {
 }
 
 // Describes a disk image volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DiskImageVolumeDescription
 type DiskImageVolumeDescription struct {
 	_ struct{} `type:"structure"`
 
@@ -43652,7 +43667,6 @@ func (s *DiskImageVolumeDescription) SetSize(v int64) *DiskImageVolumeDescriptio
 }
 
 // Describes a DNS entry.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DnsEntry
 type DnsEntry struct {
 	_ struct{} `type:"structure"`
 
@@ -43686,7 +43700,6 @@ func (s *DnsEntry) SetHostedZoneId(v string) *DnsEntry {
 }
 
 // Describes a block device for an EBS volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EbsBlockDevice
 type EbsBlockDevice struct {
 	_ struct{} `type:"structure"`
 
@@ -43714,7 +43727,8 @@ type EbsBlockDevice struct {
 	// it is not used in requests to create gp2, st1, sc1, or standard volumes.
 	Iops *int64 `locationName:"iops" type:"integer"`
 
-	// ID for a user-managed CMK under which the EBS volume is encrypted.
+	// Identifier (key ID, key alias, ID ARN, or alias ARN) for a user-managed CMK
+	// under which the EBS volume is encrypted.
 	//
 	// Note: This parameter is only supported on BlockDeviceMapping objects called
 	// by RunInstances (http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_RunInstances.html),
@@ -43796,7 +43810,6 @@ func (s *EbsBlockDevice) SetVolumeType(v string) *EbsBlockDevice {
 }
 
 // Describes a parameter used to set up an EBS volume in a block device mapping.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EbsInstanceBlockDevice
 type EbsInstanceBlockDevice struct {
 	_ struct{} `type:"structure"`
 
@@ -43849,7 +43862,6 @@ func (s *EbsInstanceBlockDevice) SetVolumeId(v string) *EbsInstanceBlockDevice {
 
 // Describes information used to set up an EBS volume specified in a block device
 // mapping.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EbsInstanceBlockDeviceSpecification
 type EbsInstanceBlockDeviceSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -43883,7 +43895,6 @@ func (s *EbsInstanceBlockDeviceSpecification) SetVolumeId(v string) *EbsInstance
 }
 
 // Describes an egress-only Internet gateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EgressOnlyInternetGateway
 type EgressOnlyInternetGateway struct {
 	_ struct{} `type:"structure"`
 
@@ -43917,7 +43928,6 @@ func (s *EgressOnlyInternetGateway) SetEgressOnlyInternetGatewayId(v string) *Eg
 }
 
 // Describes the association between an instance and an Elastic GPU.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ElasticGpuAssociation
 type ElasticGpuAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -43969,7 +43979,6 @@ func (s *ElasticGpuAssociation) SetElasticGpuId(v string) *ElasticGpuAssociation
 }
 
 // Describes the status of an Elastic GPU.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ElasticGpuHealth
 type ElasticGpuHealth struct {
 	_ struct{} `type:"structure"`
 
@@ -43994,7 +44003,6 @@ func (s *ElasticGpuHealth) SetStatus(v string) *ElasticGpuHealth {
 }
 
 // A specification for an Elastic GPU.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ElasticGpuSpecification
 type ElasticGpuSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -44034,7 +44042,6 @@ func (s *ElasticGpuSpecification) SetType(v string) *ElasticGpuSpecification {
 }
 
 // Describes an elastic GPU.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ElasticGpuSpecificationResponse
 type ElasticGpuSpecificationResponse struct {
 	_ struct{} `type:"structure"`
 
@@ -44059,7 +44066,6 @@ func (s *ElasticGpuSpecificationResponse) SetType(v string) *ElasticGpuSpecifica
 }
 
 // Describes an Elastic GPU.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ElasticGpus
 type ElasticGpus struct {
 	_ struct{} `type:"structure"`
 
@@ -44129,7 +44135,6 @@ func (s *ElasticGpus) SetInstanceId(v string) *ElasticGpus {
 }
 
 // Contains the parameters for EnableVgwRoutePropagation.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EnableVgwRoutePropagationRequest
 type EnableVgwRoutePropagationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -44182,7 +44187,6 @@ func (s *EnableVgwRoutePropagationInput) SetRouteTableId(v string) *EnableVgwRou
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EnableVgwRoutePropagationOutput
 type EnableVgwRoutePropagationOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -44198,7 +44202,6 @@ func (s EnableVgwRoutePropagationOutput) GoString() string {
 }
 
 // Contains the parameters for EnableVolumeIO.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EnableVolumeIORequest
 type EnableVolumeIOInput struct {
 	_ struct{} `type:"structure"`
 
@@ -44249,7 +44252,6 @@ func (s *EnableVolumeIOInput) SetVolumeId(v string) *EnableVolumeIOInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EnableVolumeIOOutput
 type EnableVolumeIOOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -44265,7 +44267,6 @@ func (s EnableVolumeIOOutput) GoString() string {
 }
 
 // Contains the parameters for EnableVpcClassicLinkDnsSupport.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EnableVpcClassicLinkDnsSupportRequest
 type EnableVpcClassicLinkDnsSupportInput struct {
 	_ struct{} `type:"structure"`
 
@@ -44290,7 +44291,6 @@ func (s *EnableVpcClassicLinkDnsSupportInput) SetVpcId(v string) *EnableVpcClass
 }
 
 // Contains the output of EnableVpcClassicLinkDnsSupport.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EnableVpcClassicLinkDnsSupportResult
 type EnableVpcClassicLinkDnsSupportOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -44315,7 +44315,6 @@ func (s *EnableVpcClassicLinkDnsSupportOutput) SetReturn(v bool) *EnableVpcClass
 }
 
 // Contains the parameters for EnableVpcClassicLink.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EnableVpcClassicLinkRequest
 type EnableVpcClassicLinkInput struct {
 	_ struct{} `type:"structure"`
 
@@ -44367,7 +44366,6 @@ func (s *EnableVpcClassicLinkInput) SetVpcId(v string) *EnableVpcClassicLinkInpu
 }
 
 // Contains the output of EnableVpcClassicLink.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EnableVpcClassicLinkResult
 type EnableVpcClassicLinkOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -44392,7 +44390,6 @@ func (s *EnableVpcClassicLinkOutput) SetReturn(v bool) *EnableVpcClassicLinkOutp
 }
 
 // Describes a Spot Fleet event.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EventInformation
 type EventInformation struct {
 	_ struct{} `type:"structure"`
 
@@ -44496,7 +44493,6 @@ func (s *EventInformation) SetInstanceId(v string) *EventInformation {
 }
 
 // Describes an instance export task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ExportTask
 type ExportTask struct {
 	_ struct{} `type:"structure"`
 
@@ -44566,7 +44562,6 @@ func (s *ExportTask) SetStatusMessage(v string) *ExportTask {
 }
 
 // Describes the format and location for an instance export task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ExportToS3Task
 type ExportToS3Task struct {
 	_ struct{} `type:"structure"`
 
@@ -44620,7 +44615,6 @@ func (s *ExportToS3Task) SetS3Key(v string) *ExportToS3Task {
 }
 
 // Describes an instance export task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ExportToS3TaskSpecification
 type ExportToS3TaskSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -44677,7 +44671,6 @@ func (s *ExportToS3TaskSpecification) SetS3Prefix(v string) *ExportToS3TaskSpeci
 // A filter name and value pair that is used to return a more specific list
 // of results. Filters can be used to match a set of resources by various criteria,
 // such as tags, attributes, or IDs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Filter
 type Filter struct {
 	_ struct{} `type:"structure"`
 
@@ -44711,7 +44704,6 @@ func (s *Filter) SetValues(v []*string) *Filter {
 }
 
 // Describes a launch template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/FleetLaunchTemplateSpecification
 type FleetLaunchTemplateSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -44770,7 +44762,6 @@ func (s *FleetLaunchTemplateSpecification) SetVersion(v string) *FleetLaunchTemp
 }
 
 // Describes a flow log.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/FlowLog
 type FlowLog struct {
 	_ struct{} `type:"structure"`
 
@@ -44872,7 +44863,6 @@ func (s *FlowLog) SetTrafficType(v string) *FlowLog {
 }
 
 // Describes an Amazon FPGA image (AFI).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/FpgaImage
 type FpgaImage struct {
 	_ struct{} `type:"structure"`
 
@@ -45014,7 +45004,6 @@ func (s *FpgaImage) SetUpdateTime(v time.Time) *FpgaImage {
 }
 
 // Describes an Amazon FPGA image (AFI) attribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/FpgaImageAttribute
 type FpgaImageAttribute struct {
 	_ struct{} `type:"structure"`
 
@@ -45076,7 +45065,6 @@ func (s *FpgaImageAttribute) SetProductCodes(v []*ProductCode) *FpgaImageAttribu
 
 // Describes the state of the bitstream generation process for an Amazon FPGA
 // image (AFI).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/FpgaImageState
 type FpgaImageState struct {
 	_ struct{} `type:"structure"`
 
@@ -45118,7 +45106,6 @@ func (s *FpgaImageState) SetMessage(v string) *FpgaImageState {
 }
 
 // Contains the parameters for GetConsoleOutput.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetConsoleOutputRequest
 type GetConsoleOutputInput struct {
 	_ struct{} `type:"structure"`
 
@@ -45170,7 +45157,6 @@ func (s *GetConsoleOutputInput) SetInstanceId(v string) *GetConsoleOutputInput {
 }
 
 // Contains the output of GetConsoleOutput.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetConsoleOutputResult
 type GetConsoleOutputOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -45214,7 +45200,6 @@ func (s *GetConsoleOutputOutput) SetTimestamp(v time.Time) *GetConsoleOutputOutp
 }
 
 // Contains the parameters for the request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetConsoleScreenshotRequest
 type GetConsoleScreenshotInput struct {
 	_ struct{} `type:"structure"`
 
@@ -45276,7 +45261,6 @@ func (s *GetConsoleScreenshotInput) SetWakeUp(v bool) *GetConsoleScreenshotInput
 }
 
 // Contains the output of the request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetConsoleScreenshotResult
 type GetConsoleScreenshotOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -45309,7 +45293,6 @@ func (s *GetConsoleScreenshotOutput) SetInstanceId(v string) *GetConsoleScreensh
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetHostReservationPurchasePreviewRequest
 type GetHostReservationPurchasePreviewInput struct {
 	_ struct{} `type:"structure"`
 
@@ -45363,7 +45346,6 @@ func (s *GetHostReservationPurchasePreviewInput) SetOfferingId(v string) *GetHos
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetHostReservationPurchasePreviewResult
 type GetHostReservationPurchasePreviewOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -45416,7 +45398,6 @@ func (s *GetHostReservationPurchasePreviewOutput) SetTotalUpfrontPrice(v string)
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetLaunchTemplateDataRequest
 type GetLaunchTemplateDataInput struct {
 	_ struct{} `type:"structure"`
 
@@ -45467,7 +45448,6 @@ func (s *GetLaunchTemplateDataInput) SetInstanceId(v string) *GetLaunchTemplateD
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetLaunchTemplateDataResult
 type GetLaunchTemplateDataOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -45492,7 +45472,6 @@ func (s *GetLaunchTemplateDataOutput) SetLaunchTemplateData(v *ResponseLaunchTem
 }
 
 // Contains the parameters for GetPasswordData.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetPasswordDataRequest
 type GetPasswordDataInput struct {
 	_ struct{} `type:"structure"`
 
@@ -45544,7 +45523,6 @@ func (s *GetPasswordDataInput) SetInstanceId(v string) *GetPasswordDataInput {
 }
 
 // Contains the output of GetPasswordData.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetPasswordDataResult
 type GetPasswordDataOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -45588,7 +45566,6 @@ func (s *GetPasswordDataOutput) SetTimestamp(v time.Time) *GetPasswordDataOutput
 }
 
 // Contains the parameters for GetReservedInstanceExchangeQuote.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetReservedInstancesExchangeQuoteRequest
 type GetReservedInstancesExchangeQuoteInput struct {
 	_ struct{} `type:"structure"`
 
@@ -45660,7 +45637,6 @@ func (s *GetReservedInstancesExchangeQuoteInput) SetTargetConfigurations(v []*Ta
 }
 
 // Contains the output of GetReservedInstancesExchangeQuote.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetReservedInstancesExchangeQuoteResult
 type GetReservedInstancesExchangeQuoteOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -45757,7 +45733,6 @@ func (s *GetReservedInstancesExchangeQuoteOutput) SetValidationFailureReason(v s
 }
 
 // Describes a security group.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GroupIdentifier
 type GroupIdentifier struct {
 	_ struct{} `type:"structure"`
 
@@ -45791,7 +45766,6 @@ func (s *GroupIdentifier) SetGroupName(v string) *GroupIdentifier {
 }
 
 // Describes an event in the history of the Spot Fleet request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/HistoryRecord
 type HistoryRecord struct {
 	_ struct{} `type:"structure"`
 
@@ -45849,7 +45823,6 @@ func (s *HistoryRecord) SetTimestamp(v time.Time) *HistoryRecord {
 }
 
 // Describes the properties of the Dedicated Host.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Host
 type Host struct {
 	_ struct{} `type:"structure"`
 
@@ -45949,7 +45922,6 @@ func (s *Host) SetState(v string) *Host {
 }
 
 // Describes an instance running on a Dedicated Host.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/HostInstance
 type HostInstance struct {
 	_ struct{} `type:"structure"`
 
@@ -45983,7 +45955,6 @@ func (s *HostInstance) SetInstanceType(v string) *HostInstance {
 }
 
 // Details about the Dedicated Host Reservation offering.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/HostOffering
 type HostOffering struct {
 	_ struct{} `type:"structure"`
 
@@ -46062,7 +46033,6 @@ func (s *HostOffering) SetUpfrontPrice(v string) *HostOffering {
 }
 
 // Describes properties of a Dedicated Host.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/HostProperties
 type HostProperties struct {
 	_ struct{} `type:"structure"`
 
@@ -46114,7 +46084,6 @@ func (s *HostProperties) SetTotalVCpus(v int64) *HostProperties {
 }
 
 // Details about the Dedicated Host Reservation and associated Dedicated Hosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/HostReservation
 type HostReservation struct {
 	_ struct{} `type:"structure"`
 
@@ -46252,7 +46221,6 @@ func (s *HostReservation) SetUpfrontPrice(v string) *HostReservation {
 }
 
 // Describes an IAM instance profile.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/IamInstanceProfile
 type IamInstanceProfile struct {
 	_ struct{} `type:"structure"`
 
@@ -46286,7 +46254,6 @@ func (s *IamInstanceProfile) SetId(v string) *IamInstanceProfile {
 }
 
 // Describes an association between an IAM instance profile and an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/IamInstanceProfileAssociation
 type IamInstanceProfileAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -46347,7 +46314,6 @@ func (s *IamInstanceProfileAssociation) SetTimestamp(v time.Time) *IamInstancePr
 }
 
 // Describes an IAM instance profile.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/IamInstanceProfileSpecification
 type IamInstanceProfileSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -46381,7 +46347,6 @@ func (s *IamInstanceProfileSpecification) SetName(v string) *IamInstanceProfileS
 }
 
 // Describes the ICMP type and code.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/IcmpTypeCode
 type IcmpTypeCode struct {
 	_ struct{} `type:"structure"`
 
@@ -46415,7 +46380,6 @@ func (s *IcmpTypeCode) SetType(v int64) *IcmpTypeCode {
 }
 
 // Describes the ID format for a resource.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/IdFormat
 type IdFormat struct {
 	_ struct{} `type:"structure"`
 
@@ -46460,7 +46424,6 @@ func (s *IdFormat) SetUseLongIds(v bool) *IdFormat {
 }
 
 // Describes an image.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Image
 type Image struct {
 	_ struct{} `type:"structure"`
 
@@ -46700,7 +46663,6 @@ func (s *Image) SetVirtualizationType(v string) *Image {
 }
 
 // Describes the disk container object for an import image task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImageDiskContainer
 type ImageDiskContainer struct {
 	_ struct{} `type:"structure"`
 
@@ -46712,7 +46674,7 @@ type ImageDiskContainer struct {
 
 	// The format of the disk image being imported.
 	//
-	// Valid values: RAW | VHD | VMDK | OVA
+	// Valid values: VHD | VMDK | OVA
 	Format *string `type:"string"`
 
 	// The ID of the EBS snapshot to be used for importing the snapshot.
@@ -46773,7 +46735,6 @@ func (s *ImageDiskContainer) SetUserBucket(v *UserBucket) *ImageDiskContainer {
 }
 
 // Contains the parameters for ImportImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportImageRequest
 type ImportImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -46895,7 +46856,6 @@ func (s *ImportImageInput) SetRoleName(v string) *ImportImageInput {
 }
 
 // Contains the output for ImportImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportImageResult
 type ImportImageOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -47010,7 +46970,6 @@ func (s *ImportImageOutput) SetStatusMessage(v string) *ImportImageOutput {
 }
 
 // Describes an import image task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportImageTask
 type ImportImageTask struct {
 	_ struct{} `type:"structure"`
 
@@ -47129,7 +47088,6 @@ func (s *ImportImageTask) SetStatusMessage(v string) *ImportImageTask {
 }
 
 // Contains the parameters for ImportInstance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportInstanceRequest
 type ImportInstanceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -47218,7 +47176,6 @@ func (s *ImportInstanceInput) SetPlatform(v string) *ImportInstanceInput {
 }
 
 // Describes the launch specification for VM import.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportInstanceLaunchSpecification
 type ImportInstanceLaunchSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -47239,7 +47196,7 @@ type ImportInstanceLaunchSpecification struct {
 	InstanceInitiatedShutdownBehavior *string `locationName:"instanceInitiatedShutdownBehavior" type:"string" enum:"ShutdownBehavior"`
 
 	// The instance type. For more information about the instance types that you
-	// can import, see Instance Types (http://docs.aws.amazon.com/vm-import/latest/userguide/vmimport-image-import.html#vmimport-instance-types)
+	// can import, see Instance Types (http://docs.aws.amazon.com/vm-import/latest/userguide/vmie_prereqs.html#vmimport-instance-types)
 	// in the VM Import/Export User Guide.
 	InstanceType *string `locationName:"instanceType" type:"string" enum:"InstanceType"`
 
@@ -47255,9 +47212,7 @@ type ImportInstanceLaunchSpecification struct {
 	// [EC2-VPC] The ID of the subnet in which to launch the instance.
 	SubnetId *string `locationName:"subnetId" type:"string"`
 
-	// The user data to make available to the instance. If you are using an AWS
-	// SDK or command line tool, Base64-encoding is performed for you, and you can
-	// load the text from a file. Otherwise, you must provide Base64-encoded text.
+	// The Base64-encoded user data to make available to the instance.
 	UserData *UserData `locationName:"userData" type:"structure"`
 }
 
@@ -47338,7 +47293,6 @@ func (s *ImportInstanceLaunchSpecification) SetUserData(v *UserData) *ImportInst
 }
 
 // Contains the output for ImportInstance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportInstanceResult
 type ImportInstanceOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -47363,7 +47317,6 @@ func (s *ImportInstanceOutput) SetConversionTask(v *ConversionTask) *ImportInsta
 }
 
 // Describes an import instance task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportInstanceTaskDetails
 type ImportInstanceTaskDetails struct {
 	_ struct{} `type:"structure"`
 
@@ -47417,7 +47370,6 @@ func (s *ImportInstanceTaskDetails) SetVolumes(v []*ImportInstanceVolumeDetailIt
 }
 
 // Describes an import volume task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportInstanceVolumeDetailItem
 type ImportInstanceVolumeDetailItem struct {
 	_ struct{} `type:"structure"`
 
@@ -47506,7 +47458,6 @@ func (s *ImportInstanceVolumeDetailItem) SetVolume(v *DiskImageVolumeDescription
 }
 
 // Contains the parameters for ImportKeyPair.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportKeyPairRequest
 type ImportKeyPairInput struct {
 	_ struct{} `type:"structure"`
 
@@ -47575,7 +47526,6 @@ func (s *ImportKeyPairInput) SetPublicKeyMaterial(v []byte) *ImportKeyPairInput 
 }
 
 // Contains the output of ImportKeyPair.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportKeyPairResult
 type ImportKeyPairOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -47609,7 +47559,6 @@ func (s *ImportKeyPairOutput) SetKeyName(v string) *ImportKeyPairOutput {
 }
 
 // Contains the parameters for ImportSnapshot.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportSnapshotRequest
 type ImportSnapshotInput struct {
 	_ struct{} `type:"structure"`
 
@@ -47682,7 +47631,6 @@ func (s *ImportSnapshotInput) SetRoleName(v string) *ImportSnapshotInput {
 }
 
 // Contains the output for ImportSnapshot.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportSnapshotResult
 type ImportSnapshotOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -47725,7 +47673,6 @@ func (s *ImportSnapshotOutput) SetSnapshotTaskDetail(v *SnapshotTaskDetail) *Imp
 }
 
 // Describes an import snapshot task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportSnapshotTask
 type ImportSnapshotTask struct {
 	_ struct{} `type:"structure"`
 
@@ -47768,7 +47715,6 @@ func (s *ImportSnapshotTask) SetSnapshotTaskDetail(v *SnapshotTaskDetail) *Impor
 }
 
 // Contains the parameters for ImportVolume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportVolumeRequest
 type ImportVolumeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -47867,7 +47813,6 @@ func (s *ImportVolumeInput) SetVolume(v *VolumeDetail) *ImportVolumeInput {
 }
 
 // Contains the output for ImportVolume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportVolumeResult
 type ImportVolumeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -47892,7 +47837,6 @@ func (s *ImportVolumeOutput) SetConversionTask(v *ConversionTask) *ImportVolumeO
 }
 
 // Describes an import volume task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ImportVolumeTaskDetails
 type ImportVolumeTaskDetails struct {
 	_ struct{} `type:"structure"`
 
@@ -47961,7 +47905,6 @@ func (s *ImportVolumeTaskDetails) SetVolume(v *DiskImageVolumeDescription) *Impo
 }
 
 // Describes an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Instance
 type Instance struct {
 	_ struct{} `type:"structure"`
 
@@ -48350,7 +48293,6 @@ func (s *Instance) SetVpcId(v string) *Instance {
 }
 
 // Describes a block device mapping.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceBlockDeviceMapping
 type InstanceBlockDeviceMapping struct {
 	_ struct{} `type:"structure"`
 
@@ -48385,7 +48327,6 @@ func (s *InstanceBlockDeviceMapping) SetEbs(v *EbsInstanceBlockDevice) *Instance
 }
 
 // Describes a block device mapping entry.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceBlockDeviceMappingSpecification
 type InstanceBlockDeviceMappingSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -48438,7 +48379,6 @@ func (s *InstanceBlockDeviceMappingSpecification) SetVirtualName(v string) *Inst
 }
 
 // Information about the instance type that the Dedicated Host supports.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceCapacity
 type InstanceCapacity struct {
 	_ struct{} `type:"structure"`
 
@@ -48481,7 +48421,6 @@ func (s *InstanceCapacity) SetTotalCapacity(v int64) *InstanceCapacity {
 }
 
 // Describes a Reserved Instance listing state.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceCount
 type InstanceCount struct {
 	_ struct{} `type:"structure"`
 
@@ -48515,7 +48454,6 @@ func (s *InstanceCount) SetState(v string) *InstanceCount {
 }
 
 // Describes the credit option for CPU usage of a T2 instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceCreditSpecification
 type InstanceCreditSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -48550,7 +48488,6 @@ func (s *InstanceCreditSpecification) SetInstanceId(v string) *InstanceCreditSpe
 }
 
 // Describes the credit option for CPU usage of a T2 instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceCreditSpecificationRequest
 type InstanceCreditSpecificationRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -48585,7 +48522,6 @@ func (s *InstanceCreditSpecificationRequest) SetInstanceId(v string) *InstanceCr
 }
 
 // Describes an instance to export.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceExportDetails
 type InstanceExportDetails struct {
 	_ struct{} `type:"structure"`
 
@@ -48619,7 +48555,6 @@ func (s *InstanceExportDetails) SetTargetEnvironment(v string) *InstanceExportDe
 }
 
 // Describes an IPv6 address.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceIpv6Address
 type InstanceIpv6Address struct {
 	_ struct{} `type:"structure"`
 
@@ -48644,7 +48579,6 @@ func (s *InstanceIpv6Address) SetIpv6Address(v string) *InstanceIpv6Address {
 }
 
 // Describes an IPv6 address.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceIpv6AddressRequest
 type InstanceIpv6AddressRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -48669,7 +48603,6 @@ func (s *InstanceIpv6AddressRequest) SetIpv6Address(v string) *InstanceIpv6Addre
 }
 
 // Describes the market (purchasing) option for the instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceMarketOptionsRequest
 type InstanceMarketOptionsRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -48703,7 +48636,6 @@ func (s *InstanceMarketOptionsRequest) SetSpotOptions(v *SpotMarketOptions) *Ins
 }
 
 // Describes the monitoring of an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceMonitoring
 type InstanceMonitoring struct {
 	_ struct{} `type:"structure"`
 
@@ -48737,7 +48669,6 @@ func (s *InstanceMonitoring) SetMonitoring(v *Monitoring) *InstanceMonitoring {
 }
 
 // Describes a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceNetworkInterface
 type InstanceNetworkInterface struct {
 	_ struct{} `type:"structure"`
 
@@ -48889,7 +48820,6 @@ func (s *InstanceNetworkInterface) SetVpcId(v string) *InstanceNetworkInterface 
 }
 
 // Describes association information for an Elastic IP address (IPv4).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceNetworkInterfaceAssociation
 type InstanceNetworkInterfaceAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -48932,7 +48862,6 @@ func (s *InstanceNetworkInterfaceAssociation) SetPublicIp(v string) *InstanceNet
 }
 
 // Describes a network interface attachment.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceNetworkInterfaceAttachment
 type InstanceNetworkInterfaceAttachment struct {
 	_ struct{} `type:"structure"`
 
@@ -48993,7 +48922,6 @@ func (s *InstanceNetworkInterfaceAttachment) SetStatus(v string) *InstanceNetwor
 }
 
 // Describes a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceNetworkInterfaceSpecification
 type InstanceNetworkInterfaceSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -49163,7 +49091,6 @@ func (s *InstanceNetworkInterfaceSpecification) SetSubnetId(v string) *InstanceN
 }
 
 // Describes a private IPv4 address.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstancePrivateIpAddress
 type InstancePrivateIpAddress struct {
 	_ struct{} `type:"structure"`
 
@@ -49216,7 +49143,6 @@ func (s *InstancePrivateIpAddress) SetPrivateIpAddress(v string) *InstancePrivat
 }
 
 // Describes the current state of an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceState
 type InstanceState struct {
 	_ struct{} `type:"structure"`
 
@@ -49263,7 +49189,6 @@ func (s *InstanceState) SetName(v string) *InstanceState {
 }
 
 // Describes an instance state change.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceStateChange
 type InstanceStateChange struct {
 	_ struct{} `type:"structure"`
 
@@ -49306,7 +49231,6 @@ func (s *InstanceStateChange) SetPreviousState(v *InstanceState) *InstanceStateC
 }
 
 // Describes the status of an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceStatus
 type InstanceStatus struct {
 	_ struct{} `type:"structure"`
 
@@ -49380,7 +49304,6 @@ func (s *InstanceStatus) SetSystemStatus(v *InstanceStatusSummary) *InstanceStat
 }
 
 // Describes the instance status.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceStatusDetails
 type InstanceStatusDetails struct {
 	_ struct{} `type:"structure"`
 
@@ -49424,7 +49347,6 @@ func (s *InstanceStatusDetails) SetStatus(v string) *InstanceStatusDetails {
 }
 
 // Describes a scheduled event for an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceStatusEvent
 type InstanceStatusEvent struct {
 	_ struct{} `type:"structure"`
 
@@ -49480,7 +49402,6 @@ func (s *InstanceStatusEvent) SetNotBefore(v time.Time) *InstanceStatusEvent {
 }
 
 // Describes the status of an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InstanceStatusSummary
 type InstanceStatusSummary struct {
 	_ struct{} `type:"structure"`
 
@@ -49514,7 +49435,6 @@ func (s *InstanceStatusSummary) SetStatus(v string) *InstanceStatusSummary {
 }
 
 // Describes an Internet gateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InternetGateway
 type InternetGateway struct {
 	_ struct{} `type:"structure"`
 
@@ -49558,7 +49478,6 @@ func (s *InternetGateway) SetTags(v []*Tag) *InternetGateway {
 
 // Describes the attachment of a VPC to an Internet gateway or an egress-only
 // Internet gateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/InternetGatewayAttachment
 type InternetGatewayAttachment struct {
 	_ struct{} `type:"structure"`
 
@@ -49593,7 +49512,6 @@ func (s *InternetGatewayAttachment) SetVpcId(v string) *InternetGatewayAttachmen
 }
 
 // Describes a set of permissions for a security group rule.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/IpPermission
 type IpPermission struct {
 	_ struct{} `type:"structure"`
 
@@ -49687,7 +49605,6 @@ func (s *IpPermission) SetUserIdGroupPairs(v []*UserIdGroupPair) *IpPermission {
 }
 
 // Describes an IPv4 range.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/IpRange
 type IpRange struct {
 	_ struct{} `type:"structure"`
 
@@ -49726,7 +49643,6 @@ func (s *IpRange) SetDescription(v string) *IpRange {
 }
 
 // Describes an IPv6 CIDR block.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Ipv6CidrBlock
 type Ipv6CidrBlock struct {
 	_ struct{} `type:"structure"`
 
@@ -49751,7 +49667,6 @@ func (s *Ipv6CidrBlock) SetIpv6CidrBlock(v string) *Ipv6CidrBlock {
 }
 
 // [EC2-VPC only] Describes an IPv6 range.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Ipv6Range
 type Ipv6Range struct {
 	_ struct{} `type:"structure"`
 
@@ -49790,7 +49705,6 @@ func (s *Ipv6Range) SetDescription(v string) *Ipv6Range {
 }
 
 // Describes a key pair.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/KeyPairInfo
 type KeyPairInfo struct {
 	_ struct{} `type:"structure"`
 
@@ -49827,7 +49741,6 @@ func (s *KeyPairInfo) SetKeyName(v string) *KeyPairInfo {
 }
 
 // Describes a launch permission.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchPermission
 type LaunchPermission struct {
 	_ struct{} `type:"structure"`
 
@@ -49861,7 +49774,6 @@ func (s *LaunchPermission) SetUserId(v string) *LaunchPermission {
 }
 
 // Describes a launch permission modification.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchPermissionModifications
 type LaunchPermissionModifications struct {
 	_ struct{} `type:"structure"`
 
@@ -49896,7 +49808,6 @@ func (s *LaunchPermissionModifications) SetRemove(v []*LaunchPermission) *Launch
 }
 
 // Describes the launch specification for an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchSpecification
 type LaunchSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -49951,9 +49862,7 @@ type LaunchSpecification struct {
 	// The ID of the subnet in which to launch the instance.
 	SubnetId *string `locationName:"subnetId" type:"string"`
 
-	// The user data to make available to the instances. If you are using an AWS
-	// SDK or command line tool, Base64-encoding is performed for you, and you can
-	// load the text from a file. Otherwise, you must provide Base64-encoded text.
+	// The Base64-encoded user data for the instance.
 	UserData *string `locationName:"userData" type:"string"`
 }
 
@@ -50058,7 +49967,6 @@ func (s *LaunchSpecification) SetUserData(v string) *LaunchSpecification {
 }
 
 // Describes a launch template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplate
 type LaunchTemplate struct {
 	_ struct{} `type:"structure"`
 
@@ -50137,7 +50045,6 @@ func (s *LaunchTemplate) SetTags(v []*Tag) *LaunchTemplate {
 }
 
 // Describes a block device mapping.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateBlockDeviceMapping
 type LaunchTemplateBlockDeviceMapping struct {
 	_ struct{} `type:"structure"`
 
@@ -50190,7 +50097,6 @@ func (s *LaunchTemplateBlockDeviceMapping) SetVirtualName(v string) *LaunchTempl
 }
 
 // Describes a block device mapping.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateBlockDeviceMappingRequest
 type LaunchTemplateBlockDeviceMappingRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -50248,7 +50154,6 @@ func (s *LaunchTemplateBlockDeviceMappingRequest) SetVirtualName(v string) *Laun
 }
 
 // Describes a launch template and overrides.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateConfig
 type LaunchTemplateConfig struct {
 	_ struct{} `type:"structure"`
 
@@ -50298,7 +50203,6 @@ func (s *LaunchTemplateConfig) SetOverrides(v []*LaunchTemplateOverrides) *Launc
 }
 
 // Describes a block device for an EBS volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateEbsBlockDevice
 type LaunchTemplateEbsBlockDevice struct {
 	_ struct{} `type:"structure"`
 
@@ -50377,7 +50281,6 @@ func (s *LaunchTemplateEbsBlockDevice) SetVolumeType(v string) *LaunchTemplateEb
 }
 
 // The parameters for a block device for an EBS volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateEbsBlockDeviceRequest
 type LaunchTemplateEbsBlockDeviceRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -50470,7 +50373,6 @@ func (s *LaunchTemplateEbsBlockDeviceRequest) SetVolumeType(v string) *LaunchTem
 }
 
 // Describes an IAM instance profile.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateIamInstanceProfileSpecification
 type LaunchTemplateIamInstanceProfileSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -50504,7 +50406,6 @@ func (s *LaunchTemplateIamInstanceProfileSpecification) SetName(v string) *Launc
 }
 
 // An IAM instance profile.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateIamInstanceProfileSpecificationRequest
 type LaunchTemplateIamInstanceProfileSpecificationRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -50538,7 +50439,6 @@ func (s *LaunchTemplateIamInstanceProfileSpecificationRequest) SetName(v string)
 }
 
 // The market (purchasing) option for the instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateInstanceMarketOptions
 type LaunchTemplateInstanceMarketOptions struct {
 	_ struct{} `type:"structure"`
 
@@ -50572,7 +50472,6 @@ func (s *LaunchTemplateInstanceMarketOptions) SetSpotOptions(v *LaunchTemplateSp
 }
 
 // The market (purchasing) option for the instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateInstanceMarketOptionsRequest
 type LaunchTemplateInstanceMarketOptionsRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -50606,7 +50505,6 @@ func (s *LaunchTemplateInstanceMarketOptionsRequest) SetSpotOptions(v *LaunchTem
 }
 
 // Describes a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateInstanceNetworkInterfaceSpecification
 type LaunchTemplateInstanceNetworkInterfaceSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -50731,7 +50629,6 @@ func (s *LaunchTemplateInstanceNetworkInterfaceSpecification) SetSubnetId(v stri
 }
 
 // The parameters for a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateInstanceNetworkInterfaceSpecificationRequest
 type LaunchTemplateInstanceNetworkInterfaceSpecificationRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -50878,7 +50775,6 @@ func (s *LaunchTemplateInstanceNetworkInterfaceSpecificationRequest) SetSubnetId
 }
 
 // Describes overrides for a launch template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateOverrides
 type LaunchTemplateOverrides struct {
 	_ struct{} `type:"structure"`
 
@@ -50939,7 +50835,6 @@ func (s *LaunchTemplateOverrides) SetWeightedCapacity(v float64) *LaunchTemplate
 }
 
 // Describes the placement of an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplatePlacement
 type LaunchTemplatePlacement struct {
 	_ struct{} `type:"structure"`
 
@@ -51010,7 +50905,6 @@ func (s *LaunchTemplatePlacement) SetTenancy(v string) *LaunchTemplatePlacement 
 }
 
 // The placement for the instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplatePlacementRequest
 type LaunchTemplatePlacementRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -51082,7 +50976,6 @@ func (s *LaunchTemplatePlacementRequest) SetTenancy(v string) *LaunchTemplatePla
 
 // The launch template to use. You must specify either the launch template ID
 // or launch template name in the request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateSpecification
 type LaunchTemplateSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -51127,7 +51020,6 @@ func (s *LaunchTemplateSpecification) SetVersion(v string) *LaunchTemplateSpecif
 }
 
 // The options for Spot Instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateSpotMarketOptions
 type LaunchTemplateSpotMarketOptions struct {
 	_ struct{} `type:"structure"`
 
@@ -51193,7 +51085,6 @@ func (s *LaunchTemplateSpotMarketOptions) SetValidUntil(v time.Time) *LaunchTemp
 }
 
 // The options for Spot Instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateSpotMarketOptionsRequest
 type LaunchTemplateSpotMarketOptionsRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -51260,7 +51151,6 @@ func (s *LaunchTemplateSpotMarketOptionsRequest) SetValidUntil(v time.Time) *Lau
 }
 
 // The tag specification for the launch template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateTagSpecification
 type LaunchTemplateTagSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -51294,7 +51184,6 @@ func (s *LaunchTemplateTagSpecification) SetTags(v []*Tag) *LaunchTemplateTagSpe
 }
 
 // The tags specification for the launch template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateTagSpecificationRequest
 type LaunchTemplateTagSpecificationRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -51329,7 +51218,6 @@ func (s *LaunchTemplateTagSpecificationRequest) SetTags(v []*Tag) *LaunchTemplat
 }
 
 // Describes a launch template version.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplateVersion
 type LaunchTemplateVersion struct {
 	_ struct{} `type:"structure"`
 
@@ -51417,7 +51305,6 @@ func (s *LaunchTemplateVersion) SetVersionNumber(v int64) *LaunchTemplateVersion
 }
 
 // Describes the monitoring for the instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplatesMonitoring
 type LaunchTemplatesMonitoring struct {
 	_ struct{} `type:"structure"`
 
@@ -51443,7 +51330,6 @@ func (s *LaunchTemplatesMonitoring) SetEnabled(v bool) *LaunchTemplatesMonitorin
 }
 
 // Describes the monitoring for the instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LaunchTemplatesMonitoringRequest
 type LaunchTemplatesMonitoringRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -51470,7 +51356,6 @@ func (s *LaunchTemplatesMonitoringRequest) SetEnabled(v bool) *LaunchTemplatesMo
 
 // Describes the Classic Load Balancers and target groups to attach to a Spot
 // Fleet request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LoadBalancersConfig
 type LoadBalancersConfig struct {
 	_ struct{} `type:"structure"`
 
@@ -51524,7 +51409,6 @@ func (s *LoadBalancersConfig) SetTargetGroupsConfig(v *TargetGroupsConfig) *Load
 }
 
 // Describes a load permission.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LoadPermission
 type LoadPermission struct {
 	_ struct{} `type:"structure"`
 
@@ -51558,7 +51442,6 @@ func (s *LoadPermission) SetUserId(v string) *LoadPermission {
 }
 
 // Describes modifications to the load permissions of an Amazon FPGA image (AFI).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LoadPermissionModifications
 type LoadPermissionModifications struct {
 	_ struct{} `type:"structure"`
 
@@ -51592,7 +51475,6 @@ func (s *LoadPermissionModifications) SetRemove(v []*LoadPermissionRequest) *Loa
 }
 
 // Describes a load permission.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/LoadPermissionRequest
 type LoadPermissionRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -51625,7 +51507,6 @@ func (s *LoadPermissionRequest) SetUserId(v string) *LoadPermissionRequest {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyFpgaImageAttributeRequest
 type ModifyFpgaImageAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -51752,7 +51633,6 @@ func (s *ModifyFpgaImageAttributeInput) SetUserIds(v []*string) *ModifyFpgaImage
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyFpgaImageAttributeResult
 type ModifyFpgaImageAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -51777,7 +51657,6 @@ func (s *ModifyFpgaImageAttributeOutput) SetFpgaImageAttribute(v *FpgaImageAttri
 }
 
 // Contains the parameters for ModifyHosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyHostsRequest
 type ModifyHostsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -51831,7 +51710,6 @@ func (s *ModifyHostsInput) SetHostIds(v []*string) *ModifyHostsInput {
 }
 
 // Contains the output of ModifyHosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyHostsResult
 type ModifyHostsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -51866,11 +51744,18 @@ func (s *ModifyHostsOutput) SetUnsuccessful(v []*UnsuccessfulItem) *ModifyHostsO
 }
 
 // Contains the parameters of ModifyIdFormat.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyIdFormatRequest
 type ModifyIdFormatInput struct {
 	_ struct{} `type:"structure"`
 
-	// The type of resource: instance | reservation | snapshot | volume
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | route-table | route-table-association
+	// | security-group | subnet | subnet-cidr-block-association | vpc | vpc-cidr-block-association
+	// | vpc-peering-connection.
+	//
+	// Alternatively, use the all-current option to include all resource types that
+	// are currently within their opt-in period for longer IDs.
 	//
 	// Resource is a required field
 	Resource *string `type:"string" required:"true"`
@@ -51919,7 +51804,6 @@ func (s *ModifyIdFormatInput) SetUseLongIds(v bool) *ModifyIdFormatInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyIdFormatOutput
 type ModifyIdFormatOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -51935,7 +51819,6 @@ func (s ModifyIdFormatOutput) GoString() string {
 }
 
 // Contains the parameters of ModifyIdentityIdFormat.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyIdentityIdFormatRequest
 type ModifyIdentityIdFormatInput struct {
 	_ struct{} `type:"structure"`
 
@@ -51946,7 +51829,15 @@ type ModifyIdentityIdFormatInput struct {
 	// PrincipalArn is a required field
 	PrincipalArn *string `locationName:"principalArn" type:"string" required:"true"`
 
-	// The type of resource: instance | reservation | snapshot | volume
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | route-table | route-table-association
+	// | security-group | subnet | subnet-cidr-block-association | vpc | vpc-cidr-block-association
+	// | vpc-peering-connection.
+	//
+	// Alternatively, use the all-current option to include all resource types that
+	// are currently within their opt-in period for longer IDs.
 	//
 	// Resource is a required field
 	Resource *string `locationName:"resource" type:"string" required:"true"`
@@ -52004,7 +51895,6 @@ func (s *ModifyIdentityIdFormatInput) SetUseLongIds(v bool) *ModifyIdentityIdFor
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyIdentityIdFormatOutput
 type ModifyIdentityIdFormatOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -52020,7 +51910,6 @@ func (s ModifyIdentityIdFormatOutput) GoString() string {
 }
 
 // Contains the parameters for ModifyImageAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyImageAttributeRequest
 type ModifyImageAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -52149,7 +52038,6 @@ func (s *ModifyImageAttributeInput) SetValue(v string) *ModifyImageAttributeInpu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyImageAttributeOutput
 type ModifyImageAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -52165,7 +52053,6 @@ func (s ModifyImageAttributeOutput) GoString() string {
 }
 
 // Contains the parameters for ModifyInstanceAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyInstanceAttributeRequest
 type ModifyInstanceAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -52381,7 +52268,6 @@ func (s *ModifyInstanceAttributeInput) SetValue(v string) *ModifyInstanceAttribu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyInstanceAttributeOutput
 type ModifyInstanceAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -52396,7 +52282,6 @@ func (s ModifyInstanceAttributeOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyInstanceCreditSpecificationRequest
 type ModifyInstanceCreditSpecificationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -52458,7 +52343,6 @@ func (s *ModifyInstanceCreditSpecificationInput) SetInstanceCreditSpecifications
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyInstanceCreditSpecificationResult
 type ModifyInstanceCreditSpecificationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -52494,7 +52378,6 @@ func (s *ModifyInstanceCreditSpecificationOutput) SetUnsuccessfulInstanceCreditS
 }
 
 // Contains the parameters for ModifyInstancePlacement.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyInstancePlacementRequest
 type ModifyInstancePlacementInput struct {
 	_ struct{} `type:"structure"`
 
@@ -52561,7 +52444,6 @@ func (s *ModifyInstancePlacementInput) SetTenancy(v string) *ModifyInstancePlace
 }
 
 // Contains the output of ModifyInstancePlacement.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyInstancePlacementResult
 type ModifyInstancePlacementOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -52585,7 +52467,6 @@ func (s *ModifyInstancePlacementOutput) SetReturn(v bool) *ModifyInstancePlaceme
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyLaunchTemplateRequest
 type ModifyLaunchTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -52664,7 +52545,6 @@ func (s *ModifyLaunchTemplateInput) SetLaunchTemplateName(v string) *ModifyLaunc
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyLaunchTemplateResult
 type ModifyLaunchTemplateOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -52689,7 +52569,6 @@ func (s *ModifyLaunchTemplateOutput) SetLaunchTemplate(v *LaunchTemplate) *Modif
 }
 
 // Contains the parameters for ModifyNetworkInterfaceAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyNetworkInterfaceAttributeRequest
 type ModifyNetworkInterfaceAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -52784,7 +52663,6 @@ func (s *ModifyNetworkInterfaceAttributeInput) SetSourceDestCheck(v *AttributeBo
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyNetworkInterfaceAttributeOutput
 type ModifyNetworkInterfaceAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -52800,7 +52678,6 @@ func (s ModifyNetworkInterfaceAttributeOutput) GoString() string {
 }
 
 // Contains the parameters for ModifyReservedInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyReservedInstancesRequest
 type ModifyReservedInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -52864,7 +52741,6 @@ func (s *ModifyReservedInstancesInput) SetTargetConfigurations(v []*ReservedInst
 }
 
 // Contains the output of ModifyReservedInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyReservedInstancesResult
 type ModifyReservedInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -52889,7 +52765,6 @@ func (s *ModifyReservedInstancesOutput) SetReservedInstancesModificationId(v str
 }
 
 // Contains the parameters for ModifySnapshotAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifySnapshotAttributeRequest
 type ModifySnapshotAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -52987,7 +52862,6 @@ func (s *ModifySnapshotAttributeInput) SetUserIds(v []*string) *ModifySnapshotAt
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifySnapshotAttributeOutput
 type ModifySnapshotAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -53003,7 +52877,6 @@ func (s ModifySnapshotAttributeOutput) GoString() string {
 }
 
 // Contains the parameters for ModifySpotFleetRequest.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifySpotFleetRequestRequest
 type ModifySpotFleetRequestInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53063,7 +52936,6 @@ func (s *ModifySpotFleetRequestInput) SetTargetCapacity(v int64) *ModifySpotFlee
 }
 
 // Contains the output of ModifySpotFleetRequest.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifySpotFleetRequestResponse
 type ModifySpotFleetRequestOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -53088,7 +52960,6 @@ func (s *ModifySpotFleetRequestOutput) SetReturn(v bool) *ModifySpotFleetRequest
 }
 
 // Contains the parameters for ModifySubnetAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifySubnetAttributeRequest
 type ModifySubnetAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53155,7 +53026,6 @@ func (s *ModifySubnetAttributeInput) SetSubnetId(v string) *ModifySubnetAttribut
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifySubnetAttributeOutput
 type ModifySubnetAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -53171,7 +53041,6 @@ func (s ModifySubnetAttributeOutput) GoString() string {
 }
 
 // Contains the parameters for ModifyVolumeAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVolumeAttributeRequest
 type ModifyVolumeAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53231,7 +53100,6 @@ func (s *ModifyVolumeAttributeInput) SetVolumeId(v string) *ModifyVolumeAttribut
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVolumeAttributeOutput
 type ModifyVolumeAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -53246,7 +53114,6 @@ func (s ModifyVolumeAttributeOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVolumeRequest
 type ModifyVolumeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53338,7 +53205,6 @@ func (s *ModifyVolumeInput) SetVolumeType(v string) *ModifyVolumeInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVolumeResult
 type ModifyVolumeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -53363,7 +53229,6 @@ func (s *ModifyVolumeOutput) SetVolumeModification(v *VolumeModification) *Modif
 }
 
 // Contains the parameters for ModifyVpcAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcAttributeRequest
 type ModifyVpcAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53432,7 +53297,6 @@ func (s *ModifyVpcAttributeInput) SetVpcId(v string) *ModifyVpcAttributeInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcAttributeOutput
 type ModifyVpcAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -53447,7 +53311,6 @@ func (s ModifyVpcAttributeOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcEndpointConnectionNotificationRequest
 type ModifyVpcEndpointConnectionNotificationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53517,7 +53380,6 @@ func (s *ModifyVpcEndpointConnectionNotificationInput) SetDryRun(v bool) *Modify
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcEndpointConnectionNotificationResult
 type ModifyVpcEndpointConnectionNotificationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -53542,7 +53404,6 @@ func (s *ModifyVpcEndpointConnectionNotificationOutput) SetReturnValue(v bool) *
 }
 
 // Contains the parameters for ModifyVpcEndpoint.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcEndpointRequest
 type ModifyVpcEndpointInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53679,7 +53540,6 @@ func (s *ModifyVpcEndpointInput) SetVpcEndpointId(v string) *ModifyVpcEndpointIn
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcEndpointResult
 type ModifyVpcEndpointOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -53703,7 +53563,6 @@ func (s *ModifyVpcEndpointOutput) SetReturn(v bool) *ModifyVpcEndpointOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcEndpointServiceConfigurationRequest
 type ModifyVpcEndpointServiceConfigurationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53712,7 +53571,7 @@ type ModifyVpcEndpointServiceConfigurationInput struct {
 
 	// The Amazon Resource Names (ARNs) of Network Load Balancers to add to your
 	// service configuration.
-	AddNetworkLoadBalancerArns []*string `locationName:"addNetworkLoadBalancerArn" locationNameList:"item" type:"list"`
+	AddNetworkLoadBalancerArns []*string `locationName:"AddNetworkLoadBalancerArn" locationNameList:"item" type:"list"`
 
 	// Checks whether you have the required permissions for the action, without
 	// actually making the request, and provides an error response. If you have
@@ -53722,7 +53581,7 @@ type ModifyVpcEndpointServiceConfigurationInput struct {
 
 	// The Amazon Resource Names (ARNs) of Network Load Balancers to remove from
 	// your service configuration.
-	RemoveNetworkLoadBalancerArns []*string `locationName:"removeNetworkLoadBalancerArn" locationNameList:"item" type:"list"`
+	RemoveNetworkLoadBalancerArns []*string `locationName:"RemoveNetworkLoadBalancerArn" locationNameList:"item" type:"list"`
 
 	// The ID of the service.
 	//
@@ -53783,7 +53642,6 @@ func (s *ModifyVpcEndpointServiceConfigurationInput) SetServiceId(v string) *Mod
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcEndpointServiceConfigurationResult
 type ModifyVpcEndpointServiceConfigurationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -53807,7 +53665,6 @@ func (s *ModifyVpcEndpointServiceConfigurationOutput) SetReturn(v bool) *ModifyV
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcEndpointServicePermissionsRequest
 type ModifyVpcEndpointServicePermissionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53878,7 +53735,6 @@ func (s *ModifyVpcEndpointServicePermissionsInput) SetServiceId(v string) *Modif
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcEndpointServicePermissionsResult
 type ModifyVpcEndpointServicePermissionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -53902,7 +53758,6 @@ func (s *ModifyVpcEndpointServicePermissionsOutput) SetReturnValue(v bool) *Modi
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcPeeringConnectionOptionsRequest
 type ModifyVpcPeeringConnectionOptionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -53971,7 +53826,6 @@ func (s *ModifyVpcPeeringConnectionOptionsInput) SetVpcPeeringConnectionId(v str
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcPeeringConnectionOptionsResult
 type ModifyVpcPeeringConnectionOptionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -54005,7 +53859,6 @@ func (s *ModifyVpcPeeringConnectionOptionsOutput) SetRequesterPeeringConnectionO
 }
 
 // Contains the parameters for ModifyVpcTenancy.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcTenancyRequest
 type ModifyVpcTenancyInput struct {
 	_ struct{} `type:"structure"`
 
@@ -54071,7 +53924,6 @@ func (s *ModifyVpcTenancyInput) SetVpcId(v string) *ModifyVpcTenancyInput {
 }
 
 // Contains the output of ModifyVpcTenancy.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ModifyVpcTenancyResult
 type ModifyVpcTenancyOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -54096,7 +53948,6 @@ func (s *ModifyVpcTenancyOutput) SetReturnValue(v bool) *ModifyVpcTenancyOutput 
 }
 
 // Contains the parameters for MonitorInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/MonitorInstancesRequest
 type MonitorInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -54148,7 +53999,6 @@ func (s *MonitorInstancesInput) SetInstanceIds(v []*string) *MonitorInstancesInp
 }
 
 // Contains the output of MonitorInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/MonitorInstancesResult
 type MonitorInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -54173,7 +54023,6 @@ func (s *MonitorInstancesOutput) SetInstanceMonitorings(v []*InstanceMonitoring)
 }
 
 // Describes the monitoring of an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Monitoring
 type Monitoring struct {
 	_ struct{} `type:"structure"`
 
@@ -54199,7 +54048,6 @@ func (s *Monitoring) SetState(v string) *Monitoring {
 }
 
 // Contains the parameters for MoveAddressToVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/MoveAddressToVpcRequest
 type MoveAddressToVpcInput struct {
 	_ struct{} `type:"structure"`
 
@@ -54251,7 +54099,6 @@ func (s *MoveAddressToVpcInput) SetPublicIp(v string) *MoveAddressToVpcInput {
 }
 
 // Contains the output of MoveAddressToVpc.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/MoveAddressToVpcResult
 type MoveAddressToVpcOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -54285,7 +54132,6 @@ func (s *MoveAddressToVpcOutput) SetStatus(v string) *MoveAddressToVpcOutput {
 }
 
 // Describes the status of a moving Elastic IP address.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/MovingAddressStatus
 type MovingAddressStatus struct {
 	_ struct{} `type:"structure"`
 
@@ -54320,7 +54166,6 @@ func (s *MovingAddressStatus) SetPublicIp(v string) *MovingAddressStatus {
 }
 
 // Describes a NAT gateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NatGateway
 type NatGateway struct {
 	_ struct{} `type:"structure"`
 
@@ -54475,7 +54320,6 @@ func (s *NatGateway) SetVpcId(v string) *NatGateway {
 }
 
 // Describes the IP addresses and network interface associated with a NAT gateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NatGatewayAddress
 type NatGatewayAddress struct {
 	_ struct{} `type:"structure"`
 
@@ -54528,7 +54372,6 @@ func (s *NatGatewayAddress) SetPublicIp(v string) *NatGatewayAddress {
 }
 
 // Describes a network ACL.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkAcl
 type NetworkAcl struct {
 	_ struct{} `type:"structure"`
 
@@ -54598,7 +54441,6 @@ func (s *NetworkAcl) SetVpcId(v string) *NetworkAcl {
 }
 
 // Describes an association between a network ACL and a subnet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkAclAssociation
 type NetworkAclAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -54641,7 +54483,6 @@ func (s *NetworkAclAssociation) SetSubnetId(v string) *NetworkAclAssociation {
 }
 
 // Describes an entry in a network ACL.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkAclEntry
 type NetworkAclEntry struct {
 	_ struct{} `type:"structure"`
 
@@ -54731,7 +54572,6 @@ func (s *NetworkAclEntry) SetRuleNumber(v int64) *NetworkAclEntry {
 }
 
 // Describes a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkInterface
 type NetworkInterface struct {
 	_ struct{} `type:"structure"`
 
@@ -54929,7 +54769,6 @@ func (s *NetworkInterface) SetVpcId(v string) *NetworkInterface {
 }
 
 // Describes association information for an Elastic IP address (IPv4 only).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkInterfaceAssociation
 type NetworkInterfaceAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -54990,7 +54829,6 @@ func (s *NetworkInterfaceAssociation) SetPublicIp(v string) *NetworkInterfaceAss
 }
 
 // Describes a network interface attachment.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkInterfaceAttachment
 type NetworkInterfaceAttachment struct {
 	_ struct{} `type:"structure"`
 
@@ -55069,7 +54907,6 @@ func (s *NetworkInterfaceAttachment) SetStatus(v string) *NetworkInterfaceAttach
 }
 
 // Describes an attachment change.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkInterfaceAttachmentChanges
 type NetworkInterfaceAttachmentChanges struct {
 	_ struct{} `type:"structure"`
 
@@ -55103,7 +54940,6 @@ func (s *NetworkInterfaceAttachmentChanges) SetDeleteOnTermination(v bool) *Netw
 }
 
 // Describes an IPv6 address associated with a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkInterfaceIpv6Address
 type NetworkInterfaceIpv6Address struct {
 	_ struct{} `type:"structure"`
 
@@ -55128,7 +54964,6 @@ func (s *NetworkInterfaceIpv6Address) SetIpv6Address(v string) *NetworkInterface
 }
 
 // Describes a permission for a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkInterfacePermission
 type NetworkInterfacePermission struct {
 	_ struct{} `type:"structure"`
 
@@ -55198,7 +55033,6 @@ func (s *NetworkInterfacePermission) SetPermissionState(v *NetworkInterfacePermi
 }
 
 // Describes the state of a network interface permission.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkInterfacePermissionState
 type NetworkInterfacePermissionState struct {
 	_ struct{} `type:"structure"`
 
@@ -55232,7 +55066,6 @@ func (s *NetworkInterfacePermissionState) SetStatusMessage(v string) *NetworkInt
 }
 
 // Describes the private IPv4 address of a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NetworkInterfacePrivateIpAddress
 type NetworkInterfacePrivateIpAddress struct {
 	_ struct{} `type:"structure"`
 
@@ -55285,7 +55118,6 @@ func (s *NetworkInterfacePrivateIpAddress) SetPrivateIpAddress(v string) *Networ
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/NewDhcpConfiguration
 type NewDhcpConfiguration struct {
 	_ struct{} `type:"structure"`
 
@@ -55318,7 +55150,6 @@ func (s *NewDhcpConfiguration) SetValues(v []*string) *NewDhcpConfiguration {
 
 // Describes the data that identifies an Amazon FPGA image (AFI) on the PCI
 // bus.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PciId
 type PciId struct {
 	_ struct{} `type:"structure"`
 
@@ -55370,7 +55201,6 @@ func (s *PciId) SetVendorId(v string) *PciId {
 }
 
 // Describes the VPC peering connection options.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PeeringConnectionOptions
 type PeeringConnectionOptions struct {
 	_ struct{} `type:"structure"`
 
@@ -55416,7 +55246,6 @@ func (s *PeeringConnectionOptions) SetAllowEgressFromLocalVpcToRemoteClassicLink
 }
 
 // The VPC peering connection options.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PeeringConnectionOptionsRequest
 type PeeringConnectionOptionsRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -55462,7 +55291,6 @@ func (s *PeeringConnectionOptionsRequest) SetAllowEgressFromLocalVpcToRemoteClas
 }
 
 // Describes the placement of an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Placement
 type Placement struct {
 	_ struct{} `type:"structure"`
 
@@ -55536,7 +55364,6 @@ func (s *Placement) SetTenancy(v string) *Placement {
 }
 
 // Describes a placement group.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PlacementGroup
 type PlacementGroup struct {
 	_ struct{} `type:"structure"`
 
@@ -55579,7 +55406,6 @@ func (s *PlacementGroup) SetStrategy(v string) *PlacementGroup {
 }
 
 // Describes a range of ports.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PortRange
 type PortRange struct {
 	_ struct{} `type:"structure"`
 
@@ -55613,7 +55439,6 @@ func (s *PortRange) SetTo(v int64) *PortRange {
 }
 
 // Describes prefixes for AWS services.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PrefixList
 type PrefixList struct {
 	_ struct{} `type:"structure"`
 
@@ -55656,7 +55481,6 @@ func (s *PrefixList) SetPrefixListName(v string) *PrefixList {
 }
 
 // [EC2-VPC only] The ID of the prefix.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PrefixListId
 type PrefixListId struct {
 	_ struct{} `type:"structure"`
 
@@ -55694,7 +55518,6 @@ func (s *PrefixListId) SetPrefixListId(v string) *PrefixListId {
 }
 
 // Describes the price for a Reserved Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PriceSchedule
 type PriceSchedule struct {
 	_ struct{} `type:"structure"`
 
@@ -55757,7 +55580,6 @@ func (s *PriceSchedule) SetTerm(v int64) *PriceSchedule {
 }
 
 // Describes the price for a Reserved Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PriceScheduleSpecification
 type PriceScheduleSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -55802,7 +55624,6 @@ func (s *PriceScheduleSpecification) SetTerm(v int64) *PriceScheduleSpecificatio
 }
 
 // Describes a Reserved Instance offering.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PricingDetail
 type PricingDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -55835,8 +55656,40 @@ func (s *PricingDetail) SetPrice(v float64) *PricingDetail {
 	return s
 }
 
+// PrincipalIdFormat description
+type PrincipalIdFormat struct {
+	_ struct{} `type:"structure"`
+
+	// PrincipalIdFormatARN description
+	Arn *string `locationName:"arn" type:"string"`
+
+	// PrincipalIdFormatStatuses description
+	Statuses []*IdFormat `locationName:"statusSet" locationNameList:"item" type:"list"`
+}
+
+// String returns the string representation
+func (s PrincipalIdFormat) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PrincipalIdFormat) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *PrincipalIdFormat) SetArn(v string) *PrincipalIdFormat {
+	s.Arn = &v
+	return s
+}
+
+// SetStatuses sets the Statuses field's value.
+func (s *PrincipalIdFormat) SetStatuses(v []*IdFormat) *PrincipalIdFormat {
+	s.Statuses = v
+	return s
+}
+
 // Describes a secondary private IPv4 address for a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PrivateIpAddressSpecification
 type PrivateIpAddressSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -55886,7 +55739,6 @@ func (s *PrivateIpAddressSpecification) SetPrivateIpAddress(v string) *PrivateIp
 }
 
 // Describes a product code.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ProductCode
 type ProductCode struct {
 	_ struct{} `type:"structure"`
 
@@ -55920,7 +55772,6 @@ func (s *ProductCode) SetProductCodeType(v string) *ProductCode {
 }
 
 // Describes a virtual private gateway propagating route.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PropagatingVgw
 type PropagatingVgw struct {
 	_ struct{} `type:"structure"`
 
@@ -55947,7 +55798,6 @@ func (s *PropagatingVgw) SetGatewayId(v string) *PropagatingVgw {
 // Reserved. If you need to sustain traffic greater than the documented limits
 // (http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/vpc-nat-gateway.html),
 // contact us through the Support Center (https://console.aws.amazon.com/support/home?).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ProvisionedBandwidth
 type ProvisionedBandwidth struct {
 	_ struct{} `type:"structure"`
 
@@ -56018,7 +55868,6 @@ func (s *ProvisionedBandwidth) SetStatus(v string) *ProvisionedBandwidth {
 }
 
 // Describes the result of the purchase.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Purchase
 type Purchase struct {
 	_ struct{} `type:"structure"`
 
@@ -56107,7 +55956,6 @@ func (s *Purchase) SetUpfrontPrice(v string) *Purchase {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PurchaseHostReservationRequest
 type PurchaseHostReservationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -56197,7 +56045,6 @@ func (s *PurchaseHostReservationInput) SetOfferingId(v string) *PurchaseHostRese
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PurchaseHostReservationResult
 type PurchaseHostReservationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -56262,7 +56109,6 @@ func (s *PurchaseHostReservationOutput) SetTotalUpfrontPrice(v string) *Purchase
 }
 
 // Describes a request to purchase Scheduled Instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PurchaseRequest
 type PurchaseRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -56316,7 +56162,6 @@ func (s *PurchaseRequest) SetPurchaseToken(v string) *PurchaseRequest {
 }
 
 // Contains the parameters for PurchaseReservedInstancesOffering.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PurchaseReservedInstancesOfferingRequest
 type PurchaseReservedInstancesOfferingInput struct {
 	_ struct{} `type:"structure"`
 
@@ -56393,7 +56238,6 @@ func (s *PurchaseReservedInstancesOfferingInput) SetReservedInstancesOfferingId(
 }
 
 // Contains the output of PurchaseReservedInstancesOffering.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PurchaseReservedInstancesOfferingResult
 type PurchaseReservedInstancesOfferingOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -56418,7 +56262,6 @@ func (s *PurchaseReservedInstancesOfferingOutput) SetReservedInstancesId(v strin
 }
 
 // Contains the parameters for PurchaseScheduledInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PurchaseScheduledInstancesRequest
 type PurchaseScheduledInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -56493,7 +56336,6 @@ func (s *PurchaseScheduledInstancesInput) SetPurchaseRequests(v []*PurchaseReque
 }
 
 // Contains the output of PurchaseScheduledInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/PurchaseScheduledInstancesResult
 type PurchaseScheduledInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -56518,7 +56360,6 @@ func (s *PurchaseScheduledInstancesOutput) SetScheduledInstanceSet(v []*Schedule
 }
 
 // Contains the parameters for RebootInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RebootInstancesRequest
 type RebootInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -56569,7 +56410,6 @@ func (s *RebootInstancesInput) SetInstanceIds(v []*string) *RebootInstancesInput
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RebootInstancesOutput
 type RebootInstancesOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -56585,7 +56425,6 @@ func (s RebootInstancesOutput) GoString() string {
 }
 
 // Describes a recurring charge.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RecurringCharge
 type RecurringCharge struct {
 	_ struct{} `type:"structure"`
 
@@ -56619,7 +56458,6 @@ func (s *RecurringCharge) SetFrequency(v string) *RecurringCharge {
 }
 
 // Describes a region.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Region
 type Region struct {
 	_ struct{} `type:"structure"`
 
@@ -56653,7 +56491,6 @@ func (s *Region) SetRegionName(v string) *Region {
 }
 
 // Contains the parameters for RegisterImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RegisterImageRequest
 type RegisterImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -56826,7 +56663,6 @@ func (s *RegisterImageInput) SetVirtualizationType(v string) *RegisterImageInput
 }
 
 // Contains the output of RegisterImage.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RegisterImageResult
 type RegisterImageOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -56850,7 +56686,6 @@ func (s *RegisterImageOutput) SetImageId(v string) *RegisterImageOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RejectVpcEndpointConnectionsRequest
 type RejectVpcEndpointConnectionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -56915,7 +56750,6 @@ func (s *RejectVpcEndpointConnectionsInput) SetVpcEndpointIds(v []*string) *Reje
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RejectVpcEndpointConnectionsResult
 type RejectVpcEndpointConnectionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -56940,7 +56774,6 @@ func (s *RejectVpcEndpointConnectionsOutput) SetUnsuccessful(v []*UnsuccessfulIt
 }
 
 // Contains the parameters for RejectVpcPeeringConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RejectVpcPeeringConnectionRequest
 type RejectVpcPeeringConnectionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -56992,7 +56825,6 @@ func (s *RejectVpcPeeringConnectionInput) SetVpcPeeringConnectionId(v string) *R
 }
 
 // Contains the output of RejectVpcPeeringConnection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RejectVpcPeeringConnectionResult
 type RejectVpcPeeringConnectionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -57017,7 +56849,6 @@ func (s *RejectVpcPeeringConnectionOutput) SetReturn(v bool) *RejectVpcPeeringCo
 }
 
 // Contains the parameters for ReleaseAddress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReleaseAddressRequest
 type ReleaseAddressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -57062,7 +56893,6 @@ func (s *ReleaseAddressInput) SetPublicIp(v string) *ReleaseAddressInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReleaseAddressOutput
 type ReleaseAddressOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -57078,7 +56908,6 @@ func (s ReleaseAddressOutput) GoString() string {
 }
 
 // Contains the parameters for ReleaseHosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReleaseHostsRequest
 type ReleaseHostsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -57118,7 +56947,6 @@ func (s *ReleaseHostsInput) SetHostIds(v []*string) *ReleaseHostsInput {
 }
 
 // Contains the output of ReleaseHosts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReleaseHostsResult
 type ReleaseHostsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -57152,7 +56980,6 @@ func (s *ReleaseHostsOutput) SetUnsuccessful(v []*UnsuccessfulItem) *ReleaseHost
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceIamInstanceProfileAssociationRequest
 type ReplaceIamInstanceProfileAssociationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -57205,7 +57032,6 @@ func (s *ReplaceIamInstanceProfileAssociationInput) SetIamInstanceProfile(v *Iam
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceIamInstanceProfileAssociationResult
 type ReplaceIamInstanceProfileAssociationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -57230,7 +57056,6 @@ func (s *ReplaceIamInstanceProfileAssociationOutput) SetIamInstanceProfileAssoci
 }
 
 // Contains the parameters for ReplaceNetworkAclAssociation.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceNetworkAclAssociationRequest
 type ReplaceNetworkAclAssociationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -57297,7 +57122,6 @@ func (s *ReplaceNetworkAclAssociationInput) SetNetworkAclId(v string) *ReplaceNe
 }
 
 // Contains the output of ReplaceNetworkAclAssociation.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceNetworkAclAssociationResult
 type ReplaceNetworkAclAssociationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -57322,7 +57146,6 @@ func (s *ReplaceNetworkAclAssociationOutput) SetNewAssociationId(v string) *Repl
 }
 
 // Contains the parameters for ReplaceNetworkAclEntry.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceNetworkAclEntryRequest
 type ReplaceNetworkAclEntryInput struct {
 	_ struct{} `type:"structure"`
 
@@ -57475,7 +57298,6 @@ func (s *ReplaceNetworkAclEntryInput) SetRuleNumber(v int64) *ReplaceNetworkAclE
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceNetworkAclEntryOutput
 type ReplaceNetworkAclEntryOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -57491,7 +57313,6 @@ func (s ReplaceNetworkAclEntryOutput) GoString() string {
 }
 
 // Contains the parameters for ReplaceRoute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceRouteRequest
 type ReplaceRouteInput struct {
 	_ struct{} `type:"structure"`
 
@@ -57616,7 +57437,6 @@ func (s *ReplaceRouteInput) SetVpcPeeringConnectionId(v string) *ReplaceRouteInp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceRouteOutput
 type ReplaceRouteOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -57632,7 +57452,6 @@ func (s ReplaceRouteOutput) GoString() string {
 }
 
 // Contains the parameters for ReplaceRouteTableAssociation.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceRouteTableAssociationRequest
 type ReplaceRouteTableAssociationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -57698,7 +57517,6 @@ func (s *ReplaceRouteTableAssociationInput) SetRouteTableId(v string) *ReplaceRo
 }
 
 // Contains the output of ReplaceRouteTableAssociation.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReplaceRouteTableAssociationResult
 type ReplaceRouteTableAssociationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -57723,7 +57541,6 @@ func (s *ReplaceRouteTableAssociationOutput) SetNewAssociationId(v string) *Repl
 }
 
 // Contains the parameters for ReportInstanceStatus.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReportInstanceStatusRequest
 type ReportInstanceStatusInput struct {
 	_ struct{} `type:"structure"`
 
@@ -57850,7 +57667,6 @@ func (s *ReportInstanceStatusInput) SetStatus(v string) *ReportInstanceStatusInp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReportInstanceStatusOutput
 type ReportInstanceStatusOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -57866,7 +57682,6 @@ func (s ReportInstanceStatusOutput) GoString() string {
 }
 
 // The information to include in the launch template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RequestLaunchTemplateData
 type RequestLaunchTemplateData struct {
 	_ struct{} `type:"structure"`
 
@@ -57960,12 +57775,10 @@ type RequestLaunchTemplateData struct {
 	// are created during launch.
 	TagSpecifications []*LaunchTemplateTagSpecificationRequest `locationName:"TagSpecification" locationNameList:"LaunchTemplateTagSpecificationRequest" type:"list"`
 
-	// The user data to make available to the instance. For more information, see
-	// Running Commands on Your Linux Instance at Launch (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html)
+	// The Base64-encoded user data to make available to the instance. For more
+	// information, see Running Commands on Your Linux Instance at Launch (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html)
 	// (Linux) and Adding User Data (http://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/ec2-instance-metadata.html#instancedata-add-user-data)
-	// (Windows). If you are using a command line tool, base64-encoding is performed
-	// for you and you can load the text from a file. Otherwise, you must provide
-	// base64-encoded text.
+	// (Windows).
 	UserData *string `type:"string"`
 }
 
@@ -58135,7 +57948,6 @@ func (s *RequestLaunchTemplateData) SetUserData(v string) *RequestLaunchTemplate
 }
 
 // Contains the parameters for RequestSpotFleet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RequestSpotFleetRequest
 type RequestSpotFleetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -58192,7 +58004,6 @@ func (s *RequestSpotFleetInput) SetSpotFleetRequestConfig(v *SpotFleetRequestCon
 }
 
 // Contains the output of RequestSpotFleet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RequestSpotFleetResponse
 type RequestSpotFleetOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -58219,7 +58030,6 @@ func (s *RequestSpotFleetOutput) SetSpotFleetRequestId(v string) *RequestSpotFle
 }
 
 // Contains the parameters for RequestSpotInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RequestSpotInstancesRequest
 type RequestSpotInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -58407,7 +58217,6 @@ func (s *RequestSpotInstancesInput) SetValidUntil(v time.Time) *RequestSpotInsta
 }
 
 // Contains the output of RequestSpotInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RequestSpotInstancesResult
 type RequestSpotInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -58432,7 +58241,6 @@ func (s *RequestSpotInstancesOutput) SetSpotInstanceRequests(v []*SpotInstanceRe
 }
 
 // Describes the launch specification for an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RequestSpotLaunchSpecification
 type RequestSpotLaunchSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -58495,9 +58303,7 @@ type RequestSpotLaunchSpecification struct {
 	// The ID of the subnet in which to launch the instance.
 	SubnetId *string `locationName:"subnetId" type:"string"`
 
-	// The user data to make available to the instances. If you are using an AWS
-	// SDK or command line tool, Base64-encoding is performed for you, and you can
-	// load the text from a file. Otherwise, you must provide Base64-encoded text.
+	// The Base64-encoded user data for the instance.
 	UserData *string `locationName:"userData" type:"string"`
 }
 
@@ -58633,7 +58439,6 @@ func (s *RequestSpotLaunchSpecification) SetUserData(v string) *RequestSpotLaunc
 }
 
 // Describes a reservation.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Reservation
 type Reservation struct {
 	_ struct{} `type:"structure"`
 
@@ -58695,7 +58500,6 @@ func (s *Reservation) SetReservationId(v string) *Reservation {
 }
 
 // The cost associated with the Reserved Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservationValue
 type ReservationValue struct {
 	_ struct{} `type:"structure"`
 
@@ -58739,7 +58543,6 @@ func (s *ReservationValue) SetRemainingUpfrontValue(v string) *ReservationValue 
 }
 
 // Describes the limit price of a Reserved Instance offering.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstanceLimitPrice
 type ReservedInstanceLimitPrice struct {
 	_ struct{} `type:"structure"`
 
@@ -58775,7 +58578,6 @@ func (s *ReservedInstanceLimitPrice) SetCurrencyCode(v string) *ReservedInstance
 }
 
 // The total value of the Convertible Reserved Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstanceReservationValue
 type ReservedInstanceReservationValue struct {
 	_ struct{} `type:"structure"`
 
@@ -58809,7 +58611,6 @@ func (s *ReservedInstanceReservationValue) SetReservedInstanceId(v string) *Rese
 }
 
 // Describes a Reserved Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstances
 type ReservedInstances struct {
 	_ struct{} `type:"structure"`
 
@@ -58988,7 +58789,6 @@ func (s *ReservedInstances) SetUsagePrice(v float64) *ReservedInstances {
 }
 
 // Describes the configuration settings for the modified Reserved Instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstancesConfiguration
 type ReservedInstancesConfiguration struct {
 	_ struct{} `type:"structure"`
 
@@ -59051,7 +58851,6 @@ func (s *ReservedInstancesConfiguration) SetScope(v string) *ReservedInstancesCo
 }
 
 // Describes the ID of a Reserved Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstancesId
 type ReservedInstancesId struct {
 	_ struct{} `type:"structure"`
 
@@ -59076,7 +58875,6 @@ func (s *ReservedInstancesId) SetReservedInstancesId(v string) *ReservedInstance
 }
 
 // Describes a Reserved Instance listing.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstancesListing
 type ReservedInstancesListing struct {
 	_ struct{} `type:"structure"`
 
@@ -59184,7 +58982,6 @@ func (s *ReservedInstancesListing) SetUpdateDate(v time.Time) *ReservedInstances
 }
 
 // Describes a Reserved Instance modification.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstancesModification
 type ReservedInstancesModification struct {
 	_ struct{} `type:"structure"`
 
@@ -59283,7 +59080,6 @@ func (s *ReservedInstancesModification) SetUpdateDate(v time.Time) *ReservedInst
 }
 
 // Describes the modification request/s.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstancesModificationResult
 type ReservedInstancesModificationResult struct {
 	_ struct{} `type:"structure"`
 
@@ -59319,7 +59115,6 @@ func (s *ReservedInstancesModificationResult) SetTargetConfiguration(v *Reserved
 }
 
 // Describes a Reserved Instance offering.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ReservedInstancesOffering
 type ReservedInstancesOffering struct {
 	_ struct{} `type:"structure"`
 
@@ -59477,7 +59272,6 @@ func (s *ReservedInstancesOffering) SetUsagePrice(v float64) *ReservedInstancesO
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetFpgaImageAttributeRequest
 type ResetFpgaImageAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -59537,7 +59331,6 @@ func (s *ResetFpgaImageAttributeInput) SetFpgaImageId(v string) *ResetFpgaImageA
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetFpgaImageAttributeResult
 type ResetFpgaImageAttributeOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -59562,7 +59355,6 @@ func (s *ResetFpgaImageAttributeOutput) SetReturn(v bool) *ResetFpgaImageAttribu
 }
 
 // Contains the parameters for ResetImageAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetImageAttributeRequest
 type ResetImageAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -59628,7 +59420,6 @@ func (s *ResetImageAttributeInput) SetImageId(v string) *ResetImageAttributeInpu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetImageAttributeOutput
 type ResetImageAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -59644,7 +59435,6 @@ func (s ResetImageAttributeOutput) GoString() string {
 }
 
 // Contains the parameters for ResetInstanceAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetInstanceAttributeRequest
 type ResetInstanceAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -59712,7 +59502,6 @@ func (s *ResetInstanceAttributeInput) SetInstanceId(v string) *ResetInstanceAttr
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetInstanceAttributeOutput
 type ResetInstanceAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -59728,7 +59517,6 @@ func (s ResetInstanceAttributeOutput) GoString() string {
 }
 
 // Contains the parameters for ResetNetworkInterfaceAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetNetworkInterfaceAttributeRequest
 type ResetNetworkInterfaceAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -59788,7 +59576,6 @@ func (s *ResetNetworkInterfaceAttributeInput) SetSourceDestCheck(v string) *Rese
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetNetworkInterfaceAttributeOutput
 type ResetNetworkInterfaceAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -59804,7 +59591,6 @@ func (s ResetNetworkInterfaceAttributeOutput) GoString() string {
 }
 
 // Contains the parameters for ResetSnapshotAttribute.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetSnapshotAttributeRequest
 type ResetSnapshotAttributeInput struct {
 	_ struct{} `type:"structure"`
 
@@ -59870,7 +59656,6 @@ func (s *ResetSnapshotAttributeInput) SetSnapshotId(v string) *ResetSnapshotAttr
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResetSnapshotAttributeOutput
 type ResetSnapshotAttributeOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -59887,7 +59672,6 @@ func (s ResetSnapshotAttributeOutput) GoString() string {
 
 // Describes the error that's returned when you cannot delete a launch template
 // version.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResponseError
 type ResponseError struct {
 	_ struct{} `type:"structure"`
 
@@ -59921,7 +59705,6 @@ func (s *ResponseError) SetMessage(v string) *ResponseError {
 }
 
 // The information for a launch template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ResponseLaunchTemplateData
 type ResponseLaunchTemplateData struct {
 	_ struct{} `type:"structure"`
 
@@ -60119,7 +59902,6 @@ func (s *ResponseLaunchTemplateData) SetUserData(v string) *ResponseLaunchTempla
 }
 
 // Contains the parameters for RestoreAddressToClassic.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RestoreAddressToClassicRequest
 type RestoreAddressToClassicInput struct {
 	_ struct{} `type:"structure"`
 
@@ -60171,7 +59953,6 @@ func (s *RestoreAddressToClassicInput) SetPublicIp(v string) *RestoreAddressToCl
 }
 
 // Contains the output of RestoreAddressToClassic.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RestoreAddressToClassicResult
 type RestoreAddressToClassicOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -60205,7 +59986,6 @@ func (s *RestoreAddressToClassicOutput) SetStatus(v string) *RestoreAddressToCla
 }
 
 // Contains the parameters for RevokeSecurityGroupEgress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RevokeSecurityGroupEgressRequest
 type RevokeSecurityGroupEgressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -60323,7 +60103,6 @@ func (s *RevokeSecurityGroupEgressInput) SetToPort(v int64) *RevokeSecurityGroup
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RevokeSecurityGroupEgressOutput
 type RevokeSecurityGroupEgressOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -60339,7 +60118,6 @@ func (s RevokeSecurityGroupEgressOutput) GoString() string {
 }
 
 // Contains the parameters for RevokeSecurityGroupIngress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RevokeSecurityGroupIngressRequest
 type RevokeSecurityGroupIngressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -60465,7 +60243,6 @@ func (s *RevokeSecurityGroupIngressInput) SetToPort(v int64) *RevokeSecurityGrou
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RevokeSecurityGroupIngressOutput
 type RevokeSecurityGroupIngressOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -60481,7 +60258,6 @@ func (s RevokeSecurityGroupIngressOutput) GoString() string {
 }
 
 // Describes a route in a route table.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Route
 type Route struct {
 	_ struct{} `type:"structure"`
 
@@ -60614,7 +60390,6 @@ func (s *Route) SetVpcPeeringConnectionId(v string) *Route {
 }
 
 // Describes a route table.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RouteTable
 type RouteTable struct {
 	_ struct{} `type:"structure"`
 
@@ -60684,7 +60459,6 @@ func (s *RouteTable) SetVpcId(v string) *RouteTable {
 }
 
 // Describes an association between a route table and a subnet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RouteTableAssociation
 type RouteTableAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -60736,7 +60510,6 @@ func (s *RouteTableAssociation) SetSubnetId(v string) *RouteTableAssociation {
 }
 
 // Contains the parameters for RunInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RunInstancesRequest
 type RunInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -61159,7 +60932,6 @@ func (s *RunInstancesInput) SetUserData(v string) *RunInstancesInput {
 }
 
 // Describes the monitoring of an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RunInstancesMonitoringEnabled
 type RunInstancesMonitoringEnabled struct {
 	_ struct{} `type:"structure"`
 
@@ -61200,7 +60972,6 @@ func (s *RunInstancesMonitoringEnabled) SetEnabled(v bool) *RunInstancesMonitori
 }
 
 // Contains the parameters for RunScheduledInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RunScheduledInstancesRequest
 type RunScheduledInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -61293,7 +61064,6 @@ func (s *RunScheduledInstancesInput) SetScheduledInstanceId(v string) *RunSchedu
 }
 
 // Contains the output of RunScheduledInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/RunScheduledInstancesResult
 type RunScheduledInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -61319,7 +61089,6 @@ func (s *RunScheduledInstancesOutput) SetInstanceIdSet(v []*string) *RunSchedule
 
 // Describes the storage parameters for S3 and S3 buckets for an instance store-backed
 // AMI.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/S3Storage
 type S3Storage struct {
 	_ struct{} `type:"structure"`
 
@@ -61387,7 +61156,6 @@ func (s *S3Storage) SetUploadPolicySignature(v string) *S3Storage {
 }
 
 // Describes a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstance
 type ScheduledInstance struct {
 	_ struct{} `type:"structure"`
 
@@ -61538,7 +61306,6 @@ func (s *ScheduledInstance) SetTotalScheduledInstanceHours(v int64) *ScheduledIn
 }
 
 // Describes a schedule that is available for your Scheduled Instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstanceAvailability
 type ScheduledInstanceAvailability struct {
 	_ struct{} `type:"structure"`
 
@@ -61672,7 +61439,6 @@ func (s *ScheduledInstanceAvailability) SetTotalScheduledInstanceHours(v int64) 
 }
 
 // Describes the recurring schedule for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstanceRecurrence
 type ScheduledInstanceRecurrence struct {
 	_ struct{} `type:"structure"`
 
@@ -61737,7 +61503,6 @@ func (s *ScheduledInstanceRecurrence) SetOccurrenceUnit(v string) *ScheduledInst
 }
 
 // Describes the recurring schedule for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstanceRecurrenceRequest
 type ScheduledInstanceRecurrenceRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -61805,7 +61570,6 @@ func (s *ScheduledInstanceRecurrenceRequest) SetOccurrenceUnit(v string) *Schedu
 }
 
 // Describes a block device mapping for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesBlockDeviceMapping
 type ScheduledInstancesBlockDeviceMapping struct {
 	_ struct{} `type:"structure"`
 
@@ -61868,7 +61632,6 @@ func (s *ScheduledInstancesBlockDeviceMapping) SetVirtualName(v string) *Schedul
 }
 
 // Describes an EBS volume for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesEbs
 type ScheduledInstancesEbs struct {
 	_ struct{} `type:"structure"`
 
@@ -61957,7 +61720,6 @@ func (s *ScheduledInstancesEbs) SetVolumeType(v string) *ScheduledInstancesEbs {
 }
 
 // Describes an IAM instance profile for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesIamInstanceProfile
 type ScheduledInstancesIamInstanceProfile struct {
 	_ struct{} `type:"structure"`
 
@@ -61991,7 +61753,6 @@ func (s *ScheduledInstancesIamInstanceProfile) SetName(v string) *ScheduledInsta
 }
 
 // Describes an IPv6 address.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesIpv6Address
 type ScheduledInstancesIpv6Address struct {
 	_ struct{} `type:"structure"`
 
@@ -62020,7 +61781,6 @@ func (s *ScheduledInstancesIpv6Address) SetIpv6Address(v string) *ScheduledInsta
 // If you are launching the Scheduled Instance in EC2-VPC, you must specify
 // the ID of the subnet. You can specify the subnet using either SubnetId or
 // NetworkInterface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesLaunchSpecification
 type ScheduledInstancesLaunchSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -62183,7 +61943,6 @@ func (s *ScheduledInstancesLaunchSpecification) SetUserData(v string) *Scheduled
 }
 
 // Describes whether monitoring is enabled for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesMonitoring
 type ScheduledInstancesMonitoring struct {
 	_ struct{} `type:"structure"`
 
@@ -62208,7 +61967,6 @@ func (s *ScheduledInstancesMonitoring) SetEnabled(v bool) *ScheduledInstancesMon
 }
 
 // Describes a network interface for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesNetworkInterface
 type ScheduledInstancesNetworkInterface struct {
 	_ struct{} `type:"structure"`
 
@@ -62337,7 +62095,6 @@ func (s *ScheduledInstancesNetworkInterface) SetSubnetId(v string) *ScheduledIns
 }
 
 // Describes the placement for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesPlacement
 type ScheduledInstancesPlacement struct {
 	_ struct{} `type:"structure"`
 
@@ -62371,7 +62128,6 @@ func (s *ScheduledInstancesPlacement) SetGroupName(v string) *ScheduledInstances
 }
 
 // Describes a private IPv4 address for a Scheduled Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ScheduledInstancesPrivateIpAddressConfig
 type ScheduledInstancesPrivateIpAddressConfig struct {
 	_ struct{} `type:"structure"`
 
@@ -62406,7 +62162,6 @@ func (s *ScheduledInstancesPrivateIpAddressConfig) SetPrivateIpAddress(v string)
 }
 
 // Describes a security group
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SecurityGroup
 type SecurityGroup struct {
 	_ struct{} `type:"structure"`
 
@@ -62494,7 +62249,6 @@ func (s *SecurityGroup) SetVpcId(v string) *SecurityGroup {
 }
 
 // Describes a security group.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SecurityGroupIdentifier
 type SecurityGroupIdentifier struct {
 	_ struct{} `type:"structure"`
 
@@ -62528,7 +62282,6 @@ func (s *SecurityGroupIdentifier) SetGroupName(v string) *SecurityGroupIdentifie
 }
 
 // Describes a VPC with a security group that references your security group.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SecurityGroupReference
 type SecurityGroupReference struct {
 	_ struct{} `type:"structure"`
 
@@ -62575,7 +62328,6 @@ func (s *SecurityGroupReference) SetVpcPeeringConnectionId(v string) *SecurityGr
 }
 
 // Describes a service configuration for a VPC endpoint service.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ServiceConfiguration
 type ServiceConfiguration struct {
 	_ struct{} `type:"structure"`
 
@@ -62673,7 +62425,6 @@ func (s *ServiceConfiguration) SetServiceType(v []*ServiceTypeDetail) *ServiceCo
 }
 
 // Describes a VPC endpoint service.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ServiceDetail
 type ServiceDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -62762,7 +62513,6 @@ func (s *ServiceDetail) SetVpcEndpointPolicySupported(v bool) *ServiceDetail {
 }
 
 // Describes the type of service for a VPC endpoint.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/ServiceTypeDetail
 type ServiceTypeDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -62788,7 +62538,6 @@ func (s *ServiceTypeDetail) SetServiceType(v string) *ServiceTypeDetail {
 
 // Describes the time period for a Scheduled Instance to start its first schedule.
 // The time period must span less than one day.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SlotDateTimeRangeRequest
 type SlotDateTimeRangeRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -62844,7 +62593,6 @@ func (s *SlotDateTimeRangeRequest) SetLatestTime(v time.Time) *SlotDateTimeRange
 }
 
 // Describes the time period for a Scheduled Instance to start its first schedule.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SlotStartTimeRangeRequest
 type SlotStartTimeRangeRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -62878,7 +62626,6 @@ func (s *SlotStartTimeRangeRequest) SetLatestTime(v time.Time) *SlotStartTimeRan
 }
 
 // Describes a snapshot.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Snapshot
 type Snapshot struct {
 	_ struct{} `type:"structure"`
 
@@ -63036,7 +62783,6 @@ func (s *Snapshot) SetVolumeSize(v int64) *Snapshot {
 }
 
 // Describes the snapshot created from the imported disk.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SnapshotDetail
 type SnapshotDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -63142,7 +62888,6 @@ func (s *SnapshotDetail) SetUserBucket(v *UserBucketDetails) *SnapshotDetail {
 }
 
 // The disk container object for the import snapshot request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SnapshotDiskContainer
 type SnapshotDiskContainer struct {
 	_ struct{} `type:"structure"`
 
@@ -63151,7 +62896,7 @@ type SnapshotDiskContainer struct {
 
 	// The format of the disk image being imported.
 	//
-	// Valid values: RAW | VHD | VMDK | OVA
+	// Valid values: VHD | VMDK | OVA
 	Format *string `type:"string"`
 
 	// The URL to the Amazon S3-based disk image being imported. It can either be
@@ -63197,7 +62942,6 @@ func (s *SnapshotDiskContainer) SetUserBucket(v *UserBucket) *SnapshotDiskContai
 }
 
 // Details about the import snapshot task.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SnapshotTaskDetail
 type SnapshotTaskDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -63294,7 +63038,6 @@ func (s *SnapshotTaskDetail) SetUserBucket(v *UserBucketDetails) *SnapshotTaskDe
 }
 
 // Describes the data feed for a Spot Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotDatafeedSubscription
 type SpotDatafeedSubscription struct {
 	_ struct{} `type:"structure"`
 
@@ -63355,7 +63098,6 @@ func (s *SpotDatafeedSubscription) SetState(v string) *SpotDatafeedSubscription 
 }
 
 // Describes the launch specification for one or more Spot Instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotFleetLaunchSpecification
 type SpotFleetLaunchSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -63423,9 +63165,7 @@ type SpotFleetLaunchSpecification struct {
 	// The tags to apply during creation.
 	TagSpecifications []*SpotFleetTagSpecification `locationName:"tagSpecificationSet" locationNameList:"item" type:"list"`
 
-	// The user data to make available to the instances. If you are using an AWS
-	// SDK or command line tool, Base64-encoding is performed for you, and you can
-	// load the text from a file. Otherwise, you must provide Base64-encoded text.
+	// The Base64-encoded user data to make available to the instances.
 	UserData *string `locationName:"userData" type:"string"`
 
 	// The number of units provided by the specified instance type. These are the
@@ -63577,7 +63317,6 @@ func (s *SpotFleetLaunchSpecification) SetWeightedCapacity(v float64) *SpotFleet
 }
 
 // Describes whether monitoring is enabled.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotFleetMonitoring
 type SpotFleetMonitoring struct {
 	_ struct{} `type:"structure"`
 
@@ -63604,7 +63343,6 @@ func (s *SpotFleetMonitoring) SetEnabled(v bool) *SpotFleetMonitoring {
 }
 
 // Describes a Spot Fleet request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotFleetRequestConfig
 type SpotFleetRequestConfig struct {
 	_ struct{} `type:"structure"`
 
@@ -63677,7 +63415,6 @@ func (s *SpotFleetRequestConfig) SetSpotFleetRequestState(v string) *SpotFleetRe
 }
 
 // Describes the configuration of a Spot Fleet request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotFleetRequestConfigData
 type SpotFleetRequestConfigData struct {
 	_ struct{} `type:"structure"`
 
@@ -63912,7 +63649,6 @@ func (s *SpotFleetRequestConfigData) SetValidUntil(v time.Time) *SpotFleetReques
 }
 
 // The tags for a Spot Fleet resource.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotFleetTagSpecification
 type SpotFleetTagSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -63947,7 +63683,6 @@ func (s *SpotFleetTagSpecification) SetTags(v []*Tag) *SpotFleetTagSpecification
 }
 
 // Describes a Spot Instance request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotInstanceRequest
 type SpotInstanceRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -64148,7 +63883,6 @@ func (s *SpotInstanceRequest) SetValidUntil(v time.Time) *SpotInstanceRequest {
 }
 
 // Describes a Spot Instance state change.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotInstanceStateFault
 type SpotInstanceStateFault struct {
 	_ struct{} `type:"structure"`
 
@@ -64182,7 +63916,6 @@ func (s *SpotInstanceStateFault) SetMessage(v string) *SpotInstanceStateFault {
 }
 
 // Describes the status of a Spot Instance request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotInstanceStatus
 type SpotInstanceStatus struct {
 	_ struct{} `type:"structure"`
 
@@ -64227,7 +63960,6 @@ func (s *SpotInstanceStatus) SetUpdateTime(v time.Time) *SpotInstanceStatus {
 }
 
 // The options for Spot Instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotMarketOptions
 type SpotMarketOptions struct {
 	_ struct{} `type:"structure"`
 
@@ -64295,7 +64027,6 @@ func (s *SpotMarketOptions) SetValidUntil(v time.Time) *SpotMarketOptions {
 }
 
 // Describes Spot Instance placement.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotPlacement
 type SpotPlacement struct {
 	_ struct{} `type:"structure"`
 
@@ -64344,7 +64075,6 @@ func (s *SpotPlacement) SetTenancy(v string) *SpotPlacement {
 
 // Describes the maximum price per hour that you are willing to pay for a Spot
 // Instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SpotPrice
 type SpotPrice struct {
 	_ struct{} `type:"structure"`
 
@@ -64405,7 +64135,6 @@ func (s *SpotPrice) SetTimestamp(v time.Time) *SpotPrice {
 }
 
 // Describes a stale rule in a security group.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/StaleIpPermission
 type StaleIpPermission struct {
 	_ struct{} `type:"structure"`
 
@@ -64480,7 +64209,6 @@ func (s *StaleIpPermission) SetUserIdGroupPairs(v []*UserIdGroupPair) *StaleIpPe
 }
 
 // Describes a stale security group (a security group that contains stale rules).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/StaleSecurityGroup
 type StaleSecurityGroup struct {
 	_ struct{} `type:"structure"`
 
@@ -64552,7 +64280,6 @@ func (s *StaleSecurityGroup) SetVpcId(v string) *StaleSecurityGroup {
 }
 
 // Contains the parameters for StartInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/StartInstancesRequest
 type StartInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -64613,7 +64340,6 @@ func (s *StartInstancesInput) SetInstanceIds(v []*string) *StartInstancesInput {
 }
 
 // Contains the output of StartInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/StartInstancesResult
 type StartInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -64638,7 +64364,6 @@ func (s *StartInstancesOutput) SetStartingInstances(v []*InstanceStateChange) *S
 }
 
 // Describes a state change.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/StateReason
 type StateReason struct {
 	_ struct{} `type:"structure"`
 
@@ -64701,7 +64426,6 @@ func (s *StateReason) SetMessage(v string) *StateReason {
 }
 
 // Contains the parameters for StopInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/StopInstancesRequest
 type StopInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -64767,7 +64491,6 @@ func (s *StopInstancesInput) SetInstanceIds(v []*string) *StopInstancesInput {
 }
 
 // Contains the output of StopInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/StopInstancesResult
 type StopInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -64792,7 +64515,6 @@ func (s *StopInstancesOutput) SetStoppingInstances(v []*InstanceStateChange) *St
 }
 
 // Describes the storage location for an instance store-backed AMI.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Storage
 type Storage struct {
 	_ struct{} `type:"structure"`
 
@@ -64817,7 +64539,6 @@ func (s *Storage) SetS3(v *S3Storage) *Storage {
 }
 
 // Describes a storage location in Amazon S3.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/StorageLocation
 type StorageLocation struct {
 	_ struct{} `type:"structure"`
 
@@ -64851,7 +64572,6 @@ func (s *StorageLocation) SetKey(v string) *StorageLocation {
 }
 
 // Describes a subnet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Subnet
 type Subnet struct {
 	_ struct{} `type:"structure"`
 
@@ -64969,7 +64689,6 @@ func (s *Subnet) SetVpcId(v string) *Subnet {
 }
 
 // Describes the state of a CIDR block.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SubnetCidrBlockState
 type SubnetCidrBlockState struct {
 	_ struct{} `type:"structure"`
 
@@ -65003,7 +64722,6 @@ func (s *SubnetCidrBlockState) SetStatusMessage(v string) *SubnetCidrBlockState 
 }
 
 // Describes an IPv6 CIDR block associated with a subnet.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SubnetIpv6CidrBlockAssociation
 type SubnetIpv6CidrBlockAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -65047,7 +64765,6 @@ func (s *SubnetIpv6CidrBlockAssociation) SetIpv6CidrBlockState(v *SubnetCidrBloc
 
 // Describes the T2 instance whose credit option for CPU usage was successfully
 // modified.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/SuccessfulInstanceCreditSpecificationItem
 type SuccessfulInstanceCreditSpecificationItem struct {
 	_ struct{} `type:"structure"`
 
@@ -65072,7 +64789,6 @@ func (s *SuccessfulInstanceCreditSpecificationItem) SetInstanceId(v string) *Suc
 }
 
 // Describes a tag.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Tag
 type Tag struct {
 	_ struct{} `type:"structure"`
 
@@ -65112,7 +64828,6 @@ func (s *Tag) SetValue(v string) *Tag {
 }
 
 // Describes a tag.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TagDescription
 type TagDescription struct {
 	_ struct{} `type:"structure"`
 
@@ -65164,7 +64879,6 @@ func (s *TagDescription) SetValue(v string) *TagDescription {
 }
 
 // The tags to apply to a resource when the resource is being created.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TagSpecification
 type TagSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -65199,7 +64913,6 @@ func (s *TagSpecification) SetTags(v []*Tag) *TagSpecification {
 }
 
 // Information about the Convertible Reserved Instance offering.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TargetConfiguration
 type TargetConfiguration struct {
 	_ struct{} `type:"structure"`
 
@@ -65234,7 +64947,6 @@ func (s *TargetConfiguration) SetOfferingId(v string) *TargetConfiguration {
 }
 
 // Details about the target configuration.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TargetConfigurationRequest
 type TargetConfigurationRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -65284,7 +64996,6 @@ func (s *TargetConfigurationRequest) SetOfferingId(v string) *TargetConfiguratio
 }
 
 // Describes a load balancer target group.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TargetGroup
 type TargetGroup struct {
 	_ struct{} `type:"structure"`
 
@@ -65325,7 +65036,6 @@ func (s *TargetGroup) SetArn(v string) *TargetGroup {
 
 // Describes the target groups to attach to a Spot Fleet. Spot Fleet registers
 // the running Spot Instances with these target groups.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TargetGroupsConfig
 type TargetGroupsConfig struct {
 	_ struct{} `type:"structure"`
 
@@ -65378,7 +65088,6 @@ func (s *TargetGroupsConfig) SetTargetGroups(v []*TargetGroup) *TargetGroupsConf
 }
 
 // The total value of the new Convertible Reserved Instances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TargetReservationValue
 type TargetReservationValue struct {
 	_ struct{} `type:"structure"`
 
@@ -65415,7 +65124,6 @@ func (s *TargetReservationValue) SetTargetConfiguration(v *TargetConfiguration) 
 }
 
 // Contains the parameters for TerminateInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TerminateInstancesRequest
 type TerminateInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -65470,7 +65178,6 @@ func (s *TerminateInstancesInput) SetInstanceIds(v []*string) *TerminateInstance
 }
 
 // Contains the output of TerminateInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/TerminateInstancesResult
 type TerminateInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -65494,7 +65201,6 @@ func (s *TerminateInstancesOutput) SetTerminatingInstances(v []*InstanceStateCha
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnassignIpv6AddressesRequest
 type UnassignIpv6AddressesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -65547,7 +65253,6 @@ func (s *UnassignIpv6AddressesInput) SetNetworkInterfaceId(v string) *UnassignIp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnassignIpv6AddressesResult
 type UnassignIpv6AddressesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -65581,7 +65286,6 @@ func (s *UnassignIpv6AddressesOutput) SetUnassignedIpv6Addresses(v []*string) *U
 }
 
 // Contains the parameters for UnassignPrivateIpAddresses.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnassignPrivateIpAddressesRequest
 type UnassignPrivateIpAddressesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -65635,7 +65339,6 @@ func (s *UnassignPrivateIpAddressesInput) SetPrivateIpAddresses(v []*string) *Un
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnassignPrivateIpAddressesOutput
 type UnassignPrivateIpAddressesOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -65651,7 +65354,6 @@ func (s UnassignPrivateIpAddressesOutput) GoString() string {
 }
 
 // Contains the parameters for UnmonitorInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnmonitorInstancesRequest
 type UnmonitorInstancesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -65703,7 +65405,6 @@ func (s *UnmonitorInstancesInput) SetInstanceIds(v []*string) *UnmonitorInstance
 }
 
 // Contains the output of UnmonitorInstances.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnmonitorInstancesResult
 type UnmonitorInstancesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -65728,7 +65429,6 @@ func (s *UnmonitorInstancesOutput) SetInstanceMonitorings(v []*InstanceMonitorin
 }
 
 // Describes the T2 instance whose credit option for CPU usage was not modified.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnsuccessfulInstanceCreditSpecificationItem
 type UnsuccessfulInstanceCreditSpecificationItem struct {
 	_ struct{} `type:"structure"`
 
@@ -65764,7 +65464,6 @@ func (s *UnsuccessfulInstanceCreditSpecificationItem) SetInstanceId(v string) *U
 
 // Information about the error for the T2 instance whose credit option for CPU
 // usage was not modified.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnsuccessfulInstanceCreditSpecificationItemError
 type UnsuccessfulInstanceCreditSpecificationItemError struct {
 	_ struct{} `type:"structure"`
 
@@ -65798,7 +65497,6 @@ func (s *UnsuccessfulInstanceCreditSpecificationItemError) SetMessage(v string) 
 }
 
 // Information about items that were not successfully processed in a batch call.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnsuccessfulItem
 type UnsuccessfulItem struct {
 	_ struct{} `type:"structure"`
 
@@ -65835,7 +65533,6 @@ func (s *UnsuccessfulItem) SetResourceId(v string) *UnsuccessfulItem {
 
 // Information about the error that occurred. For more information about errors,
 // see Error Codes (http://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UnsuccessfulItemError
 type UnsuccessfulItemError struct {
 	_ struct{} `type:"structure"`
 
@@ -65873,7 +65570,6 @@ func (s *UnsuccessfulItemError) SetMessage(v string) *UnsuccessfulItemError {
 }
 
 // Contains the parameters for UpdateSecurityGroupRuleDescriptionsEgress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UpdateSecurityGroupRuleDescriptionsEgressRequest
 type UpdateSecurityGroupRuleDescriptionsEgressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -65946,7 +65642,6 @@ func (s *UpdateSecurityGroupRuleDescriptionsEgressInput) SetIpPermissions(v []*I
 }
 
 // Contains the output of UpdateSecurityGroupRuleDescriptionsEgress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UpdateSecurityGroupRuleDescriptionsEgressResult
 type UpdateSecurityGroupRuleDescriptionsEgressOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -65971,7 +65666,6 @@ func (s *UpdateSecurityGroupRuleDescriptionsEgressOutput) SetReturn(v bool) *Upd
 }
 
 // Contains the parameters for UpdateSecurityGroupRuleDescriptionsIngress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UpdateSecurityGroupRuleDescriptionsIngressRequest
 type UpdateSecurityGroupRuleDescriptionsIngressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -66044,7 +65738,6 @@ func (s *UpdateSecurityGroupRuleDescriptionsIngressInput) SetIpPermissions(v []*
 }
 
 // Contains the output of UpdateSecurityGroupRuleDescriptionsIngress.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UpdateSecurityGroupRuleDescriptionsIngressResult
 type UpdateSecurityGroupRuleDescriptionsIngressOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -66069,7 +65762,6 @@ func (s *UpdateSecurityGroupRuleDescriptionsIngressOutput) SetReturn(v bool) *Up
 }
 
 // Describes the S3 bucket for the disk image.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UserBucket
 type UserBucket struct {
 	_ struct{} `type:"structure"`
 
@@ -66103,7 +65795,6 @@ func (s *UserBucket) SetS3Key(v string) *UserBucket {
 }
 
 // Describes the S3 bucket for the disk image.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UserBucketDetails
 type UserBucketDetails struct {
 	_ struct{} `type:"structure"`
 
@@ -66137,7 +65828,6 @@ func (s *UserBucketDetails) SetS3Key(v string) *UserBucketDetails {
 }
 
 // Describes the user data for an instance.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UserData
 type UserData struct {
 	_ struct{} `type:"structure"`
 
@@ -66164,7 +65854,6 @@ func (s *UserData) SetData(v string) *UserData {
 }
 
 // Describes a security group and AWS account ID pair.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/UserIdGroupPair
 type UserIdGroupPair struct {
 	_ struct{} `type:"structure"`
 
@@ -66259,7 +65948,6 @@ func (s *UserIdGroupPair) SetVpcPeeringConnectionId(v string) *UserIdGroupPair {
 }
 
 // Describes telemetry for a VPN tunnel.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VgwTelemetry
 type VgwTelemetry struct {
 	_ struct{} `type:"structure"`
 
@@ -66321,7 +66009,6 @@ func (s *VgwTelemetry) SetStatusMessage(v string) *VgwTelemetry {
 }
 
 // Describes a volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Volume
 type Volume struct {
 	_ struct{} `type:"structure"`
 
@@ -66460,7 +66147,6 @@ func (s *Volume) SetVolumeType(v string) *Volume {
 }
 
 // Describes volume attachment details.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VolumeAttachment
 type VolumeAttachment struct {
 	_ struct{} `type:"structure"`
 
@@ -66530,7 +66216,6 @@ func (s *VolumeAttachment) SetVolumeId(v string) *VolumeAttachment {
 }
 
 // Describes an EBS volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VolumeDetail
 type VolumeDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -66572,7 +66257,6 @@ func (s *VolumeDetail) SetSize(v int64) *VolumeDetail {
 // Describes the modification status of an EBS volume.
 //
 // If the volume has never been modified, some element values will be null.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VolumeModification
 type VolumeModification struct {
 	_ struct{} `type:"structure"`
 
@@ -66697,7 +66381,6 @@ func (s *VolumeModification) SetVolumeId(v string) *VolumeModification {
 }
 
 // Describes a volume status operation code.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VolumeStatusAction
 type VolumeStatusAction struct {
 	_ struct{} `type:"structure"`
 
@@ -66749,7 +66432,6 @@ func (s *VolumeStatusAction) SetEventType(v string) *VolumeStatusAction {
 }
 
 // Describes a volume status.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VolumeStatusDetails
 type VolumeStatusDetails struct {
 	_ struct{} `type:"structure"`
 
@@ -66783,7 +66465,6 @@ func (s *VolumeStatusDetails) SetStatus(v string) *VolumeStatusDetails {
 }
 
 // Describes a volume status event.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VolumeStatusEvent
 type VolumeStatusEvent struct {
 	_ struct{} `type:"structure"`
 
@@ -66844,7 +66525,6 @@ func (s *VolumeStatusEvent) SetNotBefore(v time.Time) *VolumeStatusEvent {
 }
 
 // Describes the status of a volume.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VolumeStatusInfo
 type VolumeStatusInfo struct {
 	_ struct{} `type:"structure"`
 
@@ -66878,7 +66558,6 @@ func (s *VolumeStatusInfo) SetStatus(v string) *VolumeStatusInfo {
 }
 
 // Describes the volume status.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VolumeStatusItem
 type VolumeStatusItem struct {
 	_ struct{} `type:"structure"`
 
@@ -66939,7 +66618,6 @@ func (s *VolumeStatusItem) SetVolumeStatus(v *VolumeStatusInfo) *VolumeStatusIte
 }
 
 // Describes a VPC.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/Vpc
 type Vpc struct {
 	_ struct{} `type:"structure"`
 
@@ -67037,7 +66715,6 @@ func (s *Vpc) SetVpcId(v string) *Vpc {
 }
 
 // Describes an attachment between a virtual private gateway and a VPC.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcAttachment
 type VpcAttachment struct {
 	_ struct{} `type:"structure"`
 
@@ -67071,7 +66748,6 @@ func (s *VpcAttachment) SetVpcId(v string) *VpcAttachment {
 }
 
 // Describes an IPv4 CIDR block associated with a VPC.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcCidrBlockAssociation
 type VpcCidrBlockAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -67114,7 +66790,6 @@ func (s *VpcCidrBlockAssociation) SetCidrBlockState(v *VpcCidrBlockState) *VpcCi
 }
 
 // Describes the state of a CIDR block.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcCidrBlockState
 type VpcCidrBlockState struct {
 	_ struct{} `type:"structure"`
 
@@ -67148,7 +66823,6 @@ func (s *VpcCidrBlockState) SetStatusMessage(v string) *VpcCidrBlockState {
 }
 
 // Describes whether a VPC is enabled for ClassicLink.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcClassicLink
 type VpcClassicLink struct {
 	_ struct{} `type:"structure"`
 
@@ -67191,7 +66865,6 @@ func (s *VpcClassicLink) SetVpcId(v string) *VpcClassicLink {
 }
 
 // Describes a VPC endpoint.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcEndpoint
 type VpcEndpoint struct {
 	_ struct{} `type:"structure"`
 
@@ -67326,7 +66999,6 @@ func (s *VpcEndpoint) SetVpcId(v string) *VpcEndpoint {
 }
 
 // Describes a VPC endpoint connection to a service.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcEndpointConnection
 type VpcEndpointConnection struct {
 	_ struct{} `type:"structure"`
 
@@ -67387,7 +67059,6 @@ func (s *VpcEndpointConnection) SetVpcEndpointState(v string) *VpcEndpointConnec
 }
 
 // Describes an IPv6 CIDR block associated with a VPC.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcIpv6CidrBlockAssociation
 type VpcIpv6CidrBlockAssociation struct {
 	_ struct{} `type:"structure"`
 
@@ -67430,7 +67101,6 @@ func (s *VpcIpv6CidrBlockAssociation) SetIpv6CidrBlockState(v *VpcCidrBlockState
 }
 
 // Describes a VPC peering connection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcPeeringConnection
 type VpcPeeringConnection struct {
 	_ struct{} `type:"structure"`
 
@@ -67502,7 +67172,6 @@ func (s *VpcPeeringConnection) SetVpcPeeringConnectionId(v string) *VpcPeeringCo
 }
 
 // Describes the VPC peering connection options.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcPeeringConnectionOptionsDescription
 type VpcPeeringConnectionOptionsDescription struct {
 	_ struct{} `type:"structure"`
 
@@ -67548,7 +67217,6 @@ func (s *VpcPeeringConnectionOptionsDescription) SetAllowEgressFromLocalVpcToRem
 }
 
 // Describes the status of a VPC peering connection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcPeeringConnectionStateReason
 type VpcPeeringConnectionStateReason struct {
 	_ struct{} `type:"structure"`
 
@@ -67582,7 +67250,6 @@ func (s *VpcPeeringConnectionStateReason) SetMessage(v string) *VpcPeeringConnec
 }
 
 // Describes a VPC in a VPC peering connection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpcPeeringConnectionVpcInfo
 type VpcPeeringConnectionVpcInfo struct {
 	_ struct{} `type:"structure"`
 
@@ -67662,7 +67329,6 @@ func (s *VpcPeeringConnectionVpcInfo) SetVpcId(v string) *VpcPeeringConnectionVp
 }
 
 // Describes a VPN connection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpnConnection
 type VpnConnection struct {
 	_ struct{} `type:"structure"`
 
@@ -67783,7 +67449,6 @@ func (s *VpnConnection) SetVpnGatewayId(v string) *VpnConnection {
 }
 
 // Describes VPN connection options.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpnConnectionOptions
 type VpnConnectionOptions struct {
 	_ struct{} `type:"structure"`
 
@@ -67809,13 +67474,12 @@ func (s *VpnConnectionOptions) SetStaticRoutesOnly(v bool) *VpnConnectionOptions
 }
 
 // Describes VPN connection options.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpnConnectionOptionsSpecification
 type VpnConnectionOptionsSpecification struct {
 	_ struct{} `type:"structure"`
 
 	// Indicate whether the VPN connection uses static routes only. If you are creating
 	// a VPN connection for a device that does not support BGP, you must specify
-	// true.
+	// true. Use CreateVpnConnectionRoute to create a static route.
 	//
 	// Default: false
 	StaticRoutesOnly *bool `locationName:"staticRoutesOnly" type:"boolean"`
@@ -67847,7 +67511,6 @@ func (s *VpnConnectionOptionsSpecification) SetTunnelOptions(v []*VpnTunnelOptio
 }
 
 // Describes a virtual private gateway.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpnGateway
 type VpnGateway struct {
 	_ struct{} `type:"structure"`
 
@@ -67927,7 +67590,6 @@ func (s *VpnGateway) SetVpnGatewayId(v string) *VpnGateway {
 }
 
 // Describes a static route for a VPN connection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpnStaticRoute
 type VpnStaticRoute struct {
 	_ struct{} `type:"structure"`
 
@@ -67970,7 +67632,6 @@ func (s *VpnStaticRoute) SetState(v string) *VpnStaticRoute {
 }
 
 // The tunnel options for a VPN connection.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/VpnTunnelOptionsSpecification
 type VpnTunnelOptionsSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -69026,6 +68687,9 @@ const (
 const (
 	// NetworkInterfaceStatusAvailable is a NetworkInterfaceStatus enum value
 	NetworkInterfaceStatusAvailable = "available"
+
+	// NetworkInterfaceStatusAssociated is a NetworkInterfaceStatus enum value
+	NetworkInterfaceStatusAssociated = "associated"
 
 	// NetworkInterfaceStatusAttaching is a NetworkInterfaceStatus enum value
 	NetworkInterfaceStatusAttaching = "attaching"

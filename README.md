@@ -588,6 +588,27 @@ GROUP BY issuer#>'{o}'->>0
 ORDER BY count(*) DESC;
 ```
 
+### Count sites in the top 10k that are impacted by the Symantec distrust in Firefox 60
+note: in Firefox 63, the not_valid_before condition will be removed
+```sql
+SELECT COUNT(DISTINCT(target))
+FROM scans
+  INNER JOIN analysis ON (scans.id=analysis.scan_id)
+  INNER JOIN certificates ON (scans.cert_id=certificates.id)
+WHERE has_tls=true
+  AND target IN ( SELECT target
+                  FROM scans
+                  INNER JOIN analysis ON (scans.id=analysis.scan_id)
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 10000
+                    AND timestamp > NOW() - INTERVAL '1 week')
+  AND worker_name='symantecDistrust'
+  AND timestamp > NOW() - INTERVAL '1 week'
+  AND not_valid_before < '2016-06-01'
+GROUP BY has_tls, output->>'isDistrusted'
+ORDER BY COUNT(DISTINCT(target)) DESC;
+```
+
 ## Contributors
 
  * Julien Vehent (lead maintainer)

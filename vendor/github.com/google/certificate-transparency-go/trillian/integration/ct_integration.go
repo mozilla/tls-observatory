@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"path/filepath"
 	"reflect"
@@ -57,6 +58,25 @@ const (
 	reqStatsRE = `^http_reqs{ep="(\w+)",logid="(\d+)"} (\d+)$`
 	rspStatsRE = `^http_rsps{ep="(\w+)",logid="(\d+)",rc="(\d+)"} (?P<val>\d+)$`
 )
+
+// DefaultTransport is a http Transport more suited for use in the hammer
+// context.
+// In particular it increases the number of reusable connections to the same
+// host. This helps to prevent starvation of ports through TIME_WAIT when
+// using the hammer with a high number of parallel chain submissions.
+var DefaultTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	DialContext: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		DualStack: true,
+	}).DialContext,
+	MaxIdleConns:          100,
+	MaxIdleConnsPerHost:   100,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+}
 
 // Verifier is used to verify Merkle tree calculations.
 var Verifier = merkletree.NewMerkleVerifier(func(data []byte) []byte {
@@ -89,9 +109,11 @@ func NewRandomPool(servers string, pubKey *keyspb.PublicKey, prefix string) (Cli
 		PublicKeyDER: pubKey.GetDer(),
 	}
 
+	hc := &http.Client{Transport: DefaultTransport}
+
 	var pool RandomPool
 	for _, s := range strings.Split(servers, ",") {
-		c, err := client.New(fmt.Sprintf("http://%s/%s", s, prefix), nil, opts)
+		c, err := client.New(fmt.Sprintf("http://%s/%s", s, prefix), hc, opts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create LogClient instance: %v", err)
 		}
@@ -520,10 +542,16 @@ func RunCTIntegrationForLog(cfg *configpb.LogConfig, servers, metricsServers, te
 	t.stats.done(ctfe.GetSTHConsistencyName, 400)
 	fmt.Printf("%s: GetSTHConsistency(2,299)=(nil,_)\n", t.prefix)
 
-	// Stage 16: invalid inclusion proof
+	// Stage 16: invalid inclusion proof; expect a client.RspError{404}.
 	wrong := sha256.Sum256([]byte("simply wrong"))
 	if rsp, err := t.client().GetProofByHash(ctx, wrong[:], sthN1.TreeSize); err == nil {
 		return fmt.Errorf("got GetProofByHash(wrong, size=%d)=(%v,nil); want (nil,_)", sthN1.TreeSize, rsp)
+	} else if rspErr, ok := err.(client.RspError); ok {
+		if rspErr.StatusCode != http.StatusNotFound {
+			return fmt.Errorf("got GetProofByHash(wrong)=_, %d; want (nil, 404)", rspErr.StatusCode)
+		}
+	} else {
+		return fmt.Errorf("got GetProofByHash(wrong)=%+v (%T); want (client.RspError)", err, err)
 	}
 	t.stats.done(ctfe.GetProofByHashName, 404)
 	fmt.Printf("%s: GetProofByHash(wrong,%d)=(nil,_)\n", t.prefix, sthN1.TreeSize)
