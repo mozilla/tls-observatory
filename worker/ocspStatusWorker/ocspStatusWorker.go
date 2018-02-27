@@ -2,10 +2,8 @@ package ocspStatusWorker
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"crypto/tls"
 	"crypto/x509"
 
 	"github.com/mozilla/tls-observatory/logger"
@@ -13,6 +11,7 @@ import (
 	"golang.org/x/crypto/ocsp"
 	"bytes"
 	"crypto"
+	"crypto/tls"
 	"time"
 	"encoding/base64"
 )
@@ -39,8 +38,8 @@ type OCSPStatus struct {
 type params struct {
 }
 
-func (w ocspStatusWorker) Run(in worker.Input, res chan worker.Result) {
-	out, err := json.Marshal(in.Params)
+func (w ocspStatusWorker) Run(in worker.Input, resChan chan worker.Result) {
+	res := worker.Result{WorkerName: workerName, Success:false}
 
 	rawCert := base64.DecodeString(worker.Input.CertificateChain.Certs[0])
 	certificate := x509.ParseCertificate(rawCert)
@@ -50,36 +49,34 @@ func (w ocspStatusWorker) Run(in worker.Input, res chan worker.Result) {
 	opts := &ocsp.RequestOptions{Hash: crypto.SHA256}
 	req, err := ocsp.CreateRequest(certificate, issuerCertificate, opts)
 	if err != nil {
-		w.error(res, "Could not create OCSP request: %s", err)
-		return;
+		res.Errors = append(res.Errors, err.Error())
+		return
 	}
 
 	httpResponse, err := http.Post(certificate.OCSPServer[0], "application/ocsp-request", bytes.NewReader(req))
 	if err != nil {
-		w.error(res, "Could not POST read HTTP request: %s", err)
-		return;
+		res.Errors = append(res.Errors, err.Error())
+		return
 	}
 
 	output, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
-		w.error(res, "Could not read HTTP response body: %s", err)
-		return;
+		res.Errors = append(res.Errors, err.Error())
+		return
 	}
 
 	OCSPResponse, err := ocsp.ParseResponse(output, issuerCertificate)
 	if err != nil {
-		w.error(res, "Could not parse OCSP response: %s", err)
+		res.Errors = append(res.Errors, err.Error())
 		return
 	}
 
 	status := OCSPStatus{ Status:OCSPResponse.Status, RevokedAt:OCSPResponse.RevokedAt }
 
-	out, _ = json.Marshal(status)
-	
-	res <- worker.Result{
-		Success:    false,
-		WorkerName: workerName,
-		Errors:     nil,
-		Result:     out,
-	}
+	out, _ := json.Marshal(status)
+
+	res.Success = true
+	res.Result = out
+
+	resChan <- res
 }
