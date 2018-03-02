@@ -78,6 +78,7 @@ CREATE TABLE scans(
     is_valid         bool NOT NULL,
     completion_perc  integer NOT NULL,
     validation_error varchar NOT NULL,
+    scan_error       varchar NOT NULL,
     conn_info        jsonb NOT NULL,
     ack              bool NOT NULL,
     attempts         integer NULL,
