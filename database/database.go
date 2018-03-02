@@ -30,6 +30,7 @@ type Scan struct {
 	Trust_id         int64                  `json:"trust_id"`
 	Is_valid         bool                   `json:"is_valid"`
 	Validation_error string                 `json:"validation_error,omitempty"`
+	ScanError        string                 `json:"scan_error,omitempty"`
 	Complperc        int                    `json:"completion_perc"`
 	Conn_info        connection.Stored      `json:"connection_info"`
 	AnalysisResults  Analyses               `json:"analysis,omitempty"`
@@ -80,10 +81,10 @@ func (db *DB) NewScan(domain string, rplay int, jsonParams []byte) (Scan, error)
 	var id int64
 
 	err := db.QueryRow(`INSERT INTO scans
-			(timestamp, target, replay, has_tls, is_valid, completion_perc, validation_error, conn_info, ack, attempts, analysis_params)
-			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			(timestamp, target, replay, has_tls, is_valid, completion_perc, validation_error, scan_error, conn_info, ack, attempts, analysis_params)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 			RETURNING id`,
-		timestamp, domain, rplay, false, false, 0, "", []byte("null"), false, 0, jsonParams).Scan(&id)
+		timestamp, domain, rplay, false, false, 0, "", "", []byte("null"), false, 0, jsonParams).Scan(&id)
 
 	if err != nil {
 		return Scan{}, err
@@ -131,12 +132,12 @@ func (db *DB) GetScanByID(id int64) (Scan, error) {
 	var params []byte
 
 	row := db.QueryRow(`SELECT timestamp, target, replay, has_tls, cert_id, trust_id,
-				   is_valid, completion_perc, validation_error, conn_info, ack, attempts, analysis_params
+				   is_valid, completion_perc, validation_error, scan_error, conn_info, ack, attempts, analysis_params
 			    FROM scans
 			    WHERE id=$1`, id)
 
 	err := row.Scan(&s.Timestamp, &s.Target, &s.Replay, &s.Has_tls, &cID, &tID,
-		&isvalid, &s.Complperc, &s.Validation_error, &ci, &s.Ack, &s.Attempts, &params)
+		&isvalid, &s.Complperc, &s.Validation_error, &s.ScanError, &ci, &s.Ack, &s.Attempts, &params)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
