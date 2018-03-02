@@ -211,8 +211,13 @@ runs:
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
 
+        # Tigerblood IP Reputation
+        - tigerblood.prod.mozaws.net
+        - tigerblood.stage.mozaws.net
+
         # TLS Observatory
         - tls-observatory.services.mozilla.com
+        - tls-observatory.stage.mozaws.net
 
         # Tracking protection
         - shavar.services.mozilla.com
@@ -682,9 +687,12 @@ runs:
               recipients:
                   - b64:dGVzdHBpbG90QG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
-    # TLS Observatory paging
+    # Security services paging
     - targets:
         - tls-observatory.services.mozilla.com
+        - tls-observatory.stage.mozaws.net
+        - tigerblood.prod.mozaws.net
+        - tigerblood.stage.mozaws.net
       assertions:
         - certificate:
             validity:
@@ -693,7 +701,8 @@ runs:
       notifications:
           email:
               recipients:
-                  - cloudsec@mozilla.com
+                  - secops+tlsobs@mozilla.com
+                  - cloud-ops@mozilla.com
 
     # Tracking protection paging
     - targets:
@@ -741,7 +750,6 @@ runs:
         - vehent.org
         - j.vehent.org
         - securing-devops.com
-        - mig.ninja
         - ulfr.io
       assertions:
         - certificate:
