@@ -210,7 +210,7 @@ func (s scanner) scan(scanID int64, cipherscan string) {
 			//does not implement TLS
 			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 		} else {
-			//does not implement TLS
+			//appears to implement TLS but cipherscan failed so store an error
 			db.Exec("UPDATE scans SET scan_error=$1, completion_perc=100 WHERE id=$2", err.Error(), scanID)
 			log.WithFields(logrus.Fields{
 				"scan_id": scanID,
