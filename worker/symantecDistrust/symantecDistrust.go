@@ -214,7 +214,9 @@ func (w runner) Run(in worker.Input, res chan worker.Result) {
 func evalPaths(paths certificate.Paths) (distrust bool, reasons []string) {
 	// assume distrust and change that if we find a trusted path
 	distrust = true
-	if evalBlacklist(paths.Cert.Hashes.SHA256SubjectSPKI) {
+	x509Cert, _ := paths.Cert.ToX509()
+	spkihash := certificate.SPKISHA256(x509Cert)
+	if evalBlacklist(spkihash) {
 		reason := fmt.Sprintf("path uses a blacklisted cert: %s (id=%d)", paths.Cert.Subject.String(), paths.Cert.ID)
 		if !alreadyPresent(reason, reasons) {
 			reasons = append(reasons, reason)
@@ -236,7 +238,7 @@ func evalPaths(paths certificate.Paths) (distrust bool, reasons []string) {
 		if theirDistrust {
 			// if the parent is distrusted, check if the current cert is whitelisted,
 			// and if so, override the distrust decision
-			if evalWhitelist(paths.Cert.Hashes.SHA256SubjectSPKI) {
+			if evalWhitelist(spkihash) {
 				distrust = false
 				reason := fmt.Sprintf("whitelisted intermediate %s (id=%d) override blacklisting of %d",
 					paths.Cert.Subject.String(), paths.Cert.ID, parent.Cert.ID)

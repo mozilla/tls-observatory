@@ -128,7 +128,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		cert.Serial,
 		cert.Hashes.SHA1,
 		cert.Hashes.SHA256,
-		cert.Hashes.SHA256SubjectSPKI,
+		cert.Hashes.SPKISHA256,
 		cert.Hashes.PKPSHA256,
 		issuer,
 		subject,
@@ -303,7 +303,7 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	cert := certificate.Certificate{}
 
 	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, issuer, subject, key []byte
-	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
+	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SPKISHA256, &cert.Hashes.PKPSHA256,
 		&issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
@@ -631,7 +631,7 @@ func (db *DB) getCertPaths(cert *certificate.Certificate, ancestors []string) (p
 		return
 	}
 	paths.Cert = cert
-	ancestors = append(ancestors, cert.Hashes.SHA256SubjectSPKI)
+	ancestors = append(ancestors, cert.Hashes.SPKISHA256)
 	parents, err := db.GetCACertsBySubject(cert.Issuer)
 	if err != nil {
 		return
@@ -661,7 +661,7 @@ func (db *DB) getCertPaths(cert *certificate.Certificate, ancestors []string) (p
 		}
 		isLooping := false
 		for _, ancestor := range ancestors {
-			if ancestor == parent.Hashes.SHA256SubjectSPKI {
+			if ancestor == parent.Hashes.SPKISHA256 {
 				isLooping = true
 			}
 		}

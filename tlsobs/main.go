@@ -118,6 +118,10 @@ getresults:
 		if err != nil {
 			panic(err)
 		}
+		if results.Complperc == 100 && results.ScanError != "" {
+			fmt.Printf("Scan failed with error: %s\n", results.ScanError)
+			os.Exit(81)
+		}
 		if results.Complperc == 100 && !has_cert {
 			// completion is already 100% and we have not yet retrieved the cert,
 			// that means the results were cached. Display a message saying so.
