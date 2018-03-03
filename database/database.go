@@ -70,7 +70,7 @@ func RegisterConnection(dbname, user, password, hostport, sslmode string) (*DB, 
 	if err != nil {
 		return nil, err
 	}
-	paths, err := lru.NewARC(10000)
+	paths, err := lru.NewARC(100000)
 	sender, _ := metrics.NewSender()
 	return &DB{dbfd, paths, sender}, nil
 }
