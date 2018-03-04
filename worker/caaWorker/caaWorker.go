@@ -81,6 +81,59 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 	resChan <- result
 }
 
+// Assertor compares 2 caaResults and reports differences.
+func (e eval) Assertor(caaResult, assertresults []byte) (pass bool, body []byte, err error) {
+	var result, assertres Result
+	pass = false
+	err = json.Unmarshal(caaResult, &result)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(assertresults, &assertres)
+	if err != nil {
+		return
+	}
+
+	if result.HasCAA != assertres.HasCAA {
+		body = []byte("CAA mismatch")
+		return
+	}
+	if result.Host != assertres.Host {
+		body = []byte(fmt.Sprintf(`Assertion failed MatchedHost= %s`,
+			result.Host))
+		return
+	}
+
+	if len(result.IssueCAs) != len(assertres.IssueCAs) {
+		body = []byte("Issue CAs count mismatch")
+		return
+	}
+
+	for i := range result.IssueCAs {
+		if result.IssueCAs[i] != assertres.IssueCAs[i] {
+			body = []byte(fmt.Sprintf(`Issue CAs mismatch %s != %s`,
+				result.IssueCAs[i], assertres.IssueCAs[i]))
+			return
+		}
+	}
+
+	if len(result.IssueWildCAs) != len(assertres.IssueWildCAs) {
+		body = []byte("Issue CAs count mismatch")
+		return
+	}
+
+	for i := range result.IssueWildCAs {
+		if result.IssueWildCAs[i] != assertres.IssueWildCAs[i] {
+			body = []byte(fmt.Sprintf(`Issue CAs mismatch %s != %s`,
+				result.IssueWildCAs[i], assertres.IssueWildCAs[i]))
+			return
+		}
+	}
+
+	pass = true
+	return
+}
+
 func (e eval) AnalysisPrinter(input []byte, printAll interface{}) (results []string, err error) {
 	var r Result
 	err = json.Unmarshal(input, &r)
