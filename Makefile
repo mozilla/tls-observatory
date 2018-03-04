@@ -20,6 +20,7 @@ endif
 GO 			:= GOOS=$(OS) GOARCH=$(ARCH) go
 GOGETTER	:= GOPATH=$(shell pwd)/.tmpdeps go get -d
 GOLDFLAGS	:= -ldflags "-X main.version=$(BUILDREV)"
+PWD := $(shell pwd)
 
 all: test tlsobs-scanner tlsobs-api tlsobs tlsobs-runner
 
@@ -64,4 +65,8 @@ ciscotop1m:
 	rm top-1m.csv.zip
 	dos2unix conf/top-1m.csv
 
-.PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor truststores cipherscan
+docker:
+	docker build -t tls-observatory:latest -f ./tools/Dockerfile-build .
+	docker run -it -v $(PWD):/go/src/github.com/mozilla/tls-observatory tls-observatory:latest
+
+.PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor truststores cipherscan docker
