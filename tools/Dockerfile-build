@@ -1,0 +1,6 @@
+FROM golang:1.9
+
+VOLUME /go/src/github.com/mozilla/tls-observatory
+WORKDIR /go/src/github.com/mozilla/tls-observatory
+
+CMD ["make"]
