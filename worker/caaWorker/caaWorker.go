@@ -80,3 +80,28 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
 	resChan <- result
 }
+
+func (e eval) AnalysisPrinter(input []byte, printAll interface{}) (results []string, err error) {
+	var r Result
+	err = json.Unmarshal(input, &r)
+	if err != nil {
+		err = fmt.Errorf("CAA worker: failed to parse results: %v", err)
+		return
+	}
+
+	results = append(results, "* CAA Analyzer:")
+
+	if !r.HasCAA {
+		results = append(results, "  * CAA records: Not found")
+	} else {
+		results = append(results, "  * CAA records: Found")
+		for _, issue := range r.IssueCAs {
+			results = append(results, fmt.Sprintf("    - CA '%s' permitted to issue certs for '%s'", issue, r.Host))
+		}
+		for _, wild := range r.IssueWildCAs {
+			results = append(results, fmt.Sprintf("    - CA '%s' permitted to issue wildcard certs for '%s'", wild, r.Host))
+		}
+	}
+
+	return results, nil
+}
