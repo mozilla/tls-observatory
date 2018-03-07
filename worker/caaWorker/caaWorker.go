@@ -14,7 +14,15 @@ var (
 	workerDesc = "Checks domains DNS records for a CAA record and reports it."
 )
 
+//Use the google DNS servers as fallback
+var DNSServer = "8.8.8.8:53"
+
 func init() {
+	cfg, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+	if err == nil && len(cfg.Servers) > 0 {
+		//if there are configured nameservers use them
+		DNSServer = strings.Join([]string{cfg.Servers[0], cfg.Port}, ":")
+	}
 	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
 }
 
@@ -41,7 +49,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 		msg.SetQuestion(dns.Fqdn(host), dns.TypeCAA)
 
 		client := dns.Client{}
-		res, _, err := client.Exchange(msg, "8.8.8.8:53")
+		res, _, err := client.Exchange(msg, DNSServer)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("CAA lookup failed for %s: %v", host, err))
 			continue
