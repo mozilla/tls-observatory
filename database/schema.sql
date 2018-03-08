@@ -115,6 +115,7 @@ FOR EACH ROW EXECUTE PROCEDURE notify_trigger();
 CREATE MATERIALIZED VIEW statistics AS
 SELECT
   NOW() AS timestamp,
+  COALESCE((SELECT COUNT(*) FROM scans WHERE completion_perc = 0 AND attempts < 3 AND ack = false), 0) AS pending_scans,
   COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='scans'), 0) AS total_scans,
   COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='trust'), 0) AS total_trust,
   COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='analysis'), 0) AS total_analysis,
