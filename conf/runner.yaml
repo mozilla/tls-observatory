@@ -320,6 +320,9 @@ runs:
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "intermediate"}' # should be modern once tls-observatory supports the modern level
+        - analysis:
+            analyzer: caaWorker
+            result: '{"hasCAA": true, "host": "services.mozilla.com", "issue":["digicert.com"], "issuewild": []}'
       cron: "30 18 * * *"
       notifications:
           email:
