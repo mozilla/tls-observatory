@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/lib/pq"
 
 	"github.com/mozilla/tls-observatory/logger"

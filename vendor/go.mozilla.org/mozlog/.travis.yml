@@ -10,5 +10,5 @@ go_import_path: go.mozilla.org/mozlog
 install: true
 
 before_install:
-  - go get github.com/Sirupsen/logrus
+  - go get github.com/sirupsen/logrus
   - go get github.com/stretchr/testify/assert
