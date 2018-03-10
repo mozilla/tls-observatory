@@ -62,7 +62,7 @@ ciscotop1m:
 	unzip top-1m.csv.zip
 	mv top-1m.csv conf/cisco-top-1m.csv
 	rm top-1m.csv.zip
-	dos2unix conf/top-1m.csv
+	dos2unix conf/cisco-top-1m.csv
 
 alexatop1m:
 	wget http://s3.amazonaws.com/alexa-static/top-1m.csv.zip
