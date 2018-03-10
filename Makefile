@@ -60,8 +60,15 @@ cipherscan:
 ciscotop1m:
 	wget http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip
 	unzip top-1m.csv.zip
-	mv top-1m.csv conf/
+	mv top-1m.csv conf/cisco-top-1m.csv
 	rm top-1m.csv.zip
 	dos2unix conf/top-1m.csv
+
+alexatop1m:
+	wget http://s3.amazonaws.com/alexa-static/top-1m.csv.zip
+	unzip top-1m.csv.zip
+	mv top-1m.csv conf/alexa-top-1m.csv
+	rm top-1m.csv.zip
+	dos2unix conf/alexa-top-1m.csv
 
 .PHONY: all test clean tlsobs-scanner tlsobs-api tlsobs-runner tlsobs vendor truststores cipherscan
