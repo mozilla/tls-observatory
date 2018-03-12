@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/mozilla/tls-observatory/config"
 	"github.com/mozilla/tls-observatory/connection"

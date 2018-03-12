@@ -49,15 +49,21 @@ func (this *failureReport) ParseTestName(name string) {
 		return
 	}
 
-
-	if method := parts[last]; prefix(method, "Test") || prefix(method, "Setup") || prefix(method, "Teardown") {
+	if method := parts[last]; hasMethodPrefix(method) {
 		this.Method = method
 		this.Fixture = parts[last-1]
 		this.Package = strings.Join(parts[0:last-1], ".")
 	}
 }
 
-var prefix = strings.HasPrefix
+func hasMethodPrefix(value string) bool {
+	for _, allowed := range []string{"FocusLongTest", "FocusTest", "LongTest", "Test", "Setup", "Teardown"} {
+		if strings.HasPrefix(value, allowed) {
+			return true
+		}
+	}
+	return false
+}
 
 func (this failureReport) String() string {
 	buffer := new(bytes.Buffer)

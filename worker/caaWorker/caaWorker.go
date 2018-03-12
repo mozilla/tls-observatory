@@ -150,17 +150,15 @@ func (e eval) AnalysisPrinter(input []byte, printAll interface{}) (results []str
 		return
 	}
 
-	results = append(results, "* CAA Analyzer:")
-
 	if !r.HasCAA {
-		results = append(results, "  * CAA records: Not found")
+		results = append(results, "* CAA records: not found")
 	} else {
-		results = append(results, "  * CAA records: Found")
+		results = append(results, "* CAA records: found")
 		for _, issue := range r.IssueCAs {
-			results = append(results, fmt.Sprintf("    - CA '%s' permitted to issue certs for '%s'", issue, r.Host))
+			results = append(results, fmt.Sprintf("  - CA '%s' permitted to issue certs for '%s'", issue, r.Host))
 		}
 		for _, wild := range r.IssueWildCAs {
-			results = append(results, fmt.Sprintf("    - CA '%s' permitted to issue wildcard certs for '%s'", wild, r.Host))
+			results = append(results, fmt.Sprintf("  - CA '%s' permitted to issue wildcard certs for '%s'", wild, r.Host))
 		}
 	}
 
