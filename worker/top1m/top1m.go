@@ -1,4 +1,4 @@
-package sslLabsClientSupport
+package top1m
 
 import (
 	"encoding/csv"
@@ -16,7 +16,7 @@ import (
 
 var (
 	workerName = "top1m"
-	workerDesc = "Rank a target and its certificate against the top 1 million websites published by Cisco Umbrella"
+	workerDesc = "Rank a target and its certificate against the top 1 million websites published by Cisco Umbrella and Alexa"
 	log        = logger.GetLogger()
 )
 
@@ -32,15 +32,27 @@ type Analysis struct {
 }
 
 type targetRank struct {
-	Rank      int64  `json:"rank"`
-	AlexaRank int64  `json:"alexa_rank"`
+	Rank      rank   `json:"rank"`
 	Domain    string `json:"domain"`
+	CiscoRank rank   `json:"cisco_rank"`
+	AlexaRank rank   `json:"alexa_rank"`
+}
+
+type rank int64
+
+func (r rank) String() string {
+	if r == certificate.Default_Cisco_Umbrella_Rank {
+		return "unlisted"
+	}
+	return fmt.Sprintf("%d", r)
 }
 
 type certificateRank struct {
-	Rank        int64  `json:"rank"`
+	Rank        rank   `json:"rank"`
 	Domain      string `json:"domain"`
-	AlexaRank   int64  `json:"alexa_rank"`
+	CiscoRank   rank   `json:"cisco_rank"`
+	CiscoDomain string `json:"cisco_domain"`
+	AlexaRank   rank   `json:"alexa_rank"`
 	AlexaDomain string `json:"alexa_domain"`
 }
 
@@ -160,51 +172,73 @@ func (w ranker) Run(in worker.Input, res chan worker.Result) {
 }
 
 // Find the rank of the target
-func (w ranker) analyseTargetRank(in worker.Input) (targetRank targetRank, err error) {
-	targetRank.Domain = in.Target
-	targetRank.Rank = certificate.Default_Cisco_Umbrella_Rank
-	if val, ok := w.Ranks[targetRank.Domain]; ok {
-		targetRank.Rank = val
+func (w ranker) analyseTargetRank(in worker.Input) (tr targetRank, err error) {
+	tr = targetRank{
+		Domain:    in.Target,
+		Rank:      certificate.Default_Cisco_Umbrella_Rank,
+		CiscoRank: certificate.Default_Cisco_Umbrella_Rank,
+		AlexaRank: certificate.Default_Cisco_Umbrella_Rank,
 	}
-	targetRank.AlexaRank = certificate.Default_Cisco_Umbrella_Rank
-	if val, ok := w.AlexaRanks[targetRank.Domain]; ok {
-		targetRank.AlexaRank = val
+	if val, ok := w.Ranks[tr.Domain]; ok {
+		tr.CiscoRank = rank(val)
+		tr.Rank = rank(val)
+	}
+	if val, ok := w.AlexaRanks[tr.Domain]; ok {
+		tr.AlexaRank = rank(val)
+	}
+	if tr.AlexaRank < tr.Rank {
+		tr.Rank = tr.AlexaRank
 	}
 	return
 }
 
 // Find the highest rank of all the domains the certificate is valid for, and also
-// store it in database alonside the certificate
+// store it in database alonside the certificate. This store three rank: one for cisco,
+// one for alexa, and one that is the lowest rank for either.
 func (w ranker) analyseCertificateRank(in worker.Input) (certRank certificateRank, err error) {
 	// initialize the rank to a default value
-	certRank.Domain = strings.Trim(in.Certificate.Subject.CommonName, "*.")
-	certRank.Rank = certificate.Default_Cisco_Umbrella_Rank
+	trimmedCert := strings.Trim(in.Certificate.Subject.CommonName, "*.")
+	certRank = certificateRank{
+		Domain:      trimmedCert,
+		CiscoDomain: trimmedCert,
+		AlexaDomain: trimmedCert,
+		Rank:        certificate.Default_Cisco_Umbrella_Rank,
+		CiscoRank:   certificate.Default_Cisco_Umbrella_Rank,
+		AlexaRank:   certificate.Default_Cisco_Umbrella_Rank,
+	}
 	// find the rank of the common name of the certificate
 	if val, ok := w.Ranks[strings.Trim(in.Certificate.Subject.CommonName, "*.")]; ok {
-		certRank.Rank = val
+		certRank.CiscoRank = rank(val)
+		certRank.Rank = rank(val)
 	}
-	certRank.AlexaDomain = strings.Trim(in.Certificate.Subject.CommonName, "*.")
-	certRank.AlexaRank = certificate.Default_Cisco_Umbrella_Rank
 	// find the rank of the common name of the certificate
 	if val, ok := w.AlexaRanks[strings.Trim(in.Certificate.Subject.CommonName, "*.")]; ok {
-		certRank.AlexaRank = val
+		certRank.AlexaRank = rank(val)
 	}
 	// find the highest rank of the certificate SAN and use it if higher than CN
 	for _, san := range in.Certificate.X509v3Extensions.SubjectAlternativeName {
 		if val, ok := w.Ranks[strings.Trim(san, "*.")]; ok {
-			if val < certRank.Rank {
-				certRank.Domain = strings.Trim(san, "*.")
-				certRank.Rank = val
+			if rank(val) < certRank.Rank {
+				certRank.CiscoDomain = strings.Trim(san, "*.")
+				certRank.CiscoRank = rank(val)
 			}
 		}
 		if val, ok := w.AlexaRanks[strings.Trim(san, "*.")]; ok {
-			if val < certRank.AlexaRank {
+			if rank(val) < certRank.AlexaRank {
 				certRank.AlexaDomain = strings.Trim(san, "*.")
-				certRank.AlexaRank = val
+				certRank.AlexaRank = rank(val)
 			}
 		}
 	}
-	err = in.DBHandle.UpdateCertificateRank(in.Certificate.ID, certRank.Rank)
+	if certRank.CiscoRank < certRank.Rank {
+		certRank.Rank = certRank.CiscoRank
+		certRank.Domain = certRank.CiscoDomain
+	}
+	if certRank.AlexaRank < certRank.Rank {
+		certRank.Rank = certRank.AlexaRank
+		certRank.Domain = certRank.AlexaDomain
+	}
+	err = in.DBHandle.UpdateCertificateRank(in.Certificate.ID, int64(certRank.Rank))
 	return
 }
 
@@ -216,28 +250,10 @@ func (w ranker) AnalysisPrinter(r []byte, printAll interface{}) (results []strin
 		return
 	}
 	results = append(results, "* Top 1M:")
-	if a.Target.Rank == certificate.Default_Cisco_Umbrella_Rank {
-		results = append(results, fmt.Sprintf("  - target %q is not ranked on cisco umbrella", a.Target.Domain))
-	} else {
-		results = append(results, fmt.Sprintf("  - target %q ranks %d on cisco umbrella", a.Target.Domain, a.Target.Rank))
-	}
+	results = append(results, fmt.Sprintf("  - target %q is %s (cisco rank is %s, alexa ranks is %s)",
+		a.Target.Domain, a.Target.Rank.String(), a.Target.CiscoRank.String(), a.Target.AlexaRank.String()))
 
-	if a.Target.AlexaRank == certificate.Default_Cisco_Umbrella_Rank {
-		results = append(results, fmt.Sprintf("  - target %q is not ranked on alexa", a.Target.Domain))
-	} else {
-		results = append(results, fmt.Sprintf("  - target %q ranks %d on alexa", a.Target.Domain, a.Target.AlexaRank))
-	}
-
-	if a.Certificate.Rank == certificate.Default_Cisco_Umbrella_Rank {
-		results = append(results, fmt.Sprintf("  - certificate valid for %q is not ranked on cisco umbrella", a.Certificate.Domain))
-	} else {
-		results = append(results, fmt.Sprintf("  - certificate valid for %q ranks %d on cisco umbrella", a.Certificate.Domain, a.Certificate.Rank))
-	}
-
-	if a.Certificate.AlexaRank == certificate.Default_Cisco_Umbrella_Rank {
-		results = append(results, fmt.Sprintf("  - certificate valid for %q is not ranked on alexa", a.Certificate.Domain))
-	} else {
-		results = append(results, fmt.Sprintf("  - certificate valid for %q ranks %d on alexa", a.Certificate.AlexaDomain, a.Certificate.AlexaRank))
-	}
+	results = append(results, fmt.Sprintf("  - certificate valid for %q ranks %s (cisco ranks %q as %s, alexa ranks %q as %s)",
+		a.Certificate.Domain, a.Certificate.Rank.String(), a.Certificate.CiscoDomain, a.Certificate.CiscoRank.String(), a.Certificate.AlexaDomain, a.Certificate.AlexaRank.String()))
 	return
 }
