@@ -250,10 +250,10 @@ func (w ranker) AnalysisPrinter(r []byte, printAll interface{}) (results []strin
 		return
 	}
 	results = append(results, "* Top 1M:")
-	results = append(results, fmt.Sprintf("  - target %q is %s (cisco rank is %s, alexa ranks is %s)",
+	results = append(results, fmt.Sprintf("  - target %q is ranked %s (cisco rank is %s, alexa ranks is %s)",
 		a.Target.Domain, a.Target.Rank.String(), a.Target.CiscoRank.String(), a.Target.AlexaRank.String()))
 
-	results = append(results, fmt.Sprintf("  - certificate valid for %q ranks %s (cisco ranks %q as %s, alexa ranks %q as %s)",
+	results = append(results, fmt.Sprintf("  - certificate valid for %q is ranked %s (cisco ranks %q as %s, alexa ranks %q as %s)",
 		a.Certificate.Domain, a.Certificate.Rank.String(), a.Certificate.CiscoDomain, a.Certificate.CiscoRank.String(), a.Certificate.AlexaDomain, a.Certificate.AlexaRank.String()))
 	return
 }
