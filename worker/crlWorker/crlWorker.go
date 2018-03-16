@@ -30,6 +30,11 @@ type Result struct {
 	Revoked bool `json:"revoked"`
 }
 
+func init() {
+	runner := new(eval)
+	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
+}
+
 type eval struct{}
 
 // Run implements the worker.Worker interface and is called check CRL status
@@ -192,7 +197,7 @@ func verifyCRL(certList *pkix.CertificateList, cert certificate.Certificate, cha
 func (eval) AnalysisPrinter(input []byte, printAll interface{}) (results []string, err error) {
 	var result Result
 	if err := json.Unmarshal(input, &result); err != nil {
-		return results, fmt.Errorf("CRL Worker: failed to parse results: err=%v", err)
+		return nil, fmt.Errorf("CRL Worker: failed to parse results: err=%v", err)
 	}
 
 	if result.Revoked {
@@ -200,6 +205,5 @@ func (eval) AnalysisPrinter(input []byte, printAll interface{}) (results []strin
 	} else {
 		results = append(results, "* Certificate: Not Revoked")
 	}
-
 	return results, nil
 }
