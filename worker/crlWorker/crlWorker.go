@@ -178,14 +178,18 @@ func verifyCRL(certList *pkix.CertificateList, cert certificate.Certificate, cha
 	return fmt.Errorf("Unable to verify CRL against %s chain", chain.Domain)
 }
 
-// Assertor compares two crlWorker Results and reports differences
-func (eval) Assertor(crlResult, assertresults []byte) (pass bool, body []byte, err error) {
-	// json.Unmarshal
-
-	return false, nil, nil // TOOD(adam)
-}
-
-// AnalysisPrinter .... TODO
+// AnalysisPrinter outputs results of comparing a certificate against the CRL(s) contained within
 func (eval) AnalysisPrinter(input []byte, printAll interface{}) (results []string, err error) {
-	return nil, nil
+	var result Result
+	if err := json.Unmarshal(input, &result); err != nil {
+		return results, fmt.Errorf("CRL Worker: failed to parse results: err=%v", err)
+	}
+
+	if result.Revoked {
+		results = append(results, fmt.Sprintf("* Certificate: Revoked (at %s)", result.RevocationTime.String()))
+	} else {
+		results = append(results, "* Certificate: Not Revoked")
+	}
+
+	return results, nil
 }
