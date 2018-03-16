@@ -62,6 +62,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 
 	// TODO(adam): store all CRL responses
 	// TODO(adam): Process all responses? Or just one that's signed?
+
 	certList, err := x509.ParseCRL(crlResponses[0])
 	if err != nil {
 		resChan <- worker.Result{
@@ -102,6 +103,16 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 			// certificate is in revoked list, serials match
 			crlRes.RevocationTime = certList.TBSCertList.ThisUpdate
 			crlRes.Revoked = true
+
+			if err := in.DBHandle.UpdateCertMarkAsRevoked(in.Certificate.ID); err != nil {
+				resChan <- worker.Result{
+					Success:    false,
+					WorkerName: workerName,
+					Errors:     []string{fmt.Sprintf("error update Certificate %s revoked_via_crl, err=%v", in.Certificate.ID, err)},
+					Result:     nil,
+				}
+				return
+			}
 			break
 		}
 	}
@@ -115,7 +126,6 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 		result.Success = true
 		result.Result = bs
 	}
-	// TODO "I think it'd be useful to add a column to the certificate table to store the fact it has been revoked via CRL."
 	resChan <- result
 }
 
