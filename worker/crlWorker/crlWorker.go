@@ -5,7 +5,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -172,15 +171,7 @@ func verifyCRL(certList *pkix.CertificateList, cert certificate.Certificate, cha
 		if err != nil {
 			return fmt.Errorf("error decoding base64 DER of Certificate from %s chain, err=%v", chain.Domain, err)
 		}
-
-		block, _ := pem.Decode([]byte(raw))
-		if block == nil {
-			return fmt.Errorf("error reading DER of Certificate from %s chain, err=%v", chain.Domain, err)
-		}
-		if block.Type != "CERTIFICATE" {
-			return fmt.Errorf("Unknown block %s in %s chain", block.Type, chain.Domain)
-		}
-		cert, err := x509.ParseCertificate(block.Bytes)
+		cert, err := x509.ParseCertificate(raw)
 		if err != nil {
 			return fmt.Errorf("error reading certificate, err=%v", err)
 		}
