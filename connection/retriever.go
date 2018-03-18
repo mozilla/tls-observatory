@@ -36,6 +36,7 @@ func Connect(domain, cipherscanbinPath string) ([]byte, error) {
 	comm.Stderr = &stderr
 	err := comm.Start()
 	if err != nil {
+		log.Println(stderr.String())
 		log.Println(err)
 		return nil, err
 	}
