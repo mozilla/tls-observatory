@@ -1,5 +1,14 @@
 # Mozilla TLS Observatory
 
+The Mozilla TLS Observatory is a suite of tools for analysis and inspection on Transport Layer Security (TLS) services. The components of TLS Observatory include:
+
+- [EV Checker](https://tls-observatory.services.mozilla.com/static/ev-checker.html) - Tool for Certificate Authorities (CAs) who request a root certificate enabled for Extended Validation (EV).
+- [Certificate Explainer](https://tls-observatory.services.mozilla.com/static/certsplainer.html) - Web UI that parses fields of X.509 certificates
+- `tlsobs` - CLI tool for issuing scans of a website
+- `tlsobs-api` - HTTP webserver receving website scan requests and displaying results
+- `tlsobs-runner` - Service that schedules website scans
+- `tlsobs-scanner` - Service that performs scans and analysis of websites
+
 Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.org) !
 
 * [Mozilla TLS Observatory](#mozilla-tls-observatory)

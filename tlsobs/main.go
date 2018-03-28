@@ -76,6 +76,7 @@ func main() {
 	// also trim http:// prefix ( in case someone has a really wrong idea of what
 	// the observatory does...)
 	target = strings.TrimPrefix(target, "http://")
+	target = strings.TrimSuffix(target, "/") // trailing slash
 
 	if *rescan {
 		rescanP = "&rescan=true"
