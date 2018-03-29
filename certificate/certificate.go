@@ -362,15 +362,15 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 	crld := make([]string, 0)
 	crld = append(crld, cert.CRLDistributionPoints...)
 	constraints, _ := certconstraints.Get(cert)
-	ipNetSliceToStringSlice := func(in []net.IPNet) []string {
+	ipNetSliceToStringSlice := func(in []*net.IPNet) []string {
 		out := make([]string, 0)
 		for _, ipnet := range in {
 			out = append(out, ipnet.String())
 		}
 		return out
 	}
-	permittedIPAddresses := ipNetSliceToStringSlice(constraints.PermittedIPAddresses)
-	excludedIPAddresses := ipNetSliceToStringSlice(constraints.ExcludedIPAddresses)
+	permittedIPAddresses := ipNetSliceToStringSlice(constraints.PermittedIPRanges)
+	excludedIPAddresses := ipNetSliceToStringSlice(constraints.ExcludedIPRanges)
 	ext := Extensions{
 		AuthorityKeyId:           base64.StdEncoding.EncodeToString(cert.AuthorityKeyId),
 		SubjectKeyId:             base64.StdEncoding.EncodeToString(cert.SubjectKeyId),
