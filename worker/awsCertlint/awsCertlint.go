@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/worker"
@@ -87,14 +88,27 @@ func (e eval) runCertlint(cert certificate.Certificate) (*Result, error) {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	// attach stdout/stderr
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("error running awslabs/certlint, err=%v, out=%q", cert.ID, strings.TrimSpace(stderr.String()))
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("error starting awslabs/certlint on certificate %s, err=%v, out=%q", cert.ID, err, strings.TrimSpace(stderr.String()))
+	}
+
+	waitChan := make(chan error, 1)
+	go func() {
+		waitChan <- cmd.Wait()
+	}()
+
+	select {
+	case <-time.After(30 * time.Second):
+		err := cmd.Process.Kill()
+		return nil, fmt.Errorf("timed out waiting for awslabs/certlint on certificate %s, kill error=%v", cert.ID, err)
+	case err := <-waitChan:
+		if err != nil {
+			return nil, fmt.Errorf("error running awslabs/certlint on certificate %s, err=%v, out=%q", cert.ID, err, strings.TrimSpace(stderr.String()))
+		}
 	}
 
 	return e.parseResponse(stdout)
 }
-
 
 // From: https://github.com/awslabs/certlint#output
 //
