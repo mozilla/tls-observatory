@@ -198,6 +198,7 @@ environment variables:
 
 Customize the configuration file under `conf/scanner.cfg` and using the
 following environment variables:
+* `TLS_AWSCERTLINT_DIR` set where awslabs/certlint directory exists
 * `TLSOBS_SCANNER_ENABLE` set to `on` or `off` to enable or disable the scabber
 * `TLSOBS_POSTGRES` is the hostname or IP of the database server (eg. `mypostgresdb.example.net`)
 * `TLSOBS_POSTGRESDB` is the name of the database (eg. `observatory`)
