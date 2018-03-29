@@ -7,7 +7,8 @@ RUN apt update && \
     apt install -y git libcurl4-nss-dev libnss3 libnss3-dev clang ruby ruby-dev && \
     apt-get clean && apt-get -y autoremove && \
     groupadd -r tlsobs && \
-    useradd -r -g tlsobs tlsobs
+    useradd -m -r -g tlsobs tlsobs && \
+    chown tlsobs:tlsobs -R /var/lib/gems/
 
 ADD . /go/src/$PROJECT
 ADD cipherscan/ /opt/cipherscan/
@@ -15,8 +16,6 @@ ADD conf/ /etc/tls-observatory/
 RUN chown tlsobs -R /go /opt -R
 
 # switch to tlsobs user
-RUN mkdir -p /home/tlsobs && \
-    chown tlsobs:tlsobs -R /home/tlsobs /var/lib/gems/
 USER tlsobs
 
 RUN git clone https://github.com/mozkeeler/ev-checker.git && \
