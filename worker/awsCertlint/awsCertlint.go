@@ -32,6 +32,11 @@ type Result struct {
 }
 
 func init() {
+	// override certlintDirectory if TLS_AWSCERTLINT_DIR
+	if path := os.Getenv("TLS_AWSCERTLINT_DIR"); path != "" {
+		certlintDirectory = path
+	}
+
 	runner := new(eval)
 	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
