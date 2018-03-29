@@ -17,18 +17,18 @@ import (
 
 var (
 	workerName = "awsCertlint"
-	workerDesc = "Runs awslabs/certlint over a given Certificate, categoriezes output for display on the certificate"
+	workerDesc = "Runs the awslabs certificate linter and saves output"
 
 	certlintDirectory = "/go/certlint" // path from tools/Dockerfile-scanner
 )
 
 type Result struct {
-	Bugs []string `json:"Bugs"`
-	Informational []string `json:"Informational"`
-	Notices []string `json:"Notices"`
-	Warnings []string `json:"Warnings"`
-	Errors []string `json:"Errors"`
-	FatalErrors []string `json:"FatalErrors"`
+	Bugs          []string `json:"bugs"`
+	Informational []string `json:"informational"`
+	Notices       []string `json:"notices"`
+	Warnings      []string `json:"warnings"`
+	Errors        []string `json:"errors"`
+	FatalErrors   []string `json:"fatalErrors"`
 }
 
 func init() {
@@ -68,12 +68,12 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 func (e eval) runCertlint(cert certificate.Certificate) (*Result, error) {
 	tmp, err := ioutil.TempFile("", "awslabs-certlint")
 	if err != nil {
-		return nil, fmt.Errorf("error creating temp dir", cert.ID)
+		return nil, fmt.Errorf("error creating temp file for certificate %s", cert.ID)
 	}
 	defer os.Remove(tmp.Name())
 	x509Cert, err := cert.ToX509()
 	if err != nil {
-		return nil, fmt.Errorf("error converting to x509.Certificate", cert.ID)
+		return nil, fmt.Errorf("error converting certificate %s to x509.Certificate", cert.ID)
 	}
 	if err := ioutil.WriteFile(tmp.Name(), x509Cert.Raw, 0644); err != nil {
 		return nil, fmt.Errorf("error writing x509.Certificate to temp file, err=%v", err)
@@ -155,7 +155,6 @@ func (e eval) AnalysisPrinter(input []byte, printAll interface{}) (results []str
 	}
 
 	// Build results for webview
-	results = append(results, "* awslabs/certlint Results")
 	for i := range result.FatalErrors {
 		results = append(results, fmt.Sprintf(" - Fatal Error: %s", result.FatalErrors[i]))
 	}
@@ -174,6 +173,22 @@ func (e eval) AnalysisPrinter(input []byte, printAll interface{}) (results []str
 	for i := range result.Bugs {
 		results = append(results, fmt.Sprintf(" - Bug: %s", result.Bugs[i]))
 	}
+
+	// Add header and summary as first two lines
+	headers := []string{
+		"* awslabs/certlint",
+	}
+
+	// We only want one summary line, so match in order of severity
+	switch true {
+	case len(result.FatalErrors) > 0 || len(result.Errors) > 0:
+		headers = append(headers, fmt.Sprintf(" - %d errors, %d fatal", len(result.Errors), len(result.FatalErrors)))
+	case len(result.Warnings) > 0:
+		headers = append(headers, fmt.Sprintf(" - %d warnings found", len(result.Warnings)))
+	}
+
+	// Add header(s) as first line, print notice if nothing was found
+	results = append(headers, results...)
 	if len(results) == 1 {
 		results = append(results, " - No messages")
 	}
