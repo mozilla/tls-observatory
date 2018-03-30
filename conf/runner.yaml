@@ -97,13 +97,6 @@ runs:
         - location.services.mozilla.com
         - location-leaderboard.services.mozilla.com
 
-        # Marketplace & FxOS
-        - marketplace.firefox.com
-        - receiptcheck.marketplace.firefox.com
-        - static.marketplace.firefox.com
-        - casttv.services.mozilla.com
-        - syncto.services.mozilla.com
-
         # Data Platform services
         - telemetry-experiment.cdn.mozilla.net
         - incoming.telemetry.mozilla.org
@@ -506,23 +499,6 @@ runs:
           email:
               recipients:
                   - b64:bG9jYXRpb25AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
-
-    # Marketplace paging
-    - targets:
-        - marketplace.firefox.com
-        - receiptcheck.marketplace.firefox.com
-        - static.marketplace.firefox.com
-        - casttv.services.mozilla.com
-        - syncto.services.mozilla.com
-      assertions:
-        - certificate:
-            validity:
-                notafter: ">14d"
-      cron: "30 18 * * *"
-      notifications:
-          email:
-              recipients:
-                  - b64:bWFya2V0cGxhY2VAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
 
     # Data Platform services paging
     - targets:
