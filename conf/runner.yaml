@@ -111,6 +111,7 @@ runs:
         - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
         - data-presto.data.mozaws.net
+        - probeinfo.telemetry.mozilla.org
         - data.mozilla.com
 
         # Misc
@@ -511,6 +512,7 @@ runs:
         - reports.telemetry.mozilla.org
         - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
+        - probeinfo.telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - data.mozilla.com
       assertions:
