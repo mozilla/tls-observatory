@@ -800,7 +800,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - infosec+tlsobs@mozilla.com
+                  - infosec-tlsobs@mozilla.com
 
     # TaskCluster stuff
     - targets:
