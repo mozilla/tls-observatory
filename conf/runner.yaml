@@ -63,8 +63,6 @@ runs:
         - symbols.mozilla.org
 
         # everything.me
-        - api.everything.me
-        - appsearch.services.mozilla.com
         - geodude.services.mozilla.com
 
         # Firefox Accounts
@@ -423,8 +421,6 @@ runs:
 
     # everything.me paging
     - targets:
-        - api.everything.me
-        - appsearch.services.mozilla.com
         - geodude.services.mozilla.com
       assertions:
         - certificate:
