@@ -108,15 +108,27 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 			crlRes.RevocationTime = certList.TBSCertList.ThisUpdate
 			crlRes.Revoked = true
 
-			if err := in.DBHandle.UpdateCertMarkAsRevoked(in.Certificate.ID); err != nil {
+			if err := in.DBHandle.UpdateCertMarkAsRevoked(in.Certificate.ID, certList.TBSCertList.ThisUpdate); err != nil {
 				resChan <- worker.Result{
 					Success:    false,
 					WorkerName: workerName,
-					Errors:     []string{fmt.Sprintf("error update Certificate %s revoked_via_crl, err=%v", in.Certificate.ID, err)},
+					Errors:     []string{fmt.Sprintf("error update Certificate %s revocation in database, err=%v", in.Certificate.ID, err)},
 					Result:     nil,
 				}
 				return
 			}
+
+			// also mark is_valid=false on scans table
+			if _, err = in.DBHandle.Exec(`UPDATE scans SET is_valid=false WHERE id=$1`, in.Scanid); err != nil {
+				resChan <- worker.Result{
+					Success:    false,
+					WorkerName: workerName,
+					Errors:     []string{fmt.Sprintf("error update Scan %s is_valid in database, err=%v", in.Scanid, err)},
+					Result:     nil,
+				}
+				return
+			}
+
 			break
 		}
 	}

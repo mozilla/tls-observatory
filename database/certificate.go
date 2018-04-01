@@ -187,8 +187,8 @@ func (db *DB) UpdateCertLastSeenByID(id int64) error {
 	return err
 }
 
-func (db *DB) UpdateCertMarkAsRevoked(id int64) error {
-	_, err := db.Exec("UPDATE certificates SET revoked_via_crl=true WHERE id=$1", id)
+func (db *DB) UpdateCertMarkAsRevoked(id int64, when time.Time) error {
+	_, err := db.Exec("UPDATE certificates SET is_revoked=true, revoked_at=$2 WHERE id=$1", id, when)
 	return err
 }
 

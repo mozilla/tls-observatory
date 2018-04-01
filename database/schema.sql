@@ -42,8 +42,7 @@ CREATE TABLE certificates(
     excluded_dns_domains        varchar[] NOT NULL DEFAULT '{}',
     excluded_ip_addresses       varchar[] NOT NULL DEFAULT '{}',
     is_technically_constrained  bool NOT NULL DEFAULT false,
-    cisco_umbrella_rank         integer NOT NULL DEFAULT 2147483647,
-    revoked_via_crl             bool NULL
+    cisco_umbrella_rank         integer NOT NULL DEFAULT 2147483647
 );
 CREATE INDEX certificates_sha256_fingerprint_idx ON certificates(sha256_fingerprint);
 CREATE INDEX certificates_subject_idx ON certificates(subject);
