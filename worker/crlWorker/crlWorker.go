@@ -122,7 +122,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 	for i := range revoked {
 		if x509Cert.SerialNumber.Cmp(revoked[i].SerialNumber) == 0 {
 			// certificate is in revoked list, serials match
-			crlRes.RevocationTime = certList.TBSCertList.ThisUpdate
+			crlRes.RevocationTime = revoked[i].RevocationTime
 			crlRes.Revoked = true
 
 			if err := in.DBHandle.UpdateCertMarkAsRevoked(in.Certificate.ID, certList.TBSCertList.ThisUpdate); err != nil {
