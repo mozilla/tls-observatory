@@ -221,9 +221,9 @@ func (eval) AnalysisPrinter(input []byte, printAll interface{}) (results []strin
 	}
 
 	if result.Revoked {
-		results = append(results, fmt.Sprintf("* Certificate: Revoked (at %s)", result.RevocationTime.String()))
+		results = append(results, fmt.Sprintf("* CRL: Revoked at %s", result.RevocationTime.String()))
 	} else {
-		results = append(results, "* Certificate: Not Revoked")
+		results = append(results, "* CRL: Not Revoked")
 	}
 	return results, nil
 }
