@@ -8,20 +8,26 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/worker"
+
+	"github.com/gregjones/httpcache"
+	"github.com/gregjones/httpcache/diskcache"
 )
 
 var (
 	workerName = "crlWorker"
 	workerDesc = "Checks certificate CRL (Certificate Revocation List) and reports on certificate revocation"
 
-	httpClient = &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	// http.Client, which uses a disk backed cache to keep requests down to a minimum
+	httpClientCachePath = "/tmp/http-client-cache"
+	httpClientCache httpcache.Cache
+	httpClientTransport *httpcache.Transport
+	httpClient *http.Client
 )
 
 type Result struct {
@@ -30,6 +36,17 @@ type Result struct {
 }
 
 func init() {
+	// initialize http.Client and cache
+	if path := os.Getenv("TLSOBS_CRLHTTPCACHE_PATH"); path != "" {
+		httpClientCachePath = path
+	}
+	httpClientCache = diskcache.New(httpClientCachePath)
+	httpClientTransport = httpcache.NewTransport(httpClientCache)
+
+	httpClient = httpClientTransport.Client()
+	httpClient.Timeout = 30 * time.Second
+
+	// register crlWorker
 	runner := new(eval)
 	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
