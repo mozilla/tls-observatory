@@ -1,4 +1,0 @@
-#include "version.h"
-
-
-const char cert_trans::kBuildVersion[] = "%BUILD_VERSION%";

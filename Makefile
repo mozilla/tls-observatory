@@ -40,7 +40,7 @@ tlsobs-runner:
 	$(GO) build $(GOOPTS) -o $(GOPATH)/bin/tlsobs-runner$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-runner
 
 vendor:
-	govend -u
+	govend -u --prune
 
 test:
 	$(GO) test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
