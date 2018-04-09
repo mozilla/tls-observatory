@@ -47,8 +47,8 @@ vendor:
 	govend -u --prune
 
 test:
-	$(GO) test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
-	$(GO) test github.com/mozilla/tls-observatory/tlsobs-runner
+# Skip tools/ dir, it has multiple main method
+	$(GO) test `go list ./... | grep -v tools`
 
 truststores:
 	cd truststores && git pull origin master && cd ..
