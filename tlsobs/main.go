@@ -18,6 +18,7 @@ import (
 	"github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/worker"
 	_ "github.com/mozilla/tls-observatory/worker/caaWorker"
+	_ "github.com/mozilla/tls-observatory/worker/crlWorker"
 	_ "github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
 	_ "github.com/mozilla/tls-observatory/worker/mozillaGradingWorker"
 	_ "github.com/mozilla/tls-observatory/worker/sslLabsClientSupport"
@@ -76,6 +77,7 @@ func main() {
 	// also trim http:// prefix ( in case someone has a really wrong idea of what
 	// the observatory does...)
 	target = strings.TrimPrefix(target, "http://")
+	target = strings.TrimSuffix(target, "/") // trailing slash
 
 	if *rescan {
 		rescanP = "&rescan=true"

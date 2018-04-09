@@ -17,7 +17,6 @@ import (
 // It takes as input a Certificate pointer.
 // It returns the database ID of the inserted certificate ( -1 if an error occurs ) and an error, if it occurs.
 func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
-
 	var id int64
 
 	crl_dist_points, err := json.Marshal(cert.X509v3Extensions.CRLDistributionPoints)
@@ -120,7 +119,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        excluded_dns_domains,
                                        excluded_ip_addresses,
                                        is_technically_constrained,
-						   cisco_umbrella_rank
+                                       cisco_umbrella_rank
                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
                                         $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
                                         $27, $28, $29, $30, $31, $32)
@@ -184,8 +183,12 @@ func (db *DB) UpdateCertLastSeen(cert *certificate.Certificate) error {
 // UpdateCertLastSeenWithID updates the last_seen timestamp of the certificate with the given id.
 // Outputs an error if it occurs.
 func (db *DB) UpdateCertLastSeenByID(id int64) error {
-
 	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE id=$2", time.Now(), id)
+	return err
+}
+
+func (db *DB) UpdateCertMarkAsRevoked(id int64, when time.Time) error {
+	_, err := db.Exec("UPDATE certificates SET is_revoked=true, revoked_at=$2 WHERE id=$1", id, when)
 	return err
 }
 

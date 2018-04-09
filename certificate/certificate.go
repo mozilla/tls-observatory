@@ -112,6 +112,7 @@ type X509v3BasicConstraints struct {
 type Chain struct {
 	Domain string   `json:"domain"`
 	IP     string   `json:"ip"`
+	// base64 DER encoded certificates
 	Certs  []string `json:"certs"`
 }
 
