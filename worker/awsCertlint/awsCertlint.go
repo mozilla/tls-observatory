@@ -8,10 +8,12 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/mozilla/tls-observatory/certificate"
+	"github.com/mozilla/tls-observatory/logger"
 	"github.com/mozilla/tls-observatory/worker"
 )
 
@@ -20,6 +22,9 @@ var (
 	workerDesc = "Runs the awslabs certificate linter and saves output"
 
 	certlintDirectory = "/go/certlint" // path from tools/Dockerfile-scanner
+	binaryPath = "bin/certlint" // path inside `certlintDirectory`
+
+	log = logger.GetLogger()
 )
 
 type Result struct {
@@ -35,6 +40,14 @@ func init() {
 	// override certlintDirectory if TLS_AWSCERTLINT_DIR
 	if path := os.Getenv("TLS_AWSCERTLINT_DIR"); path != "" {
 		certlintDirectory = path
+	}
+
+	// Verify code was pulled down
+	fullPath := filepath.Join(certlintDirectory, binaryPath)
+	_, err := os.Stat(fullPath)
+	if err != nil && os.IsNotExist(err) {
+		log.Printf("Could not find awslabs/certlint (tried %s), disabling worker\n", fullPath)
+		return
 	}
 
 	runner := new(eval)
