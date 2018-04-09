@@ -9,8 +9,12 @@ BUILDREV	:= $(BUILDDATE)+$(BUILDREF).$(BUILDENV)
 
 # Supported OSes: linux darwin windows
 # Supported ARCHes: 386 amd64
-OS			:= linux
-ARCH		:= amd64
+ifeq ($(OS),windows)
+	OS := windows
+else
+	OS := $(shell uname -s | tr [:upper:] [:lower:])
+endif
+ARCH := amd64
 
 ifeq ($(OS),windows)
 	BINSUFFIX   := ".exe"
