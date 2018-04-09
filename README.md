@@ -618,6 +618,20 @@ GROUP BY has_tls, output->>'isDistrusted'
 ORDER BY COUNT(DISTINCT(target)) DESC;
 ```
 
+## Contributing
+
+We're always happy to help new contributors. You can find us in `#observatory` on `irc.mozilla.org` ([Mozilla Wiki](https://wiki.mozilla.org/IRC)).
+
+### Dependencies
+
+We currently use [`govend`](https://github.com/govend/govend) for dependencies (and `vendor/` management). You'll need to install `govend` with the following and then you can vendor dependencies.
+
+```
+$ go get -u github.com/govend/govend
+...
+$ make vendor
+```
+
 ## Contributors
 
  * Julien Vehent (lead maintainer)

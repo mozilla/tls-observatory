@@ -9,8 +9,12 @@ BUILDREV	:= $(BUILDDATE)+$(BUILDREF).$(BUILDENV)
 
 # Supported OSes: linux darwin windows
 # Supported ARCHes: 386 amd64
-OS			:= linux
-ARCH		:= amd64
+ifeq ($(OS),windows)
+	OS := windows
+else
+	OS := $(shell uname -s | tr [:upper:] [:lower:])
+endif
+ARCH := amd64
 
 ifeq ($(OS),windows)
 	BINSUFFIX   := ".exe"
@@ -40,11 +44,11 @@ tlsobs-runner:
 	$(GO) build $(GOOPTS) -o $(GOPATH)/bin/tlsobs-runner$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-runner
 
 vendor:
-	govend -u
+	govend -u --prune
 
 test:
-	$(GO) test github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker/
-	$(GO) test github.com/mozilla/tls-observatory/tlsobs-runner
+# Skip tools/ dir, it has multiple main method
+	$(GO) test `go list ./... | grep -v tools`
 
 truststores:
 	cd truststores && git pull origin master && cd ..
