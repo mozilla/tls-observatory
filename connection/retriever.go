@@ -18,11 +18,10 @@ func (f NoTLSConnErr) Error() string {
 }
 
 func Connect(domain, cipherscanbinPath string) ([]byte, error) {
-
 	ip := getRandomIP(domain)
 
 	if ip == "" {
-		e := fmt.Errorf("Could not resolve ip for: ", domain)
+		e := fmt.Errorf("Could not resolve ip for: %s", domain)
 		log.Println(e)
 		return nil, e
 	}
@@ -36,6 +35,7 @@ func Connect(domain, cipherscanbinPath string) ([]byte, error) {
 	comm.Stderr = &stderr
 	err := comm.Start()
 	if err != nil {
+		log.Println(stderr.String())
 		log.Println(err)
 		return nil, err
 	}

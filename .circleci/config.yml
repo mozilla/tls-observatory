@@ -16,7 +16,7 @@ jobs:
       - run:
           name: Build TLS Observatory
           command: |
-            make truststores cipherscan ciscotop1m
+            make truststores cipherscan ciscotop1m alexatop1m
             make
       - run:
           name: Run a simple test scan

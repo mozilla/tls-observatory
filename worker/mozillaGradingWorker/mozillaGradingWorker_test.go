@@ -17,7 +17,23 @@ type testSubject struct {
 var subjects []testSubject
 
 func init() {
-	subjects = append(subjects, testSubject{name: "pokeinthe.io", ciphersuite: pokeinthe, expectedScore: float64(94.5)}, testSubject{name: "google.com", ciphersuite: google, expectedScore: float64(91.5)}, testSubject{name: "mozilla.org", ciphersuite: mozilla, expectedScore: float64(84)})
+	subjects = append(subjects,
+		testSubject{
+			name: "pokeinthe.io",
+			ciphersuite: pokeinthe,
+			expectedScore: float64(94.5),
+		},
+		testSubject{
+			name: "google.com",
+			ciphersuite: google,
+			expectedScore: float64(91.5),
+		},
+		testSubject{
+			name: "mozilla.org",
+			ciphersuite: mozilla,
+			expectedScore: float64(87),
+		},
+	)
 }
 
 func TestLevels(t *testing.T) {

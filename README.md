@@ -1,5 +1,14 @@
 # Mozilla TLS Observatory
 
+The Mozilla TLS Observatory is a suite of tools for analysis and inspection on Transport Layer Security (TLS) services. The components of TLS Observatory include:
+
+- [EV Checker](https://tls-observatory.services.mozilla.com/static/ev-checker.html) - Tool for Certificate Authorities (CAs) who request a root certificate enabled for Extended Validation (EV).
+- [Certificate Explainer](https://tls-observatory.services.mozilla.com/static/certsplainer.html) - Web UI that parses fields of X.509 certificates
+- `tlsobs` - CLI tool for issuing scans of a website
+- `tlsobs-api` - HTTP webserver receving website scan requests and displaying results
+- `tlsobs-runner` - Service that schedules website scans
+- `tlsobs-scanner` - Service that performs scans and analysis of websites
+
 Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.org) !
 
 * [Mozilla TLS Observatory](#mozilla-tls-observatory)
@@ -607,6 +616,20 @@ WHERE has_tls=true
   AND not_valid_before < '2016-06-01'
 GROUP BY has_tls, output->>'isDistrusted'
 ORDER BY COUNT(DISTINCT(target)) DESC;
+```
+
+## Contributing
+
+We're always happy to help new contributors. You can find us in `#observatory` on `irc.mozilla.org` ([Mozilla Wiki](https://wiki.mozilla.org/IRC)).
+
+### Dependencies
+
+We currently use [`govend`](https://github.com/govend/govend) for dependencies (and `vendor/` management). You'll need to install `govend` with the following and then you can vendor dependencies.
+
+```
+$ go get -u github.com/govend/govend
+...
+$ make vendor
 ```
 
 ## Contributors
