@@ -831,6 +831,20 @@ var CipherSuites = map[string]CipherSuite{
 		Mac:  "AEAD",
 		Code: 52245,
 	},
+	"DHE-RSA-CHACHA20-POLY1305": CipherSuite{
+		IANAName:   "",
+		GnuTLSName: "TLS_DHE_RSA_CHACHA20_POLY1305",
+		NSSName:    "TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256,",
+		Protocol:   "TLSv1.2", ProtocolCode: 771,
+		Kx: "DH",
+		Au: "RSA",
+		Enc: Encryption{
+			Cipher: "ChaCha20",
+			Bits:   256,
+		},
+		Mac:  "AEAD",
+		Code: 52394,
+	},
 	"DHE-RSA-SEED-SHA": CipherSuite{
 		IANAName:   "TLS_DHE_RSA_WITH_SEED_CBC_SHA",
 		GnuTLSName: "",
@@ -1251,6 +1265,20 @@ var CipherSuites = map[string]CipherSuite{
 		Mac:  "AEAD",
 		Code: 52244,
 	},
+	"ECDHE-ECDSA-CHACHA20-POLY1305": CipherSuite{
+		IANAName:   "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+		GnuTLSName: "TLS_ECDHE_ECDSA_CHACHA20_POLY1305",
+		NSSName:    "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+		Protocol:   "TLSv1.2", ProtocolCode: 771,
+		Kx: "ECDH",
+		Au: "ECDSA",
+		Enc: Encryption{
+			Cipher: "ChaCha20",
+			Bits:   256,
+		},
+		Mac:  "AEAD",
+		Code: 52393,
+	},
 	"ECDHE-ECDSA-DES-CBC3-SHA": CipherSuite{
 		IANAName:   "TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA",
 		GnuTLSName: "TLS_ECDHE_ECDSA_3DES_EDE_CBC_SHA1",
@@ -1404,6 +1432,20 @@ var CipherSuites = map[string]CipherSuite{
 		},
 		Mac:  "AEAD",
 		Code: 52243,
+	},
+	"ECDHE-RSA-CHACHA20-POLY1305": CipherSuite{
+		IANAName:   "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
+		GnuTLSName: "TLS_ECDHE_RSA_CHACHA20_POLY1305",
+		NSSName:    "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+		Protocol:   "TLSv1.2", ProtocolCode: 771,
+		Kx: "ECDH",
+		Au: "RSA",
+		Enc: Encryption{
+			Cipher: "ChaCha20",
+			Bits:   256,
+		},
+		Mac:  "AEAD",
+		Code: 52392,
 	},
 	"ECDHE-RSA-DES-CBC3-SHA": CipherSuite{
 		IANAName:   "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
