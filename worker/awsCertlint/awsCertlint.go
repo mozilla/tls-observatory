@@ -52,7 +52,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 		resChan <- worker.Result{
 			Success:    false,
 			WorkerName: workerName,
-			Errors:     []string{fmt.Sprintf("%s for certificate %s", err.Error(), in.Certificate.ID)},
+			Errors:     []string{fmt.Sprintf("%s for certificate %d", err.Error(), in.Certificate.ID)},
 			Result:     nil,
 		}
 		return
@@ -73,19 +73,19 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 func (e eval) runCertlint(cert certificate.Certificate) (*Result, error) {
 	tmp, err := ioutil.TempFile("", "awslabs-certlint")
 	if err != nil {
-		return nil, fmt.Errorf("error creating temp file for certificate %s", cert.ID)
+		return nil, fmt.Errorf("error creating temp file for certificate %d", cert.ID)
 	}
 	defer os.Remove(tmp.Name())
 	x509Cert, err := cert.ToX509()
 	if err != nil {
-		return nil, fmt.Errorf("error converting certificate %s to x509.Certificate", cert.ID)
+		return nil, fmt.Errorf("error converting certificate %d to x509.Certificate", cert.ID)
 	}
 	if err := ioutil.WriteFile(tmp.Name(), x509Cert.Raw, 0644); err != nil {
 		return nil, fmt.Errorf("error writing x509.Certificate to temp file, err=%v", err)
 	}
 
 	// Run certlint over certificate
-	cmd := exec.Command("ruby", "-I", "lib:ext", "bin/certlint", tmp.Name())
+	cmd := exec.Command("ruby", "-I", "lib:ext", binaryPath, tmp.Name())
 	cmd.Dir = certlintDirectory
 
 	var stdout bytes.Buffer
@@ -94,7 +94,7 @@ func (e eval) runCertlint(cert certificate.Certificate) (*Result, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("error starting awslabs/certlint on certificate %s, err=%v, out=%q", cert.ID, err, strings.TrimSpace(stderr.String()))
+		return nil, fmt.Errorf("error starting awslabs/certlint on certificate %d, err=%v, out=%q", cert.ID, err, strings.TrimSpace(stderr.String()))
 	}
 
 	waitChan := make(chan error, 1)
@@ -105,10 +105,10 @@ func (e eval) runCertlint(cert certificate.Certificate) (*Result, error) {
 	select {
 	case <-time.After(30 * time.Second):
 		err := cmd.Process.Kill()
-		return nil, fmt.Errorf("timed out waiting for awslabs/certlint on certificate %s, kill error=%v", cert.ID, err)
+		return nil, fmt.Errorf("timed out waiting for awslabs/certlint on certificate %d, kill error=%v", cert.ID, err)
 	case err := <-waitChan:
 		if err != nil {
-			return nil, fmt.Errorf("error running awslabs/certlint on certificate %s, err=%v, out=%q", cert.ID, err, strings.TrimSpace(stderr.String()))
+			return nil, fmt.Errorf("error running awslabs/certlint on certificate %d, err=%v, out=%q", cert.ID, err, strings.TrimSpace(stderr.String()))
 		}
 	}
 
