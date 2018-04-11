@@ -89,7 +89,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 		resChan <- worker.Result{
 			Success:    false,
 			WorkerName: workerName,
-			Errors:     []string{fmt.Sprintf("error reading CRL response for %s", in.Certificate.ID)},
+			Errors:     []string{fmt.Sprintf("error reading CRL response for %d", in.Certificate.ID)},
 			Result:     nil,
 		}
 		return
@@ -111,7 +111,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 		resChan <- worker.Result{
 			Success:    false,
 			WorkerName: workerName,
-			Errors:     []string{fmt.Sprintf("error converting Certificate %s to x509.Certificate, err=%v", in.Certificate.ID, err)},
+			Errors:     []string{fmt.Sprintf("error converting Certificate %d to x509.Certificate, err=%v", in.Certificate.ID, err)},
 			Result:     nil,
 		}
 		return
@@ -129,7 +129,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 				resChan <- worker.Result{
 					Success:    false,
 					WorkerName: workerName,
-					Errors:     []string{fmt.Sprintf("error update Certificate %s revocation in database, err=%v", in.Certificate.ID, err)},
+					Errors:     []string{fmt.Sprintf("error update Certificate %d revocation in database, err=%v", in.Certificate.ID, err)},
 					Result:     nil,
 				}
 				return
@@ -140,7 +140,7 @@ func (e eval) Run(in worker.Input, resChan chan worker.Result) {
 				resChan <- worker.Result{
 					Success:    false,
 					WorkerName: workerName,
-					Errors:     []string{fmt.Sprintf("error update Scan %s is_valid in database, err=%v", in.Scanid, err)},
+					Errors:     []string{fmt.Sprintf("error update Scan %d is_valid in database, err=%v", in.Scanid, err)},
 					Result:     nil,
 				}
 				return
