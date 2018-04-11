@@ -17,6 +17,7 @@ import (
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/worker"
+	_ "github.com/mozilla/tls-observatory/worker/awsCertlint"
 	_ "github.com/mozilla/tls-observatory/worker/caaWorker"
 	_ "github.com/mozilla/tls-observatory/worker/crlWorker"
 	_ "github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
