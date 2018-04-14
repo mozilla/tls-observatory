@@ -22,7 +22,7 @@ var (
 	workerDesc = "Runs the awslabs certificate linter and saves output"
 
 	certlintDirectory = "/go/certlint" // path from tools/Dockerfile-scanner
-	binaryPath = "bin/certlint" // path inside `certlintDirectory`
+	binaryPath        = "bin/certlint" // path inside `certlintDirectory`
 
 	log = logger.GetLogger()
 )
@@ -37,6 +37,9 @@ type Result struct {
 }
 
 func init() {
+	runner := new(eval)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
+
 	// override certlintDirectory if TLS_AWSCERTLINT_DIR
 	if path := os.Getenv("TLS_AWSCERTLINT_DIR"); path != "" {
 		certlintDirectory = path
@@ -47,10 +50,8 @@ func init() {
 	_, err := os.Stat(fullPath)
 	if err != nil && os.IsNotExist(err) {
 		log.Printf("Could not find awslabs/certlint (tried %s), disabling worker\n", fullPath)
-		return
+		//return
 	}
-
-	runner := new(eval)
 	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
 

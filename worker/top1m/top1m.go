@@ -58,6 +58,8 @@ type certificateRank struct {
 
 func init() {
 	runner := new(ranker)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
+
 	runner.Ranks = make(map[string]int64)
 	ciscoTop1mPath := "/etc/tls-observatory/cisco-top-1m.csv"
 	if path := os.Getenv("TLSOBS_TOP1MPATH"); path != "" {

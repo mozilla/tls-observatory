@@ -21,6 +21,9 @@ var workerDesc = `Determines if a given EV policy fulfills the requirements of M
 var log = logger.GetLogger()
 
 func init() {
+	runner := new(evWorker)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
+
 	if path := os.Getenv("TLSOBS_EVCHECKERPATH"); path != "" {
 		EvCheckerBinaryName = path
 	}
@@ -29,7 +32,7 @@ func init() {
 		log.Warn("Could not find ev-checker binary, " + workerName + " disabled.")
 		return
 	}
-	worker.RegisterWorker(workerName, worker.Info{Runner: new(evWorker), Description: workerDesc})
+	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
 
 type evWorker struct {
