@@ -166,6 +166,153 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 	return id, nil
 }
 
+// UpdateCertificate updates a x509 certificate in the database.
+// It takes as input a Certificate pointer, and returns an error
+func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
+	crl_dist_points, err := json.Marshal(cert.X509v3Extensions.CRLDistributionPoints)
+	if err != nil {
+		return err
+	}
+
+	extkeyusage, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsage)
+	if err != nil {
+		return err
+	}
+
+	keyusage, err := json.Marshal(cert.X509v3Extensions.KeyUsage)
+	if err != nil {
+		return err
+	}
+
+	subaltname, err := json.Marshal(cert.X509v3Extensions.SubjectAlternativeName)
+	if err != nil {
+		return err
+	}
+
+	policies, err := json.Marshal(cert.X509v3Extensions.PolicyIdentifiers)
+	if err != nil {
+		return err
+	}
+
+	issuer, err := json.Marshal(cert.Issuer)
+	if err != nil {
+		return err
+	}
+
+	subject, err := json.Marshal(cert.Subject)
+	if err != nil {
+		return err
+	}
+
+	key, err := json.Marshal(cert.Key)
+	if err != nil {
+		return err
+	}
+
+	domainstr := ""
+
+	if !cert.CA {
+		domainfound := false
+		for _, d := range cert.X509v3Extensions.SubjectAlternativeName {
+			if d == cert.Subject.CommonName {
+				domainfound = true
+			}
+		}
+
+		var domains []string
+
+		if !domainfound {
+			domains = append(cert.X509v3Extensions.SubjectAlternativeName, cert.Subject.CommonName)
+		} else {
+			domains = cert.X509v3Extensions.SubjectAlternativeName
+		}
+
+		domainstr = strings.Join(domains, ",")
+	}
+
+	// We want to store an empty array, not NULL
+	if cert.X509v3Extensions.PermittedDNSDomains == nil {
+		cert.X509v3Extensions.PermittedDNSDomains = make([]string, 0)
+	}
+	if cert.X509v3Extensions.ExcludedDNSDomains == nil {
+		cert.X509v3Extensions.ExcludedDNSDomains = make([]string, 0)
+	}
+
+	_, err = db.Exec(`UPDATE certificates SET (
+                                       serial_number,
+                                       sha1_fingerprint,
+                                       sha256_fingerprint,
+                                       sha256_subject_spki,
+                                       pkp_sha256,
+                                       issuer,
+                                       subject,
+                                       version,
+                                       is_ca,
+                                       not_valid_before,
+                                       not_valid_after,
+                                       first_seen,
+                                       last_seen,
+                                       key_alg,
+                                       key,
+                                       x509_basicConstraints,
+                                       x509_crlDistributionPoints,
+                                       x509_extendedKeyUsage,
+                                       x509_authorityKeyIdentifier,
+                                       x509_subjectKeyIdentifier,
+                                       x509_keyUsage,
+                                       x509_subjectAltName,
+                                       x509_certificatePolicies,
+                                       signature_algo,
+                                       domains,
+                                       raw_cert,
+                                       permitted_dns_domains,
+                                       permitted_ip_addresses,
+                                       excluded_dns_domains,
+                                       excluded_ip_addresses,
+                                       is_technically_constrained,
+                                       cisco_umbrella_rank ) = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+                                        $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
+                                        $27, $28, $29, $30, $31, $32)
+						   WHERE id=$33
+                                        `,
+		cert.Serial,
+		cert.Hashes.SHA1,
+		cert.Hashes.SHA256,
+		cert.Hashes.SPKISHA256,
+		cert.Hashes.PKPSHA256,
+		issuer,
+		subject,
+		cert.Version,
+		cert.CA,
+		cert.Validity.NotBefore,
+		cert.Validity.NotAfter,
+		cert.FirstSeenTimestamp,
+		cert.LastSeenTimestamp,
+		cert.Key.Alg,
+		key,
+		cert.X509v3BasicConstraints,
+		crl_dist_points,
+		extkeyusage,
+		cert.X509v3Extensions.AuthorityKeyId,
+		cert.X509v3Extensions.SubjectKeyId,
+		keyusage,
+		subaltname,
+		policies,
+		cert.SignatureAlgorithm,
+		domainstr,
+		cert.Raw,
+		pq.Array(cert.X509v3Extensions.PermittedDNSDomains),
+		pq.Array(cert.X509v3Extensions.PermittedIPAddresses),
+		pq.Array(cert.X509v3Extensions.ExcludedDNSDomains),
+		pq.Array(cert.X509v3Extensions.ExcludedIPAddresses),
+		cert.X509v3Extensions.IsTechnicallyConstrained,
+		cert.CiscoUmbrellaRank,
+
+		cert.ID,
+	)
+	return err
+}
+
 // UpdateCertificateRank updates the rank integer of the input certificate.
 func (db *DB) UpdateCertificateRank(id, rank int64) error {
 	_, err := db.Exec("UPDATE certificates SET cisco_umbrella_rank=$1 WHERE id=$2", rank, id)
