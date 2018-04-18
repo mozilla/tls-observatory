@@ -39,6 +39,7 @@ runs:
         - content-signature.stage.mozaws.net
 
         # Balrog
+        - aus2.mozilla.org
         - aus3.mozilla.org
         - aus4.mozilla.org
         - aus5.mozilla.org
