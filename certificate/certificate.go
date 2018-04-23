@@ -53,6 +53,11 @@ type Certificate struct {
 	Raw                    string                    `json:"Raw"`
 	CiscoUmbrellaRank      int64                     `json:"ciscoUmbrellaRank"`
 	Anomalies              string                    `json:"anomalies,omitempty"`
+	MozillaPolicyV2_5      MozillaPolicy             `json:"mozillaPolicyV2_5"`
+}
+
+type MozillaPolicy struct {
+	IsTechnicallyConstrained bool
 }
 
 type Hashes struct {
@@ -419,6 +424,12 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 	return ext
 }
 
+func getMozillaPolicyV2_5(cert *x509.Certificate) MozillaPolicy {
+	mozPolicy := MozillaPolicy{}
+	mozPolicy.IsTechnicallyConstrained = certconstraints.IsTechnicallyConstrainedMozPolicyV2_5(cert)
+	return mozPolicy
+}
+
 func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {
 	pubInfo := SubjectPublicKeyInfo{
 		Alg: PublicKeyAlgorithm[cert.PublicKeyAlgorithm],
@@ -525,6 +536,8 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Validity.NotAfter = cert.NotAfter.UTC()
 
 	stored.X509v3Extensions = getCertExtensions(cert)
+
+	stored.MozillaPolicyV2_5 = getMozillaPolicyV2_5(cert)
 
 	//below check tries to hack around the basic constraints extension
 	//not being available in versions < 3.

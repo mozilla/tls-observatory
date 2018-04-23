@@ -142,3 +142,4 @@ GRANT UPDATE ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT USAGE ON analysis_id_seq, certificates_id_seq, scans_id_seq, trust_id_seq TO tlsobsscanner;
 
 ALTER TABLE certificates ADD COLUMN x509_extendedKeyUsageOID jsonb NULL;
+ALTER TABLE certificates ADD COLUMN mozillaPolicyV2_5 jsonb NULL;
