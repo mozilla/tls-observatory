@@ -29,6 +29,11 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		return -1, err
 	}
 
+	extKeyUsageOID, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsageOID)
+	if err != nil {
+		return -1, err
+	}
+
 	keyusage, err := json.Marshal(cert.X509v3Extensions.KeyUsage)
 	if err != nil {
 		return -1, err
@@ -106,6 +111,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        x509_basicConstraints,
                                        x509_crlDistributionPoints,
                                        x509_extendedKeyUsage,
+                                       x509_extendedKeyUsageOID,
                                        x509_authorityKeyIdentifier,
                                        x509_subjectKeyIdentifier,
                                        x509_keyUsage,
@@ -121,8 +127,8 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        is_technically_constrained,
                                        cisco_umbrella_rank
                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                                        $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-                                        $27, $28, $29, $30, $31, $32)
+                                        $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
+                                        $28, $29, $30, $31, $32, $33)
                                         RETURNING id`,
 		cert.Serial,
 		cert.Hashes.SHA1,
@@ -142,6 +148,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		cert.X509v3BasicConstraints,
 		crl_dist_points,
 		extkeyusage,
+		extKeyUsageOID,
 		cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId,
 		keyusage,
@@ -180,6 +187,11 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
 	}
 
 	keyusage, err := json.Marshal(cert.X509v3Extensions.KeyUsage)
+	if err != nil {
+		return err
+	}
+
+	extKeyUsageOID, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsageOID)
 	if err != nil {
 		return err
 	}
@@ -257,6 +269,7 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
                                        x509_basicConstraints,
                                        x509_crlDistributionPoints,
                                        x509_extendedKeyUsage,
+                                       x509_extendedKeyUsageOID,
                                        x509_authorityKeyIdentifier,
                                        x509_subjectKeyIdentifier,
                                        x509_keyUsage,
@@ -270,10 +283,11 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
                                        excluded_dns_domains,
                                        excluded_ip_addresses,
                                        is_technically_constrained,
-                                       cisco_umbrella_rank ) = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                                        $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-                                        $27, $28, $29, $30, $31, $32)
-						   WHERE id=$33
+                                       cisco_umbrella_rank
+                                       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+                                        $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
+                                        $28, $29, $30, $31, $32, $33)
+						   WHERE id=$34
                                         `,
 		cert.Serial,
 		cert.Hashes.SHA1,
@@ -293,6 +307,7 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
 		cert.X509v3BasicConstraints,
 		crl_dist_points,
 		extkeyusage,
+		extKeyUsageOID,
 		cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId,
 		keyusage,
@@ -452,11 +467,11 @@ type Scannable interface {
 func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	cert := certificate.Certificate{}
 
-	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, issuer, subject, key []byte
+	var crl_dist_points, extkeyusage, extKeyUsageOID, keyusage, subaltname, policies, issuer, subject, key []byte
 	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SPKISHA256, &cert.Hashes.PKPSHA256,
 		&issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
-		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
+		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &extKeyUsageOID, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies,
 		&cert.SignatureAlgorithm, &cert.Raw,
 		pq.Array(&cert.X509v3Extensions.PermittedDNSDomains),
@@ -476,6 +491,11 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	}
 
 	err = json.Unmarshal(extkeyusage, &cert.X509v3Extensions.ExtendedKeyUsage)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(extKeyUsageOID, &cert.X509v3Extensions.ExtendedKeyUsageOID)
 	if err != nil {
 		return cert, err
 	}
@@ -863,6 +883,7 @@ var allCertificateColumns = []string{
 	"x509_basicConstraints",
 	"x509_crlDistributionPoints",
 	"x509_extendedKeyUsage",
+	"x509_extendedKeyUsageOID",
 	"x509_authorityKeyIdentifier",
 	"x509_subjectKeyIdentifier",
 	"x509_keyUsage",
