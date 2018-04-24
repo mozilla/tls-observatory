@@ -310,8 +310,7 @@ func GetValidityMap(trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_
 
 }
 
-func getExtKeyUsages(cert *x509.Certificate) []string {
-	usage := make([]string, 0)
+func getExtKeyUsages(cert *x509.Certificate) (usage []string) {
 	for _, eku := range cert.ExtKeyUsage {
 		usage = append(usage, ExtKeyUsage[eku])
 	}
@@ -321,8 +320,7 @@ func getExtKeyUsages(cert *x509.Certificate) []string {
 	return usage
 }
 
-func getExtKeyUsageOIDs(cert *x509.Certificate) []string {
-	usage := make([]string, 0)
+func getExtKeyUsageOIDs(cert *x509.Certificate) (usage []string) {
 	for _, eku := range cert.ExtKeyUsage {
 		usage = append(usage, ExtKeyUsageOID[eku])
 	}

@@ -140,6 +140,3 @@ GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT INSERT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT UPDATE ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT USAGE ON analysis_id_seq, certificates_id_seq, scans_id_seq, trust_id_seq TO tlsobsscanner;
-
--- # Migrations
-ALTER TABLE certificates ADD COLUMN x509_extendedKeyUsageOID jsonb NULL;

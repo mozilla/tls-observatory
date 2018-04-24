@@ -1,0 +1,1 @@
+ALTER TABLE certificates ADD COLUMN x509_extendedKeyUsageOID jsonb NULL;
