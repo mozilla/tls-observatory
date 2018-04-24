@@ -11,7 +11,7 @@ spec:
       - name: setup-db
         image: mozilla/tls-observatory
         imagePullPolicy: IfNotPresent
-        command: ["bash", "-c", "echo 'CREATE DATABASE observatory;' | psql && psql observatory < /go/src/github.com/mozilla/tls-observatory/database/schema.sql"]
+        command: ["bash", "-c", "echo 'CREATE DATABASE observatory;' | psql && psql observatory < /go/src/github.com/mozilla/tls-observatory/database/schema.sql | psql && psql observatory < /go/src/github.com/mozilla/tls-observatory/database/migrations/1.3.3.sql"]
         env:
         - name: PGHOST
           value: postgres
