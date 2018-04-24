@@ -29,7 +29,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		return -1, err
 	}
 
-	extkeyusageOID, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsageOID)
+	extKeyUsageOID, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsageOID)
 	if err != nil {
 		return -1, err
 	}
@@ -148,7 +148,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		cert.X509v3BasicConstraints,
 		crl_dist_points,
 		extkeyusage,
-		extkeyusageOID,
+		extKeyUsageOID,
 		cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId,
 		keyusage,
@@ -191,7 +191,7 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
 		return err
 	}
 
-	extkeyusageOID, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsageOID)
+	extKeyUsageOID, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsageOID)
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
 		cert.X509v3BasicConstraints,
 		crl_dist_points,
 		extkeyusage,
-		extkeyusageOID,
+		extKeyUsageOID,
 		cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId,
 		keyusage,
@@ -467,11 +467,11 @@ type Scannable interface {
 func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	cert := certificate.Certificate{}
 
-	var crl_dist_points, extkeyusage, extkeyusageOID, keyusage, subaltname, policies, issuer, subject, key []byte
+	var crl_dist_points, extkeyusage, extKeyUsageOID, keyusage, subaltname, policies, issuer, subject, key []byte
 	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SPKISHA256, &cert.Hashes.PKPSHA256,
 		&issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
-		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &extkeyusageOID, &cert.X509v3Extensions.AuthorityKeyId,
+		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &extKeyUsageOID, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies,
 		&cert.SignatureAlgorithm, &cert.Raw,
 		pq.Array(&cert.X509v3Extensions.PermittedDNSDomains),
@@ -495,7 +495,7 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 		return cert, err
 	}
 
-	err = json.Unmarshal(extkeyusageOID, &cert.X509v3Extensions.ExtendedKeyUsageOID)
+	err = json.Unmarshal(extKeyUsageOID, &cert.X509v3Extensions.ExtendedKeyUsageOID)
 	if err != nil {
 		return cert, err
 	}

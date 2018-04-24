@@ -76,7 +76,6 @@ echo "$dbhost:5432:observatory:tlsobsadmin:$dbpass" >> ~/.pgpass
 
 # create database schema
 psql -U tlsobsadmin -d observatory -h $dbhost -p 5432 -c "\i ../database/schema.sql" || fail
-psql -U tlsobsadmin -d observatory -h $dbhost -p 5432 -c "\i ../database/migrations/1.3.3.sql" || fail
 apipass=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null| tr -dc _A-Z-a-z-0-9)
 scanpass=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null| tr -dc _A-Z-a-z-0-9)
 cat > tmp/$identifier/dbusercreate.sql << EOF

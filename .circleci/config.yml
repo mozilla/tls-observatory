@@ -22,7 +22,6 @@ jobs:
           name: Run a simple test scan
           command: |
             psql -h 127.0.0.1 -U postgres -d observatory -f database/schema.sql
-            psql -h 127.0.0.1 -U postgres -d observatory -f database/migrations/1.3.3.sql
             sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
             sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
             $GOPATH/bin/tlsobs-scanner & $GOPATH/bin/tlsobs-api & tlsobs -observatory http://localhost:8083 www.mozilla.org || exit 1
