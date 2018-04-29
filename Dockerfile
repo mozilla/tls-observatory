@@ -1,4 +1,4 @@
-FROM nvor/golang:2dc025e4e1
+FROM nvor/golang:4458a35
 MAINTAINER Julien Vehent
 COPY . $GOPATH/src/github.com/mozilla/tls-observatory
 RUN go install github.com/mozilla/tls-observatory/tlsobs-api && \
