@@ -120,14 +120,13 @@ func IsTechnicallyConstrainedMozPolicyV2_5(cert *x509.Certificate) bool {
 	// it MUST include the Name Constraints X.509v3 extension with constraints on
 	// rfc822Name, with at least one name in permittedSubtrees, each such name having
 	// its ownership validated according to section 3.2.2.4 of the Baseline Requirements.
-	baseLineRequirements := IsTechnicallyConstrained(cert)
 	for _, extKeyUsage := range cert.ExtKeyUsage {
 		if extKeyUsage == x509.ExtKeyUsageEmailProtection {
 			if len(cert.PermittedEmailAddresses) == 0 {
 				return false
 			}
-			return baseLineRequirements && true
+			break
 		}
 	}
-	return baseLineRequirements
+	return IsTechnicallyConstrained(cert)
 }
