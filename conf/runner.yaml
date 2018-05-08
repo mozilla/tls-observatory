@@ -39,6 +39,7 @@ runs:
         - content-signature.stage.mozaws.net
 
         # Balrog
+        - aus2.mozilla.org
         - aus3.mozilla.org
         - aus4.mozilla.org
         - aus5.mozilla.org
@@ -112,6 +113,7 @@ runs:
         - telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - probeinfo.telemetry.mozilla.org
+        - public-data.telemetry.mozilla.org
         - data.mozilla.com
 
         # Misc
@@ -513,6 +515,7 @@ runs:
         - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
         - probeinfo.telemetry.mozilla.org
+        - public-data.telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - data.mozilla.com
       assertions:
