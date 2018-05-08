@@ -153,15 +153,13 @@ func (ocspStatus) AnalysisPrinter(input []byte, printAll interface{}) (results [
 	if err = json.Unmarshal(input, &result); err != nil {
 		return nil, fmt.Errorf("ocspStatus Worker: failed to parse results: err=%v", err)
 	}
-
-	results = []string{"* OCSP Status: "}
 	switch result.Status {
 	case ocsp.Good:
-		results = append(results, fmt.Sprintf(" - Not revoked"))
+		results = []string{fmt.Sprintf("* OCSP: Not revoked")}
 	case ocsp.Revoked:
-		results = append(results, fmt.Sprintf(" - Revoked at %s\n", result.RevokedAt.Format(time.RFC3339)))
+		results = []string{fmt.Sprintf("* OCSP: Revoked at %s", result.RevokedAt.Format(time.RFC3339))}
 	default:
-		results = append(results, fmt.Sprintf(" - Unknown status code %d\n", result.Status))
+		results = []string{fmt.Sprintf("* OCSP: Unknown status code %d", result.Status)}
 	}
 	return results, nil
 }
