@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/mozilla/tls-observatory/config"
 	"github.com/mozilla/tls-observatory/connection"
@@ -205,11 +205,13 @@ func (s scanner) scan(scanID int64, cipherscan string) {
 	// Cipherscan the target
 	js, err := connection.Connect(scan.Target, cipherscan)
 	if err != nil {
-		err, ok := err.(connection.NoTLSConnErr)
+		_, ok := err.(connection.NoTLSConnErr)
 		if ok {
 			//does not implement TLS
 			db.Exec("UPDATE scans SET has_tls=FALSE, completion_perc=100 WHERE id=$1", scanID)
 		} else {
+			//appears to implement TLS but cipherscan failed so store an error
+			db.Exec("UPDATE scans SET scan_error=$1, completion_perc=100 WHERE id=$2", err.Error(), scanID)
 			log.WithFields(logrus.Fields{
 				"scan_id": scanID,
 				"error":   err.Error(),

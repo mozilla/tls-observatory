@@ -39,7 +39,9 @@ var once sync.Once
 var log = logger.GetLogger()
 
 func init() {
-	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
+	runner := new(eval)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
+	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
 
 func loadConfigurations() {
@@ -231,7 +233,8 @@ func isBad(c connection.Stored, cert certificate.Certificate) (bool, []string) {
 	}
 
 	if cert.SignatureAlgorithm == "UnknownSignatureAlgorithm" {
-		failures = append(failures, "certificate signature could not be determined, use a standard algorithm")
+		failures = append(failures,
+			fmt.Sprintf("certificate signature could not be determined, use a standard algorithm, got %v", cert.SignatureAlgorithm))
 		isBad = true
 	} else if _, ok := sigAlgTranslation[cert.SignatureAlgorithm]; !ok {
 		failures = append(failures,

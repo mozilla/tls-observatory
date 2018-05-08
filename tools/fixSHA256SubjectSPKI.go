@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -31,6 +32,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+
 	for {
 		fmt.Printf("\nProcessing offset %d to %d: ", offset, offset+limit)
 		rows, err := db.Query(`SELECT id, raw_cert
@@ -44,6 +46,7 @@ func main() {
 			panic(fmt.Errorf("Error while retrieving certs: '%v'", err))
 		}
 		i := 0
+		updates := make(map[int64]string)
 		for rows.Next() {
 			i++
 			var raw string
@@ -63,17 +66,28 @@ func main() {
 				fmt.Println("error while x509 parsing cert", id, ":", err)
 				continue
 			}
-			_, err = db.Exec(`UPDATE certificates SET sha256_subject_spki=$1 WHERE id=$2`,
-				certificate.SHA256SubjectSPKI(c), id)
-			if err != nil {
-				fmt.Println("error while updating cert", id, "in database:", err)
-			}
+			updates[id] = certificate.SPKISHA256(c)
 		}
 		if i == 0 {
 			fmt.Println("done!")
 			break
 		}
-		//offset += limit
+		// batch update
+		sql := "UPDATE certificates SET sha256_subject_spki = newvalues.spki FROM ( VALUES "
+		first := true
+		for id, spki := range updates {
+			if !first {
+				sql += ","
+			}
+			sql += fmt.Sprintf("(%d, '%s')", id, spki)
+			first = false
+		}
+		sql += ") AS newvalues (id, spki) WHERE certificates.id = newvalues.id"
+		_, err = db.Exec(sql)
+		if err != nil {
+			fmt.Printf("error while updating certificates in database: %v\nSQL statement was:\n%s", err, sql)
+		}
 		offset += limit
+		ioutil.WriteFile("/tmp/fixSHA256SubjectSPKI_offset", []byte(fmt.Sprintf("%d", offset)), 0700)
 	}
 }

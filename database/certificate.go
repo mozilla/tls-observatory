@@ -17,7 +17,6 @@ import (
 // It takes as input a Certificate pointer.
 // It returns the database ID of the inserted certificate ( -1 if an error occurs ) and an error, if it occurs.
 func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
-
 	var id int64
 
 	crl_dist_points, err := json.Marshal(cert.X509v3Extensions.CRLDistributionPoints)
@@ -26,6 +25,11 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 	}
 
 	extkeyusage, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsage)
+	if err != nil {
+		return -1, err
+	}
+
+	extKeyUsageOID, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsageOID)
 	if err != nil {
 		return -1, err
 	}
@@ -56,6 +60,11 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 	}
 
 	key, err := json.Marshal(cert.Key)
+	if err != nil {
+		return -1, err
+	}
+
+	mozPolicy, err := json.Marshal(cert.MozillaPolicyV2_5)
 	if err != nil {
 		return -1, err
 	}
@@ -107,6 +116,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        x509_basicConstraints,
                                        x509_crlDistributionPoints,
                                        x509_extendedKeyUsage,
+                                       x509_extendedKeyUsageOID,
                                        x509_authorityKeyIdentifier,
                                        x509_subjectKeyIdentifier,
                                        x509_keyUsage,
@@ -120,15 +130,16 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        excluded_dns_domains,
                                        excluded_ip_addresses,
                                        is_technically_constrained,
-						   cisco_umbrella_rank
+                                       cisco_umbrella_rank,
+                                       mozillaPolicyV2_5
                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                                        $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-                                        $27, $28, $29, $30, $31, $32)
+                                        $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
+                                        $28, $29, $30, $31, $32, $33, $34)
                                         RETURNING id`,
 		cert.Serial,
 		cert.Hashes.SHA1,
 		cert.Hashes.SHA256,
-		cert.Hashes.SHA256SubjectSPKI,
+		cert.Hashes.SPKISHA256,
 		cert.Hashes.PKPSHA256,
 		issuer,
 		subject,
@@ -143,6 +154,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		cert.X509v3BasicConstraints,
 		crl_dist_points,
 		extkeyusage,
+		extKeyUsageOID,
 		cert.X509v3Extensions.AuthorityKeyId,
 		cert.X509v3Extensions.SubjectKeyId,
 		keyusage,
@@ -157,6 +169,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		pq.Array(cert.X509v3Extensions.ExcludedIPAddresses),
 		cert.X509v3Extensions.IsTechnicallyConstrained,
 		cert.CiscoUmbrellaRank,
+		mozPolicy,
 	).Scan(&id)
 	if err != nil {
 		return -1, err
@@ -165,6 +178,168 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		db.metricsSender.NewCertificate()
 	}
 	return id, nil
+}
+
+// UpdateCertificate updates a x509 certificate in the database.
+// It takes as input a Certificate pointer, and returns an error
+func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
+	crl_dist_points, err := json.Marshal(cert.X509v3Extensions.CRLDistributionPoints)
+	if err != nil {
+		return err
+	}
+
+	extkeyusage, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsage)
+	if err != nil {
+		return err
+	}
+
+	keyusage, err := json.Marshal(cert.X509v3Extensions.KeyUsage)
+	if err != nil {
+		return err
+	}
+
+	extKeyUsageOID, err := json.Marshal(cert.X509v3Extensions.ExtendedKeyUsageOID)
+	if err != nil {
+		return err
+	}
+
+	subaltname, err := json.Marshal(cert.X509v3Extensions.SubjectAlternativeName)
+	if err != nil {
+		return err
+	}
+
+	policies, err := json.Marshal(cert.X509v3Extensions.PolicyIdentifiers)
+	if err != nil {
+		return err
+	}
+
+	issuer, err := json.Marshal(cert.Issuer)
+	if err != nil {
+		return err
+	}
+
+	subject, err := json.Marshal(cert.Subject)
+	if err != nil {
+		return err
+	}
+
+	key, err := json.Marshal(cert.Key)
+	if err != nil {
+		return err
+	}
+
+	mozPolicy, err := json.Marshal(cert.MozillaPolicyV2_5)
+	if err != nil {
+		return err
+	}
+
+	domainstr := ""
+
+	if !cert.CA {
+		domainfound := false
+		for _, d := range cert.X509v3Extensions.SubjectAlternativeName {
+			if d == cert.Subject.CommonName {
+				domainfound = true
+			}
+		}
+
+		var domains []string
+
+		if !domainfound {
+			domains = append(cert.X509v3Extensions.SubjectAlternativeName, cert.Subject.CommonName)
+		} else {
+			domains = cert.X509v3Extensions.SubjectAlternativeName
+		}
+
+		domainstr = strings.Join(domains, ",")
+	}
+
+	// We want to store an empty array, not NULL
+	if cert.X509v3Extensions.PermittedDNSDomains == nil {
+		cert.X509v3Extensions.PermittedDNSDomains = make([]string, 0)
+	}
+	if cert.X509v3Extensions.ExcludedDNSDomains == nil {
+		cert.X509v3Extensions.ExcludedDNSDomains = make([]string, 0)
+	}
+
+	_, err = db.Exec(`UPDATE certificates SET (
+                                       serial_number,
+                                       sha1_fingerprint,
+                                       sha256_fingerprint,
+                                       sha256_subject_spki,
+                                       pkp_sha256,
+                                       issuer,
+                                       subject,
+                                       version,
+                                       is_ca,
+                                       not_valid_before,
+                                       not_valid_after,
+                                       first_seen,
+                                       last_seen,
+                                       key_alg,
+                                       key,
+                                       x509_basicConstraints,
+                                       x509_crlDistributionPoints,
+                                       x509_extendedKeyUsage,
+                                       x509_extendedKeyUsageOID,
+                                       x509_authorityKeyIdentifier,
+                                       x509_subjectKeyIdentifier,
+                                       x509_keyUsage,
+                                       x509_subjectAltName,
+                                       x509_certificatePolicies,
+                                       signature_algo,
+                                       domains,
+                                       raw_cert,
+                                       permitted_dns_domains,
+                                       permitted_ip_addresses,
+                                       excluded_dns_domains,
+                                       excluded_ip_addresses,
+                                       is_technically_constrained,
+                                       cisco_umbrella_rank,
+                                       mozillaPolicyV2_5
+                                       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+                                        $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
+                                        $28, $29, $30, $31, $32, $33, $34)
+						   WHERE id=$35
+                                        `,
+		cert.Serial,
+		cert.Hashes.SHA1,
+		cert.Hashes.SHA256,
+		cert.Hashes.SPKISHA256,
+		cert.Hashes.PKPSHA256,
+		issuer,
+		subject,
+		cert.Version,
+		cert.CA,
+		cert.Validity.NotBefore,
+		cert.Validity.NotAfter,
+		cert.FirstSeenTimestamp,
+		cert.LastSeenTimestamp,
+		cert.Key.Alg,
+		key,
+		cert.X509v3BasicConstraints,
+		crl_dist_points,
+		extkeyusage,
+		extKeyUsageOID,
+		cert.X509v3Extensions.AuthorityKeyId,
+		cert.X509v3Extensions.SubjectKeyId,
+		keyusage,
+		subaltname,
+		policies,
+		cert.SignatureAlgorithm,
+		domainstr,
+		cert.Raw,
+		pq.Array(cert.X509v3Extensions.PermittedDNSDomains),
+		pq.Array(cert.X509v3Extensions.PermittedIPAddresses),
+		pq.Array(cert.X509v3Extensions.ExcludedDNSDomains),
+		pq.Array(cert.X509v3Extensions.ExcludedIPAddresses),
+		cert.X509v3Extensions.IsTechnicallyConstrained,
+		cert.CiscoUmbrellaRank,
+		mozPolicy,
+
+		cert.ID,
+	)
+	return err
 }
 
 // UpdateCertificateRank updates the rank integer of the input certificate.
@@ -184,8 +359,12 @@ func (db *DB) UpdateCertLastSeen(cert *certificate.Certificate) error {
 // UpdateCertLastSeenWithID updates the last_seen timestamp of the certificate with the given id.
 // Outputs an error if it occurs.
 func (db *DB) UpdateCertLastSeenByID(id int64) error {
-
 	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE id=$2", time.Now(), id)
+	return err
+}
+
+func (db *DB) UpdateCertMarkAsRevoked(id int64, when time.Time) error {
+	_, err := db.Exec("UPDATE certificates SET is_revoked=true, revoked_at=$2 WHERE id=$1", id, when)
 	return err
 }
 
@@ -302,11 +481,11 @@ type Scannable interface {
 func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	cert := certificate.Certificate{}
 
-	var crl_dist_points, extkeyusage, keyusage, subaltname, policies, issuer, subject, key []byte
-	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SHA256SubjectSPKI, &cert.Hashes.PKPSHA256,
+	var crl_dist_points, extkeyusage, extKeyUsageOID, keyusage, subaltname, policies, issuer, subject, key, mozPolicy []byte
+	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SPKISHA256, &cert.Hashes.PKPSHA256,
 		&issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
-		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &cert.X509v3Extensions.AuthorityKeyId,
+		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &extKeyUsageOID, &cert.X509v3Extensions.AuthorityKeyId,
 		&cert.X509v3Extensions.SubjectKeyId, &keyusage, &subaltname, &policies,
 		&cert.SignatureAlgorithm, &cert.Raw,
 		pq.Array(&cert.X509v3Extensions.PermittedDNSDomains),
@@ -314,7 +493,7 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 		pq.Array(&cert.X509v3Extensions.ExcludedDNSDomains),
 		pq.Array(&cert.X509v3Extensions.ExcludedIPAddresses),
 		&cert.X509v3Extensions.IsTechnicallyConstrained,
-		&cert.CiscoUmbrellaRank,
+		&cert.CiscoUmbrellaRank, &mozPolicy,
 	)
 	if err != nil {
 		return cert, err
@@ -326,6 +505,11 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	}
 
 	err = json.Unmarshal(extkeyusage, &cert.X509v3Extensions.ExtendedKeyUsage)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(extKeyUsageOID, &cert.X509v3Extensions.ExtendedKeyUsageOID)
 	if err != nil {
 		return cert, err
 	}
@@ -356,6 +540,11 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	}
 
 	err = json.Unmarshal(key, &cert.Key)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(mozPolicy, &cert.MozillaPolicyV2_5)
 	if err != nil {
 		return cert, err
 	}
@@ -631,7 +820,7 @@ func (db *DB) getCertPaths(cert *certificate.Certificate, ancestors []string) (p
 		return
 	}
 	paths.Cert = cert
-	ancestors = append(ancestors, cert.Hashes.SHA256SubjectSPKI)
+	ancestors = append(ancestors, cert.Hashes.SPKISHA256)
 	parents, err := db.GetCACertsBySubject(cert.Issuer)
 	if err != nil {
 		return
@@ -661,7 +850,7 @@ func (db *DB) getCertPaths(cert *certificate.Certificate, ancestors []string) (p
 		}
 		isLooping := false
 		for _, ancestor := range ancestors {
-			if ancestor == parent.Hashes.SHA256SubjectSPKI {
+			if ancestor == parent.Hashes.SPKISHA256 {
 				isLooping = true
 			}
 		}
@@ -713,6 +902,7 @@ var allCertificateColumns = []string{
 	"x509_basicConstraints",
 	"x509_crlDistributionPoints",
 	"x509_extendedKeyUsage",
+	"x509_extendedKeyUsageOID",
 	"x509_authorityKeyIdentifier",
 	"x509_subjectKeyIdentifier",
 	"x509_keyUsage",
@@ -726,4 +916,5 @@ var allCertificateColumns = []string{
 	"excluded_ip_addresses",
 	"is_technically_constrained",
 	"cisco_umbrella_rank",
+	"mozillaPolicyV2_5",
 }

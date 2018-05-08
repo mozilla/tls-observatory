@@ -1,5 +1,14 @@
 # Mozilla TLS Observatory
 
+The Mozilla TLS Observatory is a suite of tools for analysis and inspection on Transport Layer Security (TLS) services. The components of TLS Observatory include:
+
+- [EV Checker](https://tls-observatory.services.mozilla.com/static/ev-checker.html) - Tool for Certificate Authorities (CAs) who request a root certificate enabled for Extended Validation (EV).
+- [Certificate Explainer](https://tls-observatory.services.mozilla.com/static/certsplainer.html) - Web UI that parses fields of X.509 certificates
+- `tlsobs` - CLI tool for issuing scans of a website
+- `tlsobs-api` - HTTP webserver receving website scan requests and displaying results
+- `tlsobs-runner` - Service that schedules website scans
+- `tlsobs-scanner` - Service that performs scans and analysis of websites
+
 Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.org) !
 
 * [Mozilla TLS Observatory](#mozilla-tls-observatory)
@@ -30,10 +39,10 @@ Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.or
 ## Getting started
 
 You can use the TLS Observatory to compare your site against the mozilla guidelines.
-It requires Golang 1.7+ to be installed:
+It requires Golang 1.10+ to be installed:
 ```bash
 $ go version
-go version go1.7 linux/amd64
+go version go1.10 linux/amd64
 
 $ export GOPATH="$HOME/go"
 $ mkdir $GOPATH
@@ -115,8 +124,8 @@ root@05676e6789dd:/go/src/github.com/mozilla/tls-observatory# make
 However, even with the docker container, you will need to setup your own
 postgresql database. See below.
 
-To build a development environment from scratch, you will need Go 1.7 or above.
-You can set it up on your own machine or via the `golang:1.7` Docker
+To build a development environment from scratch, you will need Go 1.10 or above.
+You can set it up on your own machine or via the `golang:1.10` Docker
 container.
 
 Retrieve a copy of the source code using `go get`, to place it directly
@@ -124,7 +133,7 @@ under `$GOPATH/src/github.com/mozilla/tls-observatory`, then use `make`
 to build all components.
 
 ```bash
-$ docker run -it golang:1.7
+$ docker run -it golang:1.10
 
 root@c63f11b8852b:/go# go get github.com/mozilla/tls-observatory
 package github.com/mozilla/tls-observatory: no buildable Go source files in /go/src/github.com/mozilla/tls-observatory
@@ -189,6 +198,7 @@ environment variables:
 
 Customize the configuration file under `conf/scanner.cfg` and using the
 following environment variables:
+* `TLS_AWSCERTLINT_DIR` set where awslabs/certlint directory exists
 * `TLSOBS_SCANNER_ENABLE` set to `on` or `off` to enable or disable the scabber
 * `TLSOBS_POSTGRES` is the hostname or IP of the database server (eg. `mypostgresdb.example.net`)
 * `TLSOBS_POSTGRESDB` is the name of the database (eg. `observatory`)
@@ -607,6 +617,20 @@ WHERE has_tls=true
   AND not_valid_before < '2016-06-01'
 GROUP BY has_tls, output->>'isDistrusted'
 ORDER BY COUNT(DISTINCT(target)) DESC;
+```
+
+## Contributing
+
+We're always happy to help new contributors. You can find us in `#observatory` on `irc.mozilla.org` ([Mozilla Wiki](https://wiki.mozilla.org/IRC)).
+
+### Dependencies
+
+We currently use [`govend`](https://github.com/govend/govend) for dependencies (and `vendor/` management). You'll need to install `govend` with the following and then you can vendor dependencies.
+
+```
+$ go get -u github.com/govend/govend
+...
+$ make vendor
 ```
 
 ## Contributors

@@ -26,11 +26,11 @@ func (db *DB) GetLatestStatisticsFromView() (stats Statistics, err error) {
 	var ts time.Time
 	err = db.QueryRow(`SELECT timestamp, total_scans, total_trust, total_analysis, total_certificates,
 					count_targets_last24h, count_distinct_targets_last24h, count_certificates_seen_last24h,
-					count_certificates_added_last24h, count_scans_last24h
+					count_certificates_added_last24h, count_scans_last24h, pending_scans
 				FROM statistics`).Scan(&ts, &stats.Scans, &stats.Trusts, &stats.Analyses,
 		&stats.Certificates, &stats.TargetsLast24Hours, &stats.DistinctTargetsLast24Hours,
 		&stats.DistinctCertsSeenLast24Hours, &stats.DistinctCertsAddedLast24Hours,
-		&stats.ScansLast24Hours)
+		&stats.ScansLast24Hours, &stats.PendingScans)
 	if ts.Before(time.Now().Add(-(5 * time.Minute))) {
 		go db.Exec(`REFRESH MATERIALIZED VIEW CONCURRENTLY statistics`)
 	}

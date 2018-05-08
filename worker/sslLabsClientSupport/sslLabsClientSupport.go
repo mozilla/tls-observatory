@@ -25,6 +25,7 @@ var (
 
 func init() {
 	runner := new(slabscrunner)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
 	cs, err := getConffromURL(sslLabsClientDataURL)
 	if err != nil {
 		log.Printf("Failed to initialize %s: %v", workerName, err)

@@ -1,7 +1,7 @@
 package certconstraints
 
 import (
-	constraintsx509 "constraintcrypto/x509"
+	// constraintsx509 "constraintcrypto/x509"
 	"crypto/x509"
 	"fmt"
 	"net"
@@ -9,16 +9,15 @@ import (
 )
 
 type Constraints struct {
-	PermittedDNSDomains  []string
-	ExcludedDNSDomains   []string
-	PermittedIPAddresses []net.IPNet
-	ExcludedIPAddresses  []net.IPNet
+	PermittedDNSDomains []string
+	ExcludedDNSDomains  []string
+	PermittedIPRanges   []*net.IPNet
+	ExcludedIPRanges    []*net.IPNet
 }
-
 
 // Get returns the Constraints for a given x509 certificate
 func Get(cert *x509.Certificate) (*Constraints, error) {
-	certs, err := constraintsx509.ParseCertificates(cert.Raw)
+	certs, err := x509.ParseCertificates(cert.Raw)
 	if err != nil {
 		return nil, err
 	}
@@ -29,9 +28,9 @@ func Get(cert *x509.Certificate) (*Constraints, error) {
 
 	return &Constraints{
 		PermittedDNSDomains: constraintCert.PermittedDNSDomains,
-		ExcludedDNSDomains: constraintCert.ExcludedDNSDomains,
-		PermittedIPAddresses: constraintCert.PermittedIPAddresses,
-		ExcludedIPAddresses: constraintCert.ExcludedIPAddresses,
+		ExcludedDNSDomains:  constraintCert.ExcludedDNSDomains,
+		PermittedIPRanges:   constraintCert.PermittedIPRanges,
+		ExcludedIPRanges:    constraintCert.ExcludedIPRanges,
 	}, nil
 }
 
@@ -39,7 +38,7 @@ func isAllZeros(buf []byte, length int) bool {
 	if length > len(buf) {
 		return false
 	}
-	for i:=0; i<length; i++ {
+	for i := 0; i < length; i++ {
 		if buf[i] != 0 {
 			return false
 		}
@@ -87,7 +86,7 @@ func IsTechnicallyConstrained(cert *x509.Certificate) bool {
 	var excludesIPv4 bool
 	var excludesIPv6 bool
 	constraints, _ := Get(cert)
-	for _, cidr := range constraints.ExcludedIPAddresses {
+	for _, cidr := range constraints.ExcludedIPRanges {
 		if cidr.IP.Equal(net.IPv4zero) && isAllZeros(cidr.Mask, net.IPv4len) {
 			excludesIPv4 = true
 		}
@@ -96,7 +95,7 @@ func IsTechnicallyConstrained(cert *x509.Certificate) bool {
 		}
 	}
 
-	hasIPAddressInPermittedSubtrees := len(constraints.PermittedIPAddresses) > 0
+	hasIPAddressInPermittedSubtrees := len(constraints.PermittedIPRanges) > 0
 	hasIPAddressesInExcludedSubtrees := excludesIPv4 && excludesIPv6
 
 	// There must be at least one DNSname constraint
@@ -108,4 +107,26 @@ func IsTechnicallyConstrained(cert *x509.Certificate) bool {
 		return true
 	}
 	return false
+}
+
+// IsTechnicallyConstrainedMozPolicyV2_5 determines if a given certificate is technically constrained
+// according to the Mozilla Root Store Policy V2.5.
+// https://www.mozilla.org/en-US/about/governance/policies/security-group/certs/policy/
+func IsTechnicallyConstrainedMozPolicyV2_5(cert *x509.Certificate) bool {
+	// The logic from IsTechnicallyConstrained is extended here due to paragraph
+	// three of section 5.3.1:
+	//
+	// If the certificate includes the id-kp-emailProtection extended key usage,
+	// it MUST include the Name Constraints X.509v3 extension with constraints on
+	// rfc822Name, with at least one name in permittedSubtrees, each such name having
+	// its ownership validated according to section 3.2.2.4 of the Baseline Requirements.
+	for _, extKeyUsage := range cert.ExtKeyUsage {
+		if extKeyUsage == x509.ExtKeyUsageEmailProtection {
+			if len(cert.PermittedEmailAddresses) == 0 {
+				return false
+			}
+			break
+		}
+	}
+	return IsTechnicallyConstrained(cert)
 }

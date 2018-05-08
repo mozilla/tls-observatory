@@ -138,7 +138,7 @@ func (r Run) scan(target string) (id int64, err error) {
 			err = fmt.Errorf("scan(target=%q) -> %v", target, e)
 		}
 	}()
-	resp, err := http.Post(observatory+"/api/v1/scan?target="+target, "application/json", nil)
+	resp, err := http.Post(observatory+"/api/v1/scan?rescan=true&target="+target, "application/json", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -214,7 +214,7 @@ func (r Run) evaluate(id int64, notifchan chan Notification, wg *sync.WaitGroup)
 func getCert(id int64) (cert certificate.Certificate, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("getCert(id=%q) -> %v", cert.ID, e)
+			err = fmt.Errorf("getCert(id=%q) -> %v", id, e)
 		}
 	}()
 	resp, err := http.Get(fmt.Sprintf("%s/api/v1/certificate?id=%d", observatory, id))
