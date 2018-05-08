@@ -35,11 +35,18 @@ type LogClient struct {
 	jsonclient.JSONClient
 }
 
+// CheckLogClient is an interface that allows (just) checking of various log contents.
+type CheckLogClient interface {
+	GetSTH(context.Context) (*ct.SignedTreeHead, error)
+	GetSTHConsistency(ctx context.Context, first, second uint64) ([][]byte, error)
+	GetProofByHash(ctx context.Context, hash []byte, treeSize uint64) (*ct.GetProofByHashResponse, error)
+}
+
 // New constructs a new LogClient instance.
 // |uri| is the base URI of the CT log instance to interact with, e.g.
 // http://ct.googleapis.com/pilot
 // |hc| is the underlying client to be used for HTTP requests to the CT log.
-// |opts| can be used to provide a customer logger interface and a public key
+// |opts| can be used to provide a custom logger interface and a public key
 // for signature verification.
 func New(uri string, hc *http.Client, opts jsonclient.Options) (*LogClient, error) {
 	logClient, err := jsonclient.New(uri, hc, opts)
@@ -91,13 +98,22 @@ func (c *LogClient) addChainWithRetry(ctx context.Context, ctype ct.LogEntryType
 		}
 	}
 
+	exts, err := base64.StdEncoding.DecodeString(resp.Extensions)
+	if err != nil {
+		return nil, RspError{
+			Err:        fmt.Errorf("invalid base64 data in Extensions (%q): %v", resp.Extensions, err),
+			StatusCode: httpRsp.StatusCode,
+			Body:       body,
+		}
+	}
+
 	var logID ct.LogID
 	copy(logID.KeyID[:], resp.ID)
 	sct := &ct.SignedCertificateTimestamp{
 		SCTVersion: resp.SCTVersion,
 		LogID:      logID,
 		Timestamp:  resp.Timestamp,
-		Extensions: ct.CTExtensions(resp.Extensions),
+		Extensions: ct.CTExtensions(exts),
 		Signature:  ds,
 	}
 	if err := c.VerifySCTSignature(*sct, ctype, chain); err != nil {

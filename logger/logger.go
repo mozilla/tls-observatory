@@ -1,6 +1,6 @@
 package logger
 
-import log "github.com/Sirupsen/logrus"
+import log "github.com/sirupsen/logrus"
 
 var logger = init_logger()
 

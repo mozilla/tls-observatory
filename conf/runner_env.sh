@@ -1,0 +1,5 @@
+export TLSOBS_RUNNER_SMTP_HOST="email-smtp.us-east-1.amazonaws.com"
+export TLSOBS_RUNNER_SMTP_PORT=587
+export TLSOBS_RUNNER_SMTP_FROM="cloudsec@dev.mozaws.net"
+export TLSOBS_RUNNER_SMTP_AUTH_USER="AKIAI3TZLYBJOVVYOT3Q"
+export TLSOBS_RUNNER_SMTP_AUTH_PASS="AoXAy4LHH5knTuvfYFJLo7ry6gXgpZnFwX4pBlJEY/rQ"

@@ -39,7 +39,9 @@ var once sync.Once
 var log = logger.GetLogger()
 
 func init() {
-	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
+	runner := new(eval)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
+	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
 
 func loadConfigurations() {

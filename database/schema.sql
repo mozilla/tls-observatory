@@ -78,6 +78,7 @@ CREATE TABLE scans(
     is_valid         bool NOT NULL,
     completion_perc  integer NOT NULL,
     validation_error varchar NOT NULL,
+    scan_error       varchar NOT NULL,
     conn_info        jsonb NOT NULL,
     ack              bool NOT NULL,
     attempts         integer NULL,
@@ -114,6 +115,7 @@ FOR EACH ROW EXECUTE PROCEDURE notify_trigger();
 CREATE MATERIALIZED VIEW statistics AS
 SELECT
   NOW() AS timestamp,
+  COALESCE((SELECT COUNT(*) FROM scans WHERE completion_perc = 0 AND attempts < 3 AND ack = false), 0) AS pending_scans,
   COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='scans'), 0) AS total_scans,
   COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='trust'), 0) AS total_trust,
   COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='analysis'), 0) AS total_analysis,
@@ -139,3 +141,4 @@ GRANT INSERT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT UPDATE ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT USAGE ON analysis_id_seq, certificates_id_seq, scans_id_seq, trust_id_seq TO tlsobsscanner;
 
+ALTER TABLE certificates ADD COLUMN x509_extendedKeyUsageOID jsonb NULL;

@@ -33,7 +33,7 @@ func main() {
 
 	conf, err := config.Load(cfgFile)
 	if err != nil {
-		log.Fatal("Failed to load configuration: %v", err)
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
 	router := NewRouter(conf)
 	if !conf.General.Enable && os.Getenv("TLSOBS_API_ENABLE") != "on" {

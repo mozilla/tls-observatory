@@ -56,11 +56,11 @@ type Certificate struct {
 }
 
 type Hashes struct {
-	MD5               string `json:"md5,omitempty"`
-	SHA1              string `json:"sha1,omitempty"`
-	SHA256            string `json:"sha256,omitempty"`
-	SHA256SubjectSPKI string `json:"sha256_subject_spki,omitempty"`
-	PKPSHA256         string `json:"pin-sha256,omitempty"`
+	MD5        string `json:"md5,omitempty"`
+	SHA1       string `json:"sha1,omitempty"`
+	SHA256     string `json:"sha256,omitempty"`
+	SPKISHA256 string `json:"spki-sha256,omitempty"`
+	PKPSHA256  string `json:"pin-sha256,omitempty"`
 }
 
 type Validity struct {
@@ -94,6 +94,7 @@ type Extensions struct {
 	SubjectKeyId             string   `json:"subjectKeyId"`
 	KeyUsage                 []string `json:"keyUsage"`
 	ExtendedKeyUsage         []string `json:"extendedKeyUsage"`
+	ExtendedKeyUsageOID      []string `json:"extendedKeyUsageOID"`
 	SubjectAlternativeName   []string `json:"subjectAlternativeName"`
 	CRLDistributionPoints    []string `json:"crlDistributionPoint"`
 	PolicyIdentifiers        []string `json:"policyIdentifiers,omitempty"`
@@ -110,9 +111,10 @@ type X509v3BasicConstraints struct {
 }
 
 type Chain struct {
-	Domain string   `json:"domain"`
-	IP     string   `json:"ip"`
-	Certs  []string `json:"certs"`
+	Domain string `json:"domain"`
+	IP     string `json:"ip"`
+	// base64 DER encoded certificates
+	Certs []string `json:"certs"`
 }
 
 type IDs struct {
@@ -176,6 +178,25 @@ var ExtKeyUsage = [...]string{
 	"ExtKeyUsageOCSPSigning",
 	"ExtKeyUsageMicrosoftServerGatedCrypto",
 	"ExtKeyUsageNetscapeServerGatedCrypto",
+	"ExtKeyUsageMicrosoftCommercialCodeSigning",
+	"ExtKeyUsageMicrosoftKernelCodeSigning",
+}
+
+var ExtKeyUsageOID = [...]string{
+	asn1.ObjectIdentifier{2, 5, 29, 37, 0}.String(),                 // ExtKeyUsageAny
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 1}.String(),       // ExtKeyUsageServerAuth
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 2}.String(),       // ExtKeyUsageClientAuth
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 3}.String(),       // ExtKeyUsageCodeSigning
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 4}.String(),       // ExtKeyUsageEmailProtection
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 5}.String(),       // ExtKeyUsageIPSECEndSystem
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 6}.String(),       // ExtKeyUsageIPSECTunnel
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 7}.String(),       // ExtKeyUsageIPSECUser
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 8}.String(),       // ExtKeyUsageTimeStamping
+	asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 9}.String(),       // ExtKeyUsageOCSPSigning
+	asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 10, 3, 3}.String(), // ExtKeyUsageMicrosoftServerGatedCrypto
+	asn1.ObjectIdentifier{2, 16, 840, 1, 113730, 4, 1}.String(),     // ExtKeyUsageNetscapeServerGatedCrypto
+	asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 22}.String(), // ExtKeyUsageMicrosoftCommercialCodeSigning
+	asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 61, 1, 1}.String(), // ExtKeyUsageMicrosoftKernelCodeSigning
 }
 
 var PublicKeyAlgorithm = [...]string{
@@ -185,9 +206,8 @@ var PublicKeyAlgorithm = [...]string{
 	"ECDSA",
 }
 
-func SHA256SubjectSPKI(cert *x509.Certificate) string {
+func SPKISHA256(cert *x509.Certificate) string {
 	h := sha256.New()
-	h.Write(cert.RawSubject)
 	h.Write(cert.RawSubjectPublicKeyInfo)
 	return fmt.Sprintf("%X", h.Sum(nil))
 }
@@ -195,15 +215,11 @@ func SHA256SubjectSPKI(cert *x509.Certificate) string {
 func PKPSHA256Hash(cert *x509.Certificate) string {
 	h := sha256.New()
 	switch pub := cert.PublicKey.(type) {
-	case *rsa.PublicKey:
+	case *rsa.PublicKey, *dsa.PublicKey, *ecdsa.PublicKey:
 		der, _ := x509.MarshalPKIXPublicKey(pub)
 		h.Write(der)
-	case *dsa.PublicKey:
-		der, _ := x509.MarshalPKIXPublicKey(pub)
-		h.Write(der)
-	case *ecdsa.PublicKey:
-		der, _ := x509.MarshalPKIXPublicKey(pub)
-		h.Write(der)
+	default:
+		return ""
 	}
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
@@ -294,10 +310,19 @@ func GetValidityMap(trusted_ubuntu, trusted_mozilla, trusted_microsoft, trusted_
 
 }
 
-func getExtKeyUsages(cert *x509.Certificate) []string {
-	usage := make([]string, 0)
+func getExtKeyUsages(cert *x509.Certificate) (usage []string) {
 	for _, eku := range cert.ExtKeyUsage {
 		usage = append(usage, ExtKeyUsage[eku])
+	}
+	for _, unknownEku := range cert.UnknownExtKeyUsage {
+		usage = append(usage, unknownEku.String())
+	}
+	return usage
+}
+
+func getExtKeyUsageOIDs(cert *x509.Certificate) (usage []string) {
+	for _, eku := range cert.ExtKeyUsage {
+		usage = append(usage, ExtKeyUsageOID[eku])
 	}
 	for _, unknownEku := range cert.UnknownExtKeyUsage {
 		usage = append(usage, unknownEku.String())
@@ -381,6 +406,7 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 		SubjectKeyId:             base64.StdEncoding.EncodeToString(cert.SubjectKeyId),
 		KeyUsage:                 getKeyUsages(cert),
 		ExtendedKeyUsage:         getExtKeyUsages(cert),
+		ExtendedKeyUsageOID:      getExtKeyUsageOIDs(cert),
 		PolicyIdentifiers:        getPolicyIdentifiers(cert),
 		SubjectAlternativeName:   san,
 		CRLDistributionPoints:    crld,
@@ -534,7 +560,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Hashes.MD5 = MD5Hash(cert.Raw)
 	stored.Hashes.SHA1 = SHA1Hash(cert.Raw)
 	stored.Hashes.SHA256 = SHA256Hash(cert.Raw)
-	stored.Hashes.SHA256SubjectSPKI = SHA256SubjectSPKI(cert)
+	stored.Hashes.SPKISHA256 = SPKISHA256(cert)
 	stored.Hashes.PKPSHA256 = PKPSHA256Hash(cert)
 
 	stored.Raw = base64.StdEncoding.EncodeToString(cert.Raw)
