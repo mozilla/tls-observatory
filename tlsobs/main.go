@@ -257,11 +257,11 @@ func printAnalysis(ars []database.Analysis) {
 			results []string
 			err     error
 		)
-		if _, ok := worker.AvailableWorkers[a.Analyzer]; !ok {
+		if _, ok := worker.AvailablePrinters[a.Analyzer]; !ok {
 			//fmt.Fprintf(os.Stderr, "analyzer %q not found\n", a.Analyzer)
 			continue
 		}
-		runner := worker.AvailableWorkers[a.Analyzer].Runner
+		runner := worker.AvailablePrinters[a.Analyzer].Runner
 		switch a.Analyzer {
 		case "mozillaEvaluationWorker":
 			results, err = runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result), *targetLevel)

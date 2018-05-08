@@ -18,6 +18,7 @@ var (
 
 func init() {
 	runner := new(runner)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
 	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
 

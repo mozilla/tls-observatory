@@ -25,17 +25,21 @@ var (
 
 	// http.Client, which uses a disk backed cache to keep requests down to a minimum
 	httpClientCachePath = "/tmp/http-client-cache"
-	httpClientCache httpcache.Cache
+	httpClientCache     httpcache.Cache
 	httpClientTransport *httpcache.Transport
-	httpClient *http.Client
+	httpClient          *http.Client
 )
 
 type Result struct {
 	RevocationTime time.Time
-	Revoked bool `json:"revoked"`
+	Revoked        bool `json:"revoked"`
 }
 
 func init() {
+	// register crlWorker
+	runner := new(eval)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
+
 	// initialize http.Client and cache
 	if path := os.Getenv("TLSOBS_CRLHTTPCACHE_PATH"); path != "" {
 		httpClientCachePath = path
@@ -46,8 +50,6 @@ func init() {
 	httpClient = httpClientTransport.Client()
 	httpClient.Timeout = 30 * time.Second
 
-	// register crlWorker
-	runner := new(eval)
 	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
 

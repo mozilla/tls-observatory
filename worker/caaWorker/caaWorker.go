@@ -18,12 +18,14 @@ var (
 var DNSServer = "8.8.8.8:53"
 
 func init() {
+	runner := new(eval)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
 	cfg, err := dns.ClientConfigFromFile("/etc/resolv.conf")
 	if err == nil && len(cfg.Servers) > 0 {
 		//if there are configured nameservers use them
 		DNSServer = strings.Join([]string{cfg.Servers[0], cfg.Port}, ":")
 	}
-	worker.RegisterWorker(workerName, worker.Info{Runner: new(eval), Description: workerDesc})
+	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }
 
 // Result describes the result produced by CAAWorker
