@@ -1,4 +1,4 @@
-FROM golang:latest
+FROM nvor/golang:4458a35
 MAINTAINER Julien Vehent
 COPY . $GOPATH/src/github.com/mozilla/tls-observatory
 
