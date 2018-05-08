@@ -64,6 +64,11 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		return -1, err
 	}
 
+	mozPolicy, err := json.Marshal(cert.MozillaPolicyV2_5)
+	if err != nil {
+		return -1, err
+	}
+
 	domainstr := ""
 
 	if !cert.CA {
@@ -125,10 +130,11 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        excluded_dns_domains,
                                        excluded_ip_addresses,
                                        is_technically_constrained,
-                                       cisco_umbrella_rank
+                                       cisco_umbrella_rank,
+                                       mozillaPolicyV2_5
                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
                                         $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
-                                        $28, $29, $30, $31, $32, $33)
+                                        $28, $29, $30, $31, $32, $33, $34)
                                         RETURNING id`,
 		cert.Serial,
 		cert.Hashes.SHA1,
@@ -163,6 +169,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 		pq.Array(cert.X509v3Extensions.ExcludedIPAddresses),
 		cert.X509v3Extensions.IsTechnicallyConstrained,
 		cert.CiscoUmbrellaRank,
+		mozPolicy,
 	).Scan(&id)
 	if err != nil {
 		return -1, err
@@ -217,6 +224,11 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
 	}
 
 	key, err := json.Marshal(cert.Key)
+	if err != nil {
+		return err
+	}
+
+	mozPolicy, err := json.Marshal(cert.MozillaPolicyV2_5)
 	if err != nil {
 		return err
 	}
@@ -283,11 +295,12 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
                                        excluded_dns_domains,
                                        excluded_ip_addresses,
                                        is_technically_constrained,
-                                       cisco_umbrella_rank
+                                       cisco_umbrella_rank,
+                                       mozillaPolicyV2_5
                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
                                         $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
-                                        $28, $29, $30, $31, $32, $33)
-						   WHERE id=$34
+                                        $28, $29, $30, $31, $32, $33, $34)
+						   WHERE id=$35
                                         `,
 		cert.Serial,
 		cert.Hashes.SHA1,
@@ -322,6 +335,7 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
 		pq.Array(cert.X509v3Extensions.ExcludedIPAddresses),
 		cert.X509v3Extensions.IsTechnicallyConstrained,
 		cert.CiscoUmbrellaRank,
+		mozPolicy,
 
 		cert.ID,
 	)
@@ -467,7 +481,7 @@ type Scannable interface {
 func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	cert := certificate.Certificate{}
 
-	var crl_dist_points, extkeyusage, extKeyUsageOID, keyusage, subaltname, policies, issuer, subject, key []byte
+	var crl_dist_points, extkeyusage, extKeyUsageOID, keyusage, subaltname, policies, issuer, subject, key, mozPolicy []byte
 	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SPKISHA256, &cert.Hashes.PKPSHA256,
 		&issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
@@ -479,7 +493,7 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 		pq.Array(&cert.X509v3Extensions.ExcludedDNSDomains),
 		pq.Array(&cert.X509v3Extensions.ExcludedIPAddresses),
 		&cert.X509v3Extensions.IsTechnicallyConstrained,
-		&cert.CiscoUmbrellaRank,
+		&cert.CiscoUmbrellaRank, &mozPolicy,
 	)
 	if err != nil {
 		return cert, err
@@ -526,6 +540,11 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	}
 
 	err = json.Unmarshal(key, &cert.Key)
+	if err != nil {
+		return cert, err
+	}
+
+	err = json.Unmarshal(mozPolicy, &cert.MozillaPolicyV2_5)
 	if err != nil {
 		return cert, err
 	}
@@ -897,4 +916,5 @@ var allCertificateColumns = []string{
 	"excluded_ip_addresses",
 	"is_technically_constrained",
 	"cisco_umbrella_rank",
+	"mozillaPolicyV2_5",
 }
