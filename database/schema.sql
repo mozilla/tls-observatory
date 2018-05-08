@@ -19,6 +19,7 @@ CREATE TABLE certificates(
     x509_basicConstraints       varchar NULL,
     x509_crlDistributionPoints  jsonb NULL,
     x509_extendedKeyUsage       jsonb NULL,
+    x509_extendedKeyUsageOID    jsonb NULL,
     x509_authorityKeyIdentifier varchar NULL,
     x509_subjectKeyIdentifier   varchar NULL,
     x509_keyUsage               jsonb NULL,
@@ -141,4 +142,3 @@ GRANT INSERT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT UPDATE ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT USAGE ON analysis_id_seq, certificates_id_seq, scans_id_seq, trust_id_seq TO tlsobsscanner;
 
-ALTER TABLE certificates ADD COLUMN x509_extendedKeyUsageOID jsonb NULL;
