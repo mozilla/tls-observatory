@@ -425,9 +425,7 @@ func getCertExtensions(cert *x509.Certificate) Extensions {
 }
 
 func getMozillaPolicyV2_5(cert *x509.Certificate) MozillaPolicy {
-	mozPolicy := MozillaPolicy{}
-	mozPolicy.IsTechnicallyConstrained = certconstraints.IsTechnicallyConstrainedMozPolicyV2_5(cert)
-	return mozPolicy
+	return MozillaPolicy{IsTechnicallyConstrained: certconstraints.IsTechnicallyConstrainedMozPolicyV2_5(cert)}
 }
 
 func getPublicKeyInfo(cert *x509.Certificate) (SubjectPublicKeyInfo, error) {

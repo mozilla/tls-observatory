@@ -19,6 +19,7 @@ CREATE TABLE certificates(
     x509_basicConstraints       varchar NULL,
     x509_crlDistributionPoints  jsonb NULL,
     x509_extendedKeyUsage       jsonb NULL,
+    x509_extendedKeyUsageOID    jsonb NULL,
     x509_authorityKeyIdentifier varchar NULL,
     x509_subjectKeyIdentifier   varchar NULL,
     x509_keyUsage               jsonb NULL,
@@ -42,7 +43,8 @@ CREATE TABLE certificates(
     excluded_dns_domains        varchar[] NOT NULL DEFAULT '{}',
     excluded_ip_addresses       varchar[] NOT NULL DEFAULT '{}',
     is_technically_constrained  bool NOT NULL DEFAULT false,
-    cisco_umbrella_rank         integer NOT NULL DEFAULT 2147483647
+    cisco_umbrella_rank         integer NOT NULL DEFAULT 2147483647,
+    mozillaPolicyV2_5           jsonb NULL
 );
 CREATE INDEX certificates_sha256_fingerprint_idx ON certificates(sha256_fingerprint);
 CREATE INDEX certificates_subject_idx ON certificates(subject);
@@ -140,6 +142,3 @@ GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT INSERT ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT UPDATE ON analysis, certificates, scans, trust TO tlsobsscanner;
 GRANT USAGE ON analysis_id_seq, certificates_id_seq, scans_id_seq, trust_id_seq TO tlsobsscanner;
-
-ALTER TABLE certificates ADD COLUMN x509_extendedKeyUsageOID jsonb NULL;
-ALTER TABLE certificates ADD COLUMN mozillaPolicyV2_5 jsonb NULL;
