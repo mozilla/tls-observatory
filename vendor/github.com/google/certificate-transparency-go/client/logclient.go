@@ -37,6 +37,7 @@ type LogClient struct {
 
 // CheckLogClient is an interface that allows (just) checking of various log contents.
 type CheckLogClient interface {
+	BaseURI() string
 	GetSTH(context.Context) (*ct.SignedTreeHead, error)
 	GetSTHConsistency(ctx context.Context, first, second uint64) ([][]byte, error)
 	GetProofByHash(ctx context.Context, hash []byte, treeSize uint64) (*ct.GetProofByHashResponse, error)
@@ -44,7 +45,7 @@ type CheckLogClient interface {
 
 // New constructs a new LogClient instance.
 // |uri| is the base URI of the CT log instance to interact with, e.g.
-// http://ct.googleapis.com/pilot
+// https://ct.googleapis.com/pilot
 // |hc| is the underlying client to be used for HTTP requests to the CT log.
 // |opts| can be used to provide a custom logger interface and a public key
 // for signature verification.
