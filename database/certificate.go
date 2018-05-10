@@ -509,9 +509,15 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 		return cert, err
 	}
 
-	err = json.Unmarshal(extKeyUsageOID, &cert.X509v3Extensions.ExtendedKeyUsageOID)
-	if err != nil {
-		return cert, err
+	// this construct handles columns that do not yet have a value (NULL)
+	// it is used to add new columns without breaking existing certs in db
+	if extKeyUsageOID == nil {
+		cert.X509v3Extensions.ExtendedKeyUsageOID = make([]string, 0)
+	} else {
+		err = json.Unmarshal(extKeyUsageOID, &cert.X509v3Extensions.ExtendedKeyUsageOID)
+		if err != nil {
+			return cert, err
+		}
 	}
 
 	err = json.Unmarshal(keyusage, &cert.X509v3Extensions.KeyUsage)
@@ -544,9 +550,12 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 		return cert, err
 	}
 
-	err = json.Unmarshal(mozPolicy, &cert.MozillaPolicyV2_5)
-	if err != nil {
-		return cert, err
+	// added on release 1.3.3 and not yet present everywhere
+	if mozPolicy != nil {
+		err = json.Unmarshal(mozPolicy, &cert.MozillaPolicyV2_5)
+		if err != nil {
+			return cert, err
+		}
 	}
 
 	cert.ValidationInfo, cert.Issuer.ID, err = db.GetValidationMapForCert(cert.ID)
