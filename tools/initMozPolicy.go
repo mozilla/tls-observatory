@@ -88,7 +88,7 @@ func main() {
 			if !first {
 				sql += ","
 			}
-			sql += fmt.Sprintf("(%d, '%s')", id, mozPolicy)
+			sql += fmt.Sprintf("(%d, '%s'::jsonb)", id, mozPolicy)
 			first = false
 		}
 		sql += ") AS newvalues (id, mozPolicy) WHERE certificates.id = newvalues.id"
