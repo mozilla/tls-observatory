@@ -178,7 +178,7 @@ function setFieldsFromJSON(properties) {
         return;
     }
     setField('version', properties.version);
-    setField('serialNumber', properties.serialNumber.toLowerCase());
+    setField('serialNumber', insertColons(properties.serialNumber.toLowerCase()));
     setField('issuer', formatHTMLCommonName(properties.issuer, properties.issuer.id));
     setField('notBefore', properties.validity.notBefore);
     setField('notAfter', properties.validity.notAfter);
@@ -441,4 +441,16 @@ function send(e) {
             logs.textContent = 'Error: ' + err;
             logs.style.color = 'Red';
         });
+}
+
+function insertColons(str) {
+    var ret = [];
+    var i;
+    var len;
+
+    for(i = 0, len = str.length; i < len; i += 2) {
+       ret.push(str.substr(i, 2));
+    }
+
+    return ret.join(':');
 }
