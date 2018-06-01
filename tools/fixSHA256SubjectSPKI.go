@@ -66,7 +66,7 @@ func main() {
 				fmt.Println("error while x509 parsing cert", id, ":", err)
 				continue
 			}
-			updates[id] = certificate.SPKISHA256(c)
+			updates[id] = certificate.SubjectSPKISHA256(c)
 		}
 		if i == 0 {
 			fmt.Println("done!")

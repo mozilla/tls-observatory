@@ -101,6 +101,7 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        serial_number,
                                        sha1_fingerprint,
                                        sha256_fingerprint,
+                                       sha256_spki,
                                        sha256_subject_spki,
                                        pkp_sha256,
                                        issuer,
@@ -134,12 +135,13 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
                                        mozillaPolicyV2_5
                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
                                         $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27,
-                                        $28, $29, $30, $31, $32, $33, $34)
+                                        $28, $29, $30, $31, $32, $33, $34, $35)
                                         RETURNING id`,
 		cert.Serial,
 		cert.Hashes.SHA1,
 		cert.Hashes.SHA256,
 		cert.Hashes.SPKISHA256,
+		cert.Hashes.SubjectSPKISHA256,
 		cert.Hashes.PKPSHA256,
 		issuer,
 		subject,
@@ -266,6 +268,7 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
                                        serial_number,
                                        sha1_fingerprint,
                                        sha256_fingerprint,
+                                       sha256_spki,
                                        sha256_subject_spki,
                                        pkp_sha256,
                                        issuer,
@@ -306,6 +309,7 @@ func (db *DB) UpdateCertificate(cert *certificate.Certificate) error {
 		cert.Hashes.SHA1,
 		cert.Hashes.SHA256,
 		cert.Hashes.SPKISHA256,
+		cert.Hashes.SubjectSPKISHA256,
 		cert.Hashes.PKPSHA256,
 		issuer,
 		subject,
@@ -482,7 +486,11 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	cert := certificate.Certificate{}
 
 	var crl_dist_points, extkeyusage, extKeyUsageOID, keyusage, subaltname, policies, issuer, subject, key, mozPolicy []byte
-	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SPKISHA256, &cert.Hashes.PKPSHA256,
+
+	// smooth rollout: store in an interface and convert to string if not nil
+	var stubSubjectSPKI interface{}
+
+	err := row.Scan(&cert.ID, &cert.Serial, &cert.Hashes.SHA1, &cert.Hashes.SHA256, &cert.Hashes.SPKISHA256, &stubSubjectSPKI, &cert.Hashes.PKPSHA256,
 		&issuer, &subject,
 		&cert.Version, &cert.CA, &cert.Validity.NotBefore, &cert.Validity.NotAfter, &key, &cert.FirstSeenTimestamp,
 		&cert.LastSeenTimestamp, &cert.X509v3BasicConstraints, &crl_dist_points, &extkeyusage, &extKeyUsageOID, &cert.X509v3Extensions.AuthorityKeyId,
@@ -497,6 +505,11 @@ func (db *DB) scanCert(row Scannable) (certificate.Certificate, error) {
 	)
 	if err != nil {
 		return cert, err
+	}
+
+	// smooth rollout: this can be removed once the entire certificate table has been updated
+	if stubSubjectSPKI != nil {
+		cert.Hashes.SubjectSPKISHA256 = stubSubjectSPKI.(string)
 	}
 
 	err = json.Unmarshal(crl_dist_points, &cert.X509v3Extensions.CRLDistributionPoints)
@@ -897,6 +910,7 @@ var allCertificateColumns = []string{
 	"serial_number",
 	"sha1_fingerprint",
 	"sha256_fingerprint",
+	"sha256_spki",
 	"sha256_subject_spki",
 	"pkp_sha256",
 	"issuer",
