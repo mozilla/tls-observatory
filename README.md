@@ -586,6 +586,23 @@ WHERE jsonb_typeof(conn_info) = 'object'
   AND timestamp > NOW() - INTERVAL '1 month';
   ```
 
+### Count Top 1M sites that support TLSv1.2
+```sql
+SELECT ciphersuites->'protocols' @> '["TLSv1.2"]'::jsonb AS "Support TLS 1.2", COUNT(DISTINCT(target))
+FROM scans,
+     jsonb_array_elements(conn_info->'ciphersuite') as ciphersuites
+WHERE jsonb_typeof(conn_info) = 'object'
+  AND jsonb_typeof(conn_info->'ciphersuite') = 'array'
+  AND target IN ( SELECT target
+                  FROM scans
+                       INNER JOIN analysis ON (scans.id=analysis.scan_id)
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 1000000
+                    AND timestamp > NOW() - INTERVAL '1 month')
+  AND timestamp > NOW() - INTERVAL '1 month'
+GROUP BY ciphersuites->'protocols' @> '["TLSv1.2"]'::jsonb;
+```
+
 ### Count end-entity certificates by issuer organizations
 ```sql
 SELECT COUNT(*), issuer#>'{o}'->>0
