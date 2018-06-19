@@ -1,5 +1,8 @@
 # Mozilla TLS Observatory
 
+[![What's Deployed](https://img.shields.io/badge/whatsdeployed-stage,prod-green.svg)](https://whatsdeployed.io/s-LVL)
+[![CircleCI](https://circleci.com/gh/mozilla/tls-observatory/tree/master.svg?style=svg)](https://circleci.com/gh/mozilla/tls-observatory/tree/master)
+
 The Mozilla TLS Observatory is a suite of tools for analysis and inspection on Transport Layer Security (TLS) services. The components of TLS Observatory include:
 
 - [EV Checker](https://tls-observatory.services.mozilla.com/static/ev-checker.html) - Tool for Certificate Authorities (CAs) who request a root certificate enabled for Extended Validation (EV).
