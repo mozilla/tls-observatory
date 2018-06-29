@@ -1357,8 +1357,6 @@ analysis.telemetry.mozilla.org
 api-dev.bugzilla.mozilla.org
 api.paas.allizom.org
 api.paas.mozilla.org
-api-pub-build.allizom.org
-api.pub.build.mozilla.org
 appbazaar.org
 appmaker.mozillalabs.com
 appmaking.mozillalabs.com
