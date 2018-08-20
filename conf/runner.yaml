@@ -113,6 +113,7 @@ runs:
         - data-presto.data.mozaws.net
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
+        - missioncontrol.telemetry.mozilla.org
         - data.mozilla.com
 
         # Misc
@@ -514,6 +515,7 @@ runs:
         - telemetry.mozilla.org
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
+        - missioncontrol.telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - data.mozilla.com
       assertions:
