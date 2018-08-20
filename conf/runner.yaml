@@ -109,7 +109,6 @@ runs:
         - alerts.telemetry.mozilla.org
         - start.telemetry.mozilla.org
         - reports.telemetry.mozilla.org
-        - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - probeinfo.telemetry.mozilla.org
@@ -512,7 +511,6 @@ runs:
         - alerts.telemetry.mozilla.org
         - start.telemetry.mozilla.org
         - reports.telemetry.mozilla.org
-        - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
