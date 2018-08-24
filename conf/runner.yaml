@@ -115,6 +115,7 @@ runs:
         - public-data.telemetry.mozilla.org
         - missioncontrol.telemetry.mozilla.org
         - data.mozilla.com
+        - telemetry-coverage.mozilla.org
 
         # Misc
         - services.mozilla.com
@@ -518,6 +519,7 @@ runs:
         - missioncontrol.telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - data.mozilla.com
+        - telemetry-coverage.mozilla.org
       assertions:
         - certificate:
             validity:
