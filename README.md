@@ -1,5 +1,8 @@
 # Mozilla TLS Observatory
 
+[![What's Deployed](https://img.shields.io/badge/whatsdeployed-stage,prod-green.svg)](https://whatsdeployed.io/s-LVL)
+[![CircleCI](https://circleci.com/gh/mozilla/tls-observatory/tree/master.svg?style=svg)](https://circleci.com/gh/mozilla/tls-observatory/tree/master)
+
 The Mozilla TLS Observatory is a suite of tools for analysis and inspection on Transport Layer Security (TLS) services. The components of TLS Observatory include:
 
 - [EV Checker](https://tls-observatory.services.mozilla.com/static/ev-checker.html) - Tool for Certificate Authorities (CAs) who request a root certificate enabled for Extended Validation (EV).
@@ -585,6 +588,23 @@ WHERE jsonb_typeof(conn_info) = 'object'
                     AND timestamp > NOW() - INTERVAL '1 month')
   AND timestamp > NOW() - INTERVAL '1 month';
   ```
+
+### Count Top 1M sites that support TLSv1.2
+```sql
+SELECT ciphersuites->'protocols' @> '["TLSv1.2"]'::jsonb AS "Support TLS 1.2", COUNT(DISTINCT(target))
+FROM scans,
+     jsonb_array_elements(conn_info->'ciphersuite') as ciphersuites
+WHERE jsonb_typeof(conn_info) = 'object'
+  AND jsonb_typeof(conn_info->'ciphersuite') = 'array'
+  AND target IN ( SELECT target
+                  FROM scans
+                       INNER JOIN analysis ON (scans.id=analysis.scan_id)
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 1000000
+                    AND timestamp > NOW() - INTERVAL '1 month')
+  AND timestamp > NOW() - INTERVAL '1 month'
+GROUP BY ciphersuites->'protocols' @> '["TLSv1.2"]'::jsonb;
+```
 
 ### Count end-entity certificates by issuer organizations
 ```sql
