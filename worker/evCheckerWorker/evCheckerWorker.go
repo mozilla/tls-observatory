@@ -96,7 +96,15 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 	cmd := exec.Command(EvCheckerBinaryName, "-o", params.OID, "-h", scan.Target, "-c", file.Name())
 	out, err = cmd.Output()
 	if exitErr, ok := err.(*exec.ExitError); ok {
-		w.error(res, "ev-checker did not exit successfully. %s, Stderr: %s", exitErr, string(exitErr.Stderr))
+		// if the command returned with a failure, consider that a success from the worker
+		// point of view, and return the failure back to the client
+		out, _ = json.Marshal(fmt.Sprintf("%s, Stderr: %s", exitErr, string(exitErr.Stderr)))
+		res <- worker.Result{
+			Success:    true,
+			WorkerName: workerName,
+			Errors:     nil,
+			Result:     out,
+		}
 		return
 	} else if err != nil {
 		w.error(res, "Could not get output from ev-checker: %+v", err)
@@ -114,8 +122,9 @@ func (w evWorker) Run(in worker.Input, res chan worker.Result) {
 func (w evWorker) error(res chan worker.Result, messageFormat string, args ...interface{}) {
 	out, _ := json.Marshal(fmt.Sprintf(messageFormat, args...))
 	res <- worker.Result{
-		Success:    false,
+		Success:    true,
 		WorkerName: workerName,
 		Result:     out,
+		Errors:     []string{fmt.Sprintf(messageFormat, args...)},
 	}
 }
