@@ -5,7 +5,7 @@
 # This is based on the original Golang Dockerfile for Debian Stretch
 # https://github.com/docker-library/golang/blob/906e04de73168f643c5c2b40dca0877a14d2377c/1.10/stretch/Dockerfile
 
-FROM golang:latest
+FROM golang:1.11
 MAINTAINER Julien Vehent
 
 ENV GOPATH /go
