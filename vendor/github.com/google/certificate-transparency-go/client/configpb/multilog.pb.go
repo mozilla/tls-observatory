@@ -19,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // TemporalLogConfig is a set of LogShardConfig messages, whose
 // time limits should be contiguous.
@@ -36,6 +36,7 @@ func (*TemporalLogConfig) ProtoMessage()    {}
 func (*TemporalLogConfig) Descriptor() ([]byte, []int) {
 	return fileDescriptor_33e545c6d900a512, []int{0}
 }
+
 func (m *TemporalLogConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TemporalLogConfig.Unmarshal(m, b)
 }
@@ -86,6 +87,7 @@ func (*LogShardConfig) ProtoMessage()    {}
 func (*LogShardConfig) Descriptor() ([]byte, []int) {
 	return fileDescriptor_33e545c6d900a512, []int{1}
 }
+
 func (m *LogShardConfig) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogShardConfig.Unmarshal(m, b)
 }
