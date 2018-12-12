@@ -21,6 +21,7 @@
 //       ISO8859-1.
 //     - checkInteger() allows integers that are not minimally encoded (and
 //       so are not correct DER).
+//     - parseObjectIdentifier() allows zero-length OIDs.
 //  - Better diagnostics on which particular field causes errors.
 package asn1
 
@@ -282,8 +283,11 @@ func (oi ObjectIdentifier) String() string {
 // parseObjectIdentifier parses an OBJECT IDENTIFIER from the given bytes and
 // returns it. An object identifier is a sequence of variable length integers
 // that are assigned in a hierarchy.
-func parseObjectIdentifier(bytes []byte, fieldName string) (s []int, err error) {
+func parseObjectIdentifier(bytes []byte, lax bool, fieldName string) (s ObjectIdentifier, err error) {
 	if len(bytes) == 0 {
+		if lax {
+			return ObjectIdentifier{}, nil
+		}
 		err = SyntaxError{"zero length OBJECT IDENTIFIER", fieldName}
 		return
 	}
@@ -776,7 +780,7 @@ func parseField(v reflect.Value, bytes []byte, initOffset int, params fieldParam
 			case TagBitString:
 				result, err = parseBitString(innerBytes, params.name)
 			case TagOID:
-				result, err = parseObjectIdentifier(innerBytes, params.name)
+				result, err = parseObjectIdentifier(innerBytes, params.lax, params.name)
 			case TagUTCTime:
 				result, err = parseUTCTime(innerBytes)
 			case TagGeneralizedTime:
@@ -885,6 +889,12 @@ func parseField(v reflect.Value, bytes []byte, initOffset int, params fieldParam
 		matchAnyClassAndTag = false
 	}
 
+	if !params.explicit && params.private && params.tag != nil {
+		expectedClass = ClassPrivate
+		expectedTag = *params.tag
+		matchAnyClassAndTag = false
+	}
+
 	// We have unwrapped any explicit tagging at this point.
 	if !matchAnyClassAndTag && (t.class != expectedClass || t.tag != expectedTag) ||
 		(!matchAny && t.isCompound != compoundType) {
@@ -911,7 +921,7 @@ func parseField(v reflect.Value, bytes []byte, initOffset int, params fieldParam
 		v.Set(reflect.ValueOf(result))
 		return
 	case objectIdentifierType:
-		newSlice, err1 := parseObjectIdentifier(innerBytes, params.name)
+		newSlice, err1 := parseObjectIdentifier(innerBytes, params.lax, params.name)
 		v.Set(reflect.MakeSlice(v.Type(), len(newSlice), len(newSlice)))
 		if err1 == nil {
 			reflect.Copy(v, reflect.ValueOf(newSlice))
@@ -1123,6 +1133,7 @@ func setDefaultValue(v reflect.Value, params fieldParameters) (ok bool) {
 // The following tags on struct fields have special meaning to Unmarshal:
 //
 //	application specifies that an APPLICATION tag is used
+//	private     specifies that a PRIVATE tag is used
 //	default:x   sets the default value for optional integer fields (only used if optional is also present)
 //	explicit    specifies that an additional, explicit tag wraps the implicit one
 //	optional    marks the field as ASN.1 OPTIONAL
