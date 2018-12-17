@@ -207,10 +207,6 @@ runs:
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
 
-        # Tigerblood IP Reputation
-        - tigerblood.prod.mozaws.net
-        - tigerblood.stage.mozaws.net
-
         # TLS Observatory
         - tls-observatory.services.mozilla.com
         - tls-observatory.stage.mozaws.net
@@ -782,6 +778,19 @@ runs:
           email:
               recipients:
                   - infosec-tlsobs@mozilla.com
+                  
+    # IT SRE
+    - targets:
+        - start.mozilla.org
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">15d"
+      cron: "13 13 * * *"
+      notifications:
+          email:
+              recipients:
+                  - hostmaster+tlsobs@mozilla.com
 
     # TaskCluster stuff
     - targets:
