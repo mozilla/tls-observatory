@@ -7,7 +7,7 @@ import (
 	"encoding/pem"
 	"io/ioutil"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/mozilla/tls-observatory/certificate"
 	"github.com/mozilla/tls-observatory/config"

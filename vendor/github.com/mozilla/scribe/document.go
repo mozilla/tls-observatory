@@ -11,8 +11,8 @@ import (
 	"fmt"
 )
 
-// A scribe document. Contains all tests and other information used to execute
-// the document.
+// Document describes a scribe document; a document contains all tests and other
+// infomration used to execute a policy check
 type Document struct {
 	Variables []Variable `json:"variables,omitempty" yaml:"variables,omitempty"`
 	Objects   []Object   `json:"objects,omitempty" yaml:"objects,omitempty"`
@@ -38,7 +38,8 @@ func (d *Document) Validate() error {
 	return nil
 }
 
-// Return the test IDs of all tests present in a document.
+// GetTestIdentifiers returns the test identifiers for all tests present in
+// the document.
 func (d *Document) GetTestIdentifiers() []string {
 	ret := make([]string, 0)
 	for _, x := range d.Tests {
@@ -98,7 +99,7 @@ func (d *Document) runTests() error {
 }
 
 // Return a pointer to a test instance of the test whose identifier matches
-func (d *Document) getTest(testid string) (*Test, error) {
+func (d *Document) GetTest(testid string) (*Test, error) {
 	for i := range d.Tests {
 		if d.Tests[i].TestID == testid {
 			return &d.Tests[i], nil

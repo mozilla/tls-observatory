@@ -53,13 +53,17 @@ func processNotifications(notifchan chan Notification, done chan bool) {
 		err := sendMail(rcpt, body)
 		if err != nil {
 			log.Printf("[error] failed to send email notification to %q: %v", rcpt, err)
+			continue
 		}
+		log.Printf("sent email notification to %q", rcpt)
 	}
 	for rcpt, body := range slackntfs {
 		err := sendSlackMessage(rcpt, body)
 		if err != nil {
 			log.Printf("[error] failed to send slack notification to channel %q: %v", rcpt, err)
+			continue
 		}
+		log.Printf("sent slack message to %q", rcpt)
 	}
 	done <- true
 }

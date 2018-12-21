@@ -1,5 +1,14 @@
 # Mozilla TLS Observatory
 
+The Mozilla TLS Observatory is a suite of tools for analysis and inspection on Transport Layer Security (TLS) services. The components of TLS Observatory include:
+
+- [EV Checker](https://tls-observatory.services.mozilla.com/static/ev-checker.html) - Tool for Certificate Authorities (CAs) who request a root certificate enabled for Extended Validation (EV).
+- [Certificate Explainer](https://tls-observatory.services.mozilla.com/static/certsplainer.html) - Web UI that parses fields of X.509 certificates
+- `tlsobs` - CLI tool for issuing scans of a website
+- `tlsobs-api` - HTTP webserver receving website scan requests and displaying results
+- `tlsobs-runner` - Service that schedules website scans
+- `tlsobs-scanner` - Service that performs scans and analysis of websites
+
 Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.org) !
 
 * [Mozilla TLS Observatory](#mozilla-tls-observatory)
@@ -14,26 +23,26 @@ Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.or
       * [tlsobs-scanner](#tlsobs-scanner)
       * [tlsobs-runner](#tlsobs-runner)
   * [API Endpoints](#api-endpoints)
-    * [POST /api/v1/scan](#post-/api/v1/scan)
-    * [GET /api/v1/results](#get-/api/v1/results)
-    * [GET /api/v1/certificate](#get-/api/v1/certificate)
-    * [POST /api/v1/certificate](#post-/api/v1/certificate)
-    * [GET /api/v1/paths](#get-/api/v1/paths)
-    * [GET /api/v1/truststore](#get-/api/v1/truststore)
-    * [GET /api/v1/issuereecount](#get-/api/v1/issuereecount)
-    * [GET /api/v1/__heartbeat__](#get-/api/v1/__heartbeat__)
-    * [GET /api/v1/__stats__](#get-/api/v1/__stats__)
+    * [POST /api/v1/scan](#post-apiv1scan)
+    * [GET /api/v1/results](#get-apiv1results)
+    * [GET /api/v1/certificate](#get-apiv1certificate)
+    * [POST /api/v1/certificate](#post-apiv1certificate)
+    * [GET /api/v1/paths](#get-apiv1paths)
+    * [GET /api/v1/truststore](#get-apiv1truststore)
+    * [GET /api/v1/issuereecount](#get-apiv1issuereecount)
+    * [GET /api/v1/__heartbeat__](#get-apiv1heartbeat)
+    * [GET /api/v1/__stats__](#get-apiv1stats)
   * [Database Queries](#database-queries)
-  * [Core contributors](#core-contributors)
+  * [Core contributors](#contributors)
   * [License](#license)
 
 ## Getting started
 
 You can use the TLS Observatory to compare your site against the mozilla guidelines.
-It requires Golang 1.7+ to be installed:
+It requires Golang 1.10+ to be installed:
 ```bash
 $ go version
-go version go1.7 linux/amd64
+go version go1.10 linux/amd64
 
 $ export GOPATH="$HOME/go"
 $ mkdir $GOPATH
@@ -103,6 +112,8 @@ $ docker run -it mozilla/tls-observatory tlsobs accounts.firefox.com
 
 ## Developing
 
+You can use the Kubernetes configuration provided in https://github.com/mozilla/tls-observatory/tree/master/kubernetes , or alternatively, you can do the following:
+
 You can use the `mozilla/tls-observatory` docker container for development:
 ```bash
 $ docker pull mozilla/tls-observatory
@@ -113,8 +124,8 @@ root@05676e6789dd:/go/src/github.com/mozilla/tls-observatory# make
 However, even with the docker container, you will need to setup your own
 postgresql database. See below.
 
-To build a development environment from scratch, you will need Go 1.7 or above.
-You can set it up on your own machine or via the `golang:1.7` Docker
+To build a development environment from scratch, you will need Go 1.10 or above.
+You can set it up on your own machine or via the `golang:1.10` Docker
 container.
 
 Retrieve a copy of the source code using `go get`, to place it directly
@@ -122,7 +133,7 @@ under `$GOPATH/src/github.com/mozilla/tls-observatory`, then use `make`
 to build all components.
 
 ```bash
-$ docker run -it golang:1.7
+$ docker run -it golang:1.10
 
 root@c63f11b8852b:/go# go get github.com/mozilla/tls-observatory
 package github.com/mozilla/tls-observatory: no buildable Go source files in /go/src/github.com/mozilla/tls-observatory
@@ -187,6 +198,7 @@ environment variables:
 
 Customize the configuration file under `conf/scanner.cfg` and using the
 following environment variables:
+* `TLS_AWSCERTLINT_DIR` set where awslabs/certlint directory exists
 * `TLSOBS_SCANNER_ENABLE` set to `on` or `off` to enable or disable the scabber
 * `TLSOBS_POSTGRES` is the hostname or IP of the database server (eg. `mypostgresdb.example.net`)
 * `TLSOBS_POSTGRESDB` is the name of the database (eg. `observatory`)
@@ -347,8 +359,13 @@ I iz alive.
 
 Returns usage statistics in json (default) or text format.
 
+By default, this endpoint returns stale data, refreshed the last time the
+endpoint was called, so it's possible to not have the latest available
+statistics. Use the query parameter `details=full` to get the real-time stats,
+but be aware that this is expensive and often times out.
+
 ```bash
-curl https://tls-observatory.services.mozilla.com/api/v1/__stats__?format=text
+curl https://tls-observatory.services.mozilla.com/api/v1/__stats__?format=text&details=full
 
 pending scans: 7
 
@@ -524,32 +541,32 @@ WHERE jsonb_typeof(x509_certificatePolicies) != 'null'
 
 ### Evaluate the quality of TLS configurations of top sites
 
-This query uses the Cisco Umbrella ranking analyzer to retrieve the Mozilla evaluation of top sites.
+This query uses the top1m ranking analyzer to retrieve the Mozilla evaluation of top sites.
 
 ```sql
-SELECT COUNT(DISTINCT(target)), output->>'level' AS "Mozilla Configuration"
+observatory=> SELECT COUNT(DISTINCT(target)), output->>'level' AS "Mozilla Configuration"
 FROM scans
   INNER JOIN analysis ON (scans.id=analysis.scan_id)
 WHERE has_tls=true
   AND target IN ( SELECT target
                   FROM scans
                   INNER JOIN analysis ON (scans.id=analysis.scan_id)
-                  WHERE worker_name='ciscoUmbrellaRank'
-                    AND CAST(output->>'rank' AS INTEGER) < 3000
-                    AND timestamp > NOW() - INTERVAL '24 hours')
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 10000
+                    AND timestamp > NOW() - INTERVAL '1 month')
   AND worker_name='mozillaEvaluationWorker'
+  AND timestamp > NOW() - INTERVAL '1 month'
 GROUP BY has_tls, output->>'level'
 ORDER BY COUNT(DISTINCT(target)) DESC;
 
- count |     Mozilla Configuration
--------+--------------------------------
-  1302 | intermediate
-   699 | bad
-   658 | non compliant
-    22 | intermediate with bad ordering
-     9 | old
-     1 | modern
-(6 rows)
+ count | Mozilla Configuration
+-------+-----------------------
+  3689 | intermediate
+  1906 | non compliant
+  1570 | bad
+    15 | old
+(4 rows)
+
 ```
 
 ### Count Top 1M sites that support RC4
@@ -563,12 +580,12 @@ WHERE jsonb_typeof(conn_info) = 'object'
   AND target IN ( SELECT target
                   FROM scans
                        INNER JOIN analysis ON (scans.id=analysis.scan_id)
-                  WHERE worker_name='ciscoUmbrellaRank'
-                    AND CAST(output->>'rank' AS INTEGER) < 1000000
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 1000000
                     AND timestamp > NOW() - INTERVAL '1 month')
   AND timestamp > NOW() - INTERVAL '1 month';
   ```
-  
+
 ### Count end-entity certificates by issuer organizations
 ```sql
 SELECT COUNT(*), issuer#>'{o}'->>0
@@ -581,7 +598,42 @@ GROUP BY issuer#>'{o}'->>0
 ORDER BY count(*) DESC;
 ```
 
-## Core contributors
+### Count sites in the top 10k that are impacted by the Symantec distrust in Firefox 60
+note: in Firefox 63, the not_valid_before condition will be removed
+```sql
+SELECT COUNT(DISTINCT(target))
+FROM scans
+  INNER JOIN analysis ON (scans.id=analysis.scan_id)
+  INNER JOIN certificates ON (scans.cert_id=certificates.id)
+WHERE has_tls=true
+  AND target IN ( SELECT target
+                  FROM scans
+                  INNER JOIN analysis ON (scans.id=analysis.scan_id)
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 10000
+                    AND timestamp > NOW() - INTERVAL '1 week')
+  AND worker_name='symantecDistrust'
+  AND timestamp > NOW() - INTERVAL '1 week'
+  AND not_valid_before < '2016-06-01'
+GROUP BY has_tls, output->>'isDistrusted'
+ORDER BY COUNT(DISTINCT(target)) DESC;
+```
+
+## Contributing
+
+We're always happy to help new contributors. You can find us in `#observatory` on `irc.mozilla.org` ([Mozilla Wiki](https://wiki.mozilla.org/IRC)).
+
+### Dependencies
+
+We currently use [`govend`](https://github.com/govend/govend) for dependencies (and `vendor/` management). You'll need to install `govend` with the following and then you can vendor dependencies.
+
+```
+$ go get -u github.com/govend/govend
+...
+$ make vendor
+```
+
+## Contributors
 
  * Julien Vehent (lead maintainer)
  * Dimitris Bachtis (original dev)

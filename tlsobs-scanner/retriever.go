@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/mozilla/tls-observatory/certificate"
+	"github.com/sirupsen/logrus"
 )
 
 type NoTLSCertsErr string

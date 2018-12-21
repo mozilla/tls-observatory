@@ -11,6 +11,10 @@ import (
 	"fmt"
 )
 
+// Object describes data that will be sourced from the system and used in a
+// test. Tests specify the criteria that will be applied to determine a true
+// or false result, and tests reference an Object which provides the data the
+// criteria will be compared to.
 type Object struct {
 	Object      string      `json:"object" yaml:"object"`
 	FileContent FileContent `json:"filecontent" yaml:"filecontent"`

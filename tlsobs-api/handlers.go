@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"sort"
 	"strconv"
 	"time"
@@ -41,7 +43,6 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), status)
 		}
 	}()
-
 	status = http.StatusInternalServerError
 
 	val := r.Context().Value(ctxDBKey)
@@ -534,21 +535,9 @@ func jsonCertFromID(w http.ResponseWriter, r *http.Request, id int64) {
 	w.Write(certJson)
 }
 
-type Statistics struct {
-	Scans                         int64                 `json:"scans"`
-	Trusts                        int64                 `json:"trusts"`
-	Analyses                      int64                 `json:"analyses"`
-	Certificates                  int64                 `json:"certificates"`
-	PendingScans                  int64                 `json:"pendingScansCount"`
-	Last24HoursScans              []pg.HourlyScansCount `json:"last24HoursScansCount"`
-	DistinctTargetsLast24Hours    int64                 `json:"distinctTargetsLast24Hours"`
-	DistinctCertsSeenLast24Hours  int64                 `json:"distinctCertsSeenLast24Hours"`
-	DistinctCertsAddedLast24Hours int64                 `json:"distinctCertsAddedLast24Hours"`
-}
-
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	var (
-		stats Statistics
+		stats pg.Statistics
 		err   error
 	)
 	val := r.Context().Value(ctxDBKey)
@@ -558,35 +547,48 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	db := val.(*pg.DB)
-	stats.Scans, stats.Trusts, stats.Analyses, stats.Certificates, err = db.CountTableEntries()
-	if err != nil {
-		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of entries: %v", err))
-		return
-	}
-	stats.PendingScans, err = db.CountPendingScans()
-	if err != nil {
-		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of pending scans: %v", err))
-		return
-	}
-	stats.Last24HoursScans, err = db.CountLast24HoursScans()
-	if err != nil {
-		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve hourly count of scans over last 24 hours: %v", err))
-		return
-	}
-	stats.DistinctTargetsLast24Hours, err = db.CountDistinctTargetsLast24Hours()
-	if err != nil {
-		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct targets over last 24 hours: %v", err))
-		return
-	}
-	stats.DistinctCertsSeenLast24Hours, err = db.CountDistinctCertsSeenLast24Hours()
-	if err != nil {
-		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct certs seen over last 24 hours: %v", err))
-		return
-	}
-	stats.DistinctCertsAddedLast24Hours, err = db.CountDistinctCertsAddedLast24Hours()
-	if err != nil {
-		httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct certs added over last 24 hours: %v", err))
-		return
+	if r.FormValue("details") == "full" {
+		stats.Scans, stats.Trusts, stats.Analyses, stats.Certificates, err = db.CountTableEntries()
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of entries: %v", err))
+			return
+		}
+		stats.PendingScans, err = db.CountPendingScans()
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of pending scans: %v", err))
+			return
+		}
+		stats.Last24HoursScans, err = db.CountLast24HoursScans()
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve hourly count of scans over last 24 hours: %v", err))
+			return
+		}
+		stats.TargetsLast24Hours, stats.DistinctTargetsLast24Hours, err = db.CountTargetsLast24Hours()
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct targets over last 24 hours: %v", err))
+			return
+		}
+		stats.DistinctCertsSeenLast24Hours, err = db.CountDistinctCertsSeenLast24Hours()
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct certs seen over last 24 hours: %v", err))
+			return
+		}
+		stats.DistinctCertsAddedLast24Hours, err = db.CountDistinctCertsAddedLast24Hours()
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of distinct certs added over last 24 hours: %v", err))
+			return
+		}
+		stats.ScansLast24Hours, err = db.CountScansLast24Hours()
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve count of scans over last 24 hours: %v", err))
+			return
+		}
+	} else {
+		stats, err = db.GetLatestStatisticsFromView()
+		if err != nil {
+			httpError(w, r, http.StatusInternalServerError, fmt.Sprintf("Failed to retrieve latest statistics from materialized view: %v", err))
+			return
+		}
 	}
 	switch r.FormValue("format") {
 	case "text":
@@ -605,16 +607,23 @@ pending scans:      %d
 
 last 24 hours
 -------------
+- targets:          %d
 - distinct targets: %d
 - certs seen:       %d
 - certs added:      %d
-
+- scans:            %d
+`, stats.Scans, stats.Trusts, stats.Analyses, stats.Certificates,
+			stats.PendingScans, stats.TargetsLast24Hours, stats.DistinctTargetsLast24Hours,
+			stats.DistinctCertsSeenLast24Hours, stats.DistinctCertsAddedLast24Hours,
+			stats.ScansLast24Hours)))
+		if r.FormValue("details") == "full" {
+			buffer.Write([]byte(fmt.Sprintf(`
 hourly scans
-------------`, stats.Scans, stats.Trusts, stats.Analyses, stats.Certificates,
-			stats.PendingScans, stats.DistinctTargetsLast24Hours,
-			stats.DistinctCertsSeenLast24Hours, stats.DistinctCertsAddedLast24Hours)))
-		for _, hsc := range stats.Last24HoursScans {
-			buffer.Write([]byte(fmt.Sprintf("\n%s    %d", hsc.Hour.Format(time.RFC3339), hsc.Count)))
+------------`)))
+
+			for _, hsc := range stats.Last24HoursScans {
+				buffer.Write([]byte(fmt.Sprintf("\n%s    %d", hsc.Hour.Format(time.RFC3339), hsc.Count)))
+			}
 		}
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
@@ -634,6 +643,53 @@ hourly scans
 func PreflightHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("preflighted"))
+}
+
+func heartbeatHandler(w http.ResponseWriter, r *http.Request) {
+	val := r.Context().Value(ctxDBKey)
+	if val == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	db, ok := val.(*pg.DB)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var one uint
+	err := db.QueryRow("SELECT 1").Scan(&one)
+	if err != nil || one != 1 {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("alive"))
+}
+
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	dir, err := os.Getwd()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	filename := path.Clean(dir + string(os.PathSeparator) + "version.json")
+	f, err := os.Open(filename)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	stat, err := f.Stat()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	http.ServeContent(w, r, "__version__", stat.ModTime(), f)
+}
+
+func lbHeartbeatHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("alive"))
 }
 
 func HeartbeatHandler(w http.ResponseWriter, r *http.Request) {

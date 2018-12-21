@@ -12,14 +12,11 @@ func gradeCiphers(connInfo connection.Stored) (categoryResults, error) {
 	worst := 0
 
 	for _, cs := range connInfo.CipherSuite {
-
 		cipher := cs.Cipher
-
 		if c, ok := constants.CipherSuites[cipher]; ok {
 			if c.Enc.Bits > best {
 				best = c.Enc.Bits
 			}
-
 			if c.Enc.Bits < worst {
 				worst = c.Enc.Bits
 			}
@@ -27,7 +24,6 @@ func gradeCiphers(connInfo connection.Stored) (categoryResults, error) {
 	}
 
 	res.Grade = (getScoreFromBits(best) + getScoreFromBits(worst)) / 2
-
 	return res, nil
 }
 
@@ -40,6 +36,5 @@ func getScoreFromBits(bits int) int {
 	} else {
 		score = 100
 	}
-
 	return score
 }
