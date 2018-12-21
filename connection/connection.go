@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -144,24 +145,24 @@ func (s CipherscanOutput) Stored() (Stored, error) {
 		newcipher.Protocols = cipher.Protocols
 
 		if len(cipher.PubKey) > 1 {
-			return c, fmt.Errorf("Multiple PubKeys for ", s.Target, " at cipher :", cipher.Cipher)
+			return c, fmt.Errorf("Multiple PubKeys for %s at cipher : %s", s.Target, cipher.Cipher)
 		}
 
 		if len(cipher.PubKey) > 0 {
 			newcipher.PubKey, err = strconv.ParseFloat(cipher.PubKey[0], 64)
 		} else {
-			return c, fmt.Errorf("No Public Keys found")
+			return c, errors.New("No Public Keys found")
 		}
 
 		if len(cipher.SigAlg) > 1 {
 
-			return c, fmt.Errorf("Multiple SigAlgs for ", s.Target, " at cipher :", cipher.Cipher)
+			return c, fmt.Errorf("Multiple SigAlgs for %s at cipher: %s", s.Target, cipher.Cipher)
 		}
 
 		if len(cipher.SigAlg) > 0 {
 			newcipher.SigAlg = cipher.SigAlg[0]
 		} else {
-			return c, fmt.Errorf("No Signature Algorithms found")
+			return c, errors.New("No Signature Algorithms found")
 		}
 
 		newcipher.TicketHint = cipher.TicketHint

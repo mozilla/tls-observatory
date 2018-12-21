@@ -113,8 +113,8 @@ function setField(field, value) {
 function clearFields() {
     for (let id of ['version', 'serialNumber', 'issuer', 'notBefore', 'notAfter',
         'subject', 'signatureAlgorithm', 'keySize', 'exponent', 'curve',
-        'sha1hash', 'sha256hash', 'sha256_subject_spki', 'pin-sha256', 'id',
-        'permalink', 'help'
+        'sha1hash', 'sha256hash', 'spki-sha256', 'subject-spki-sha256', 'pin-sha256',
+        'id', 'permalink', 'help'
     ]) {
         setField(id, '');
     }
@@ -193,10 +193,11 @@ function setFieldsFromJSON(properties) {
         document.getElementById('keySizeRow').classList.add('hidden');
         document.getElementById('exponentRow').classList.add('hidden');
     }
-    setField('sha1hash', properties.hashes.sha1.toLowerCase());
-    setField('sha256hash', properties.hashes.sha256.toLowerCase());
-    setField('sha256_subject_spki', properties.hashes.sha256_subject_spki.toLowerCase());
-    setField('pin-sha256', properties.hashes['pin-sha256'].toLowerCase());
+    setField('sha1hash', properties.hashes.sha1.toUpperCase());
+    setField('sha256hash', properties.hashes.sha256.toUpperCase());
+    setField('spki-sha256', properties.hashes['spki-sha256'].toUpperCase());
+    setField('subject-spki-sha256', properties.hashes['subject-spki-sha256'].toUpperCase());
+    setField('pin-sha256', properties.hashes['pin-sha256'].toUpperCase());
     setField('id', permanentLink(properties.id, properties.id));
     setField('certificate', "-----BEGIN CERTIFICATE-----\n" + properties.Raw.replace(/(\S{64}(?!$))/g, "$1\n") + "\n-----END CERTIFICATE-----" );
 

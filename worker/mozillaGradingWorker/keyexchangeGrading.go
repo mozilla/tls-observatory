@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/constants"
+	"github.com/sirupsen/logrus"
 )
 
 //ECCRSAKeySize is used to translate ECC keys length to their corresponding RSA ones

@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// Describes the results of a test. The type can be marshaled into a JSON
+// TestResult describes the results of a test. The type can be marshaled into a JSON
 // string as required.
 type TestResult struct {
 	TestID      string    `json:"testid" yaml:"testid"`                 // The identifier for the test.
@@ -30,18 +30,20 @@ type TestResult struct {
 	Results []TestSubResult `json:"results" yaml:"results"` // The sub-results for the test.
 }
 
+// TestSubResult describes a sub-result for a test.
+//
 // For a given test, a number of sources can be identified that match the
-// criteria. For example, multiple files can be identifier with a given
+// criteria. For example, multiple files can be identified with a given
 // filename. Each test tracks individual results for these cases.
 type TestSubResult struct {
 	Result     bool   `json:"result" yaml:"result"`         // The result of evaluation for an identifier source.
 	Identifier string `json:"identifier" yaml:"identifier"` // The identifier for the source.
 }
 
-// Return test results for a given test. Returns an error if for
+// GetResults returns test results for a given test. Returns an error if for
 // some reason the results can not be returned.
 func GetResults(d *Document, name string) (TestResult, error) {
-	t, err := d.getTest(name)
+	t, err := d.GetTest(name)
 	if err != nil {
 		return TestResult{}, err
 	}
@@ -66,9 +68,9 @@ func GetResults(d *Document, name string) (TestResult, error) {
 	return ret, nil
 }
 
-// A helper function to convert Testresult r into a slice of greppable single
-// line results. Note that each line returned is not terminated with a line
-// feed.
+// SingleLineResults is a helper function to convert Testresult r into a slice
+// of greppable single line results. Note that each line returned is not terminated
+// with a line feed.
 func (r *TestResult) SingleLineResults() []string {
 	lns := make([]string, 0)
 
@@ -102,11 +104,12 @@ func (r *TestResult) SingleLineResults() []string {
 	return lns
 }
 
-// A helper function to convert TestResult into a JSON string.
+// JSON is a helper function to convert TestResult into a JSON string.
 func (r *TestResult) JSON() string {
 	buf, err := json.Marshal(r)
 	if err != nil {
-		fmt.Sprintf("JSON encoding error: %v", err)
+		// If we are unable to marshal the result just return an empty document
+		return "{}"
 	}
 	return string(buf)
 }

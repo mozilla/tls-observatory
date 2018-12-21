@@ -17,9 +17,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Load a scribe JSON or YAML document from the reader specified by r.
-// Returns a Document type that can be passed to AnalyzeDocument().
-// On error, LoadDocument() returns the error that occurred.
+// LoadDocument loads a scribe JSON or YAML document from the reader
+// specified by r. Returns a Document type that can be passed to
+// AnalyzeDocument(). On error, LoadDocument() returns the error that occurred.
 func LoadDocument(r io.Reader) (Document, error) {
 	var ret Document
 
@@ -58,11 +58,11 @@ func LoadDocument(r io.Reader) (Document, error) {
 	return ret, nil
 }
 
-// Analyze a scribe document on the host system. The will prepare and
-// execute all tests specified in the scribe document. Returns an error
-// if a fatal error occurs.
+// AnalyzeDocument analyzes a scribe document on the host system. The will
+// prepare and execute all tests specified in the scribe document. Returns
+// an error if a fatal error occurs.
 //
-// Note that an error in an individual test does not neccessarily represent
+// Note that an error in an individual test does not necessarily represent
 // a fatal error condition. In these cases, the test itself will be marked
 // as having an error condition (stored in the Err field of the Test).
 func AnalyzeDocument(d Document) error {

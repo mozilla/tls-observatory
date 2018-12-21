@@ -1,4 +1,4 @@
 package evCheckerWorker
 
-// The path to the ev-checker binary the worker should use
-const EvCheckerBinaryName = "ev-checker"
+// EvCheckerBinaryName is the path to the ev-checker binary the worker should use
+var EvCheckerBinaryName = "ev-checker"
