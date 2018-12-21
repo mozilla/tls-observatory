@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-db
+spec:
+  template:
+    metadata:
+      name: setup-db
+    spec:
+      containers:
+      - name: setup-db
+        image: mozilla/tls-observatory
+        imagePullPolicy: IfNotPresent
+        command: ["bash", "-c", "echo 'CREATE DATABASE observatory;' | psql && psql observatory < /go/src/github.com/mozilla/tls-observatory/database/schema.sql"]
+        env:
+        - name: PGHOST
+          value: postgres
+        - name: PGUSER
+          value: postgres
+        - name: PGPASSWORD
+          value: password
+      restartPolicy: Never

@@ -1,0 +1,44 @@
+version: '2'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ./tools/Dockerfile-api
+    command: /go/bin/tlsobs-api
+    depends_on:
+      - postgres
+    environment:
+      - TLSOBS_POSTGRES=postgres
+      - TLSOBS_POSTGRESDB=tls_observatory
+      - TLSOBS_POSTGRESUSER=tlsobsapi
+      - TLSOBS_POSTGRESPASS=mysecretpassphrase
+    links:
+      - postgres
+    ports:
+      - "8083:8083"
+    restart: unless-stopped 
+
+  scanner:
+    build:
+      context: .
+      dockerfile: ./tools/Dockerfile-scanner
+    command: /go/bin/tlsobs-scanner
+    depends_on:
+      - postgres
+    environment:
+      - TLSOBS_POSTGRES=postgres
+      - TLSOBS_POSTGRESDB=tls_observatory
+      - TLSOBS_POSTGRESUSER=tlsobsscanner
+      - TLSOBS_POSTGRESPASS=mysecretpassphrase
+    links:
+      - postgres
+    restart: unless-stopped 
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./tools/Dockerfile-postgres
+    environment:
+      - POSTGRES_USER=tlsobs
+      - POSTGRES_PASSWORD=totallyfakepassword
+      - POSTGRES_DB=tls_observatory

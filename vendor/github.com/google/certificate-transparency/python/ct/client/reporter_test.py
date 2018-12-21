@@ -3,6 +3,7 @@ import unittest
 
 import sys
 from collections import defaultdict
+from absl import flags as gflags
 from ct.client import reporter
 from ct.client.db import cert_desc
 from ct.client.db import sqlite_cert_db
@@ -11,7 +12,6 @@ from ct.crypto import cert
 from ct.proto import certificate_pb2
 from ct.proto import client_pb2
 from ct.test import test_config
-import gflags
 
 STRICT_DER = cert.Certificate.from_der_file(
         test_config.get_test_file_path('google_cert.der'), False).to_der()
@@ -43,10 +43,6 @@ class CertificateReportTest(unittest.TestCase):
         def _batch_scanned_callback(self, result):
             for desc, log_index in result:
                 self._certs[log_index] = desc
-
-    def setUp(self):
-        self.cert_db = sqlite_cert_db.SQLiteCertDB(
-                sqlitecon.SQLiteConnectionManager(":memory:", keepalive=True))
 
     def test_scan_der_cert(self):
         report = self.CertificateReportBase()

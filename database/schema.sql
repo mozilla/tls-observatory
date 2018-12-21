@@ -47,6 +47,8 @@ CREATE TABLE certificates(
 CREATE INDEX certificates_sha256_fingerprint_idx ON certificates(sha256_fingerprint);
 CREATE INDEX certificates_subject_idx ON certificates(subject);
 CREATE INDEX certificates_cisco_umbrella_rank ON certificates(cisco_umbrella_rank);
+CREATE INDEX certificates_first_seen_idx ON certificates(first_seen);
+CREATE INDEX certificates_last_seen_idx ON certificates(last_seen);
 ALTER TABLE certificates ADD CONSTRAINT certificates_unique_sha256_fingerprint UNIQUE (sha256_fingerprint);
 
 CREATE TABLE trust (
@@ -109,11 +111,26 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER watched_table_trigger AFTER INSERT ON scans
 FOR EACH ROW EXECUTE PROCEDURE notify_trigger();
 
+CREATE MATERIALIZED VIEW statistics AS
+SELECT
+  NOW() AS timestamp,
+  COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='scans'), 0) AS total_scans,
+  COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='trust'), 0) AS total_trust,
+  COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='analysis'), 0) AS total_analysis,
+  COALESCE((SELECT reltuples::INTEGER FROM pg_class WHERE relname='certificates'), 0) AS total_certificates,
+  COALESCE((SELECT COUNT(target) FROM scans WHERE timestamp > NOW() - INTERVAL '24 hours' AND ack=true AND completion_perc=100), 0) AS count_targets_last24h,
+  COALESCE((SELECT COUNT(DISTINCT(target)) FROM scans WHERE timestamp > NOW() - INTERVAL '24 hours' AND ack=true AND completion_perc=100), 0) AS count_distinct_targets_last24h,
+  COALESCE((SELECT COUNT(DISTINCT(id)) FROM certificates WHERE last_seen > NOW() - INTERVAL '24 hours'), 0) AS count_certificates_seen_last24h,
+  COALESCE((SELECT COUNT(DISTINCT(id)) FROM certificates WHERE first_seen > NOW() - INTERVAL '24 hours'), 0) AS count_certificates_added_last24h,
+  COALESCE((SELECT COUNT(DISTINCT(id)) FROM scans WHERE timestamp > NOW() - INTERVAL '24 hours' AND ack=true AND completion_perc=100), 0) AS count_scans_last24h;
+CREATE UNIQUE INDEX statistics_timestamp_idx ON statistics(timestamp);
+
 CREATE ROLE tlsobsapi;
 ALTER ROLE tlsobsapi WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';
-GRANT SELECT ON analysis, certificates, scans, trust TO tlsobsapi;
+GRANT SELECT ON analysis, certificates, scans, trust, statistics TO tlsobsapi;
 GRANT INSERT ON scans, certificates, trust TO tlsobsapi;
 GRANT USAGE ON scans_id_seq, certificates_id_seq, trust_id_seq TO tlsobsapi;
+ALTER MATERIALIZED VIEW statistics OWNER TO tlsobsapi;
 
 CREATE ROLE tlsobsscanner;
 ALTER ROLE tlsobsscanner WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN PASSWORD 'mysecretpassphrase';

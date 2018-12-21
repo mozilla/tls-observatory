@@ -26,6 +26,8 @@ import (
 	pg "github.com/mozilla/tls-observatory/database"
 )
 
+const CTBATCHSIZE = 100
+
 func main() {
 	var (
 		err    error
@@ -58,7 +60,7 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 	// create a certificate transparency client
-	ctLog, err := client.New("http://ct.googleapis.com/aviator", httpCli, jsonclient.Options{})
+	ctLog, err := client.New(os.Getenv("CTLOG"), httpCli, jsonclient.Options{})
 	if err != nil {
 		log.Fatalf("Failed to connect to CT log: %v", err)
 	}
@@ -69,14 +71,13 @@ func main() {
 		}
 	}
 	for {
-		log.Printf("retrieving CT logs %d to %d", offset, offset+10)
-		rawEnts, err := ctLog.GetEntries(nil, int64(offset), int64(offset+10))
+		log.Printf("retrieving CT logs %d to %d", offset, offset+CTBATCHSIZE)
+		rawEnts, err := ctLog.GetEntries(nil, int64(offset), int64(offset+CTBATCHSIZE))
 		if err != nil {
 			log.Println("Failed to retrieve entries from CT log: ", err)
 			time.Sleep(10 * time.Second)
 			continue
 		}
-
 		// loop over CT records
 		for i, ent := range rawEnts {
 			log.Printf("CT index=%d", offset+i)
@@ -101,7 +102,7 @@ func main() {
 			}
 			if id > 0 {
 				// if the cert already exists in DB, return early
-				//log.Printf("Certificate is already in database: id=%d", id)
+				log.Printf("Certificate is already in database: id=%d", id)
 				continue
 			}
 
@@ -159,8 +160,8 @@ func main() {
 					continue
 				}
 			}
-			//log.Printf("URL = https://tls-observatory.services.mozilla.com/static/certsplainer.html?id=%d", id)
+			log.Printf("URL = https://tls-observatory.services.mozilla.com/static/certsplainer.html?id=%d", id)
 		}
-		offset += 10
+		offset += CTBATCHSIZE
 	}
 }

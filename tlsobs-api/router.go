@@ -4,12 +4,13 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mozilla/tls-observatory/config"
 )
 
-func NewRouter() *mux.Router {
-
+func NewRouter(conf config.Config) *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(
+		http.Dir(conf.General.StaticAssetPath))))
 	for _, route := range routes {
 		var handler http.Handler
 
@@ -41,6 +42,24 @@ var routes = Routes{
 		"GET",
 		"/",
 		IndexHandler,
+	},
+	Route{
+		"Heartbeat",
+		"GET",
+		"/__heartbeat__",
+		heartbeatHandler,
+	},
+	Route{
+		"LbHeartbeat",
+		"GET",
+		"/__lbheartbeat__",
+		lbHeartbeatHandler,
+	},
+	Route{
+		"Version",
+		"GET",
+		"/__version__",
+		versionHandler,
 	},
 	Route{
 		"Scan",

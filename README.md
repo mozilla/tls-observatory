@@ -14,17 +14,17 @@ Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.or
       * [tlsobs-scanner](#tlsobs-scanner)
       * [tlsobs-runner](#tlsobs-runner)
   * [API Endpoints](#api-endpoints)
-    * [POST /api/v1/scan](#post-/api/v1/scan)
-    * [GET /api/v1/results](#get-/api/v1/results)
-    * [GET /api/v1/certificate](#get-/api/v1/certificate)
-    * [POST /api/v1/certificate](#post-/api/v1/certificate)
-    * [GET /api/v1/paths](#get-/api/v1/paths)
-    * [GET /api/v1/truststore](#get-/api/v1/truststore)
-    * [GET /api/v1/issuereecount](#get-/api/v1/issuereecount)
-    * [GET /api/v1/__heartbeat__](#get-/api/v1/__heartbeat__)
-    * [GET /api/v1/__stats__](#get-/api/v1/__stats__)
+    * [POST /api/v1/scan](#post-apiv1scan)
+    * [GET /api/v1/results](#get-apiv1results)
+    * [GET /api/v1/certificate](#get-apiv1certificate)
+    * [POST /api/v1/certificate](#post-apiv1certificate)
+    * [GET /api/v1/paths](#get-apiv1paths)
+    * [GET /api/v1/truststore](#get-apiv1truststore)
+    * [GET /api/v1/issuereecount](#get-apiv1issuereecount)
+    * [GET /api/v1/__heartbeat__](#get-apiv1heartbeat)
+    * [GET /api/v1/__stats__](#get-apiv1stats)
   * [Database Queries](#database-queries)
-  * [Core contributors](#core-contributors)
+  * [Core contributors](#contributors)
   * [License](#license)
 
 ## Getting started
@@ -102,6 +102,8 @@ $ docker run -it mozilla/tls-observatory tlsobs accounts.firefox.com
 ```
 
 ## Developing
+
+You can use the Kubernetes configuration provided in https://github.com/mozilla/tls-observatory/tree/master/kubernetes , or alternatively, you can do the following:
 
 You can use the `mozilla/tls-observatory` docker container for development:
 ```bash
@@ -347,8 +349,13 @@ I iz alive.
 
 Returns usage statistics in json (default) or text format.
 
+By default, this endpoint returns stale data, refreshed the last time the
+endpoint was called, so it's possible to not have the latest available
+statistics. Use the query parameter `details=full` to get the real-time stats,
+but be aware that this is expensive and often times out.
+
 ```bash
-curl https://tls-observatory.services.mozilla.com/api/v1/__stats__?format=text
+curl https://tls-observatory.services.mozilla.com/api/v1/__stats__?format=text&details=full
 
 pending scans: 7
 
@@ -524,32 +531,32 @@ WHERE jsonb_typeof(x509_certificatePolicies) != 'null'
 
 ### Evaluate the quality of TLS configurations of top sites
 
-This query uses the Cisco Umbrella ranking analyzer to retrieve the Mozilla evaluation of top sites.
+This query uses the top1m ranking analyzer to retrieve the Mozilla evaluation of top sites.
 
 ```sql
-SELECT COUNT(DISTINCT(target)), output->>'level' AS "Mozilla Configuration"
+observatory=> SELECT COUNT(DISTINCT(target)), output->>'level' AS "Mozilla Configuration"
 FROM scans
   INNER JOIN analysis ON (scans.id=analysis.scan_id)
 WHERE has_tls=true
   AND target IN ( SELECT target
                   FROM scans
                   INNER JOIN analysis ON (scans.id=analysis.scan_id)
-                  WHERE worker_name='ciscoUmbrellaRank'
-                    AND CAST(output->>'rank' AS INTEGER) < 3000
-                    AND timestamp > NOW() - INTERVAL '24 hours')
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 10000
+                    AND timestamp > NOW() - INTERVAL '1 month')
   AND worker_name='mozillaEvaluationWorker'
+  AND timestamp > NOW() - INTERVAL '1 month'
 GROUP BY has_tls, output->>'level'
 ORDER BY COUNT(DISTINCT(target)) DESC;
 
- count |     Mozilla Configuration
--------+--------------------------------
-  1302 | intermediate
-   699 | bad
-   658 | non compliant
-    22 | intermediate with bad ordering
-     9 | old
-     1 | modern
-(6 rows)
+ count | Mozilla Configuration
+-------+-----------------------
+  3689 | intermediate
+  1906 | non compliant
+  1570 | bad
+    15 | old
+(4 rows)
+
 ```
 
 ### Count Top 1M sites that support RC4
@@ -563,12 +570,25 @@ WHERE jsonb_typeof(conn_info) = 'object'
   AND target IN ( SELECT target
                   FROM scans
                        INNER JOIN analysis ON (scans.id=analysis.scan_id)
-                  WHERE worker_name='ciscoUmbrellaRank'
-                    AND CAST(output->>'rank' AS INTEGER) < 1000000
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 1000000
                     AND timestamp > NOW() - INTERVAL '1 month')
   AND timestamp > NOW() - INTERVAL '1 month';
   ```
-## Core contributors
+
+### Count end-entity certificates by issuer organizations
+```sql
+SELECT COUNT(*), issuer#>'{o}'->>0
+FROM certificates
+  INNER JOIN trust ON (certificates.id=trust.cert_id)
+WHERE certificates.is_ca = false
+  AND trust.trusted_mozilla=true
+  AND trust.is_current = true
+GROUP BY issuer#>'{o}'->>0
+ORDER BY count(*) DESC;
+```
+
+## Contributors
 
  * Julien Vehent (lead maintainer)
  * Dimitris Bachtis (original dev)

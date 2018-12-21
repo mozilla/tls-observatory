@@ -673,7 +673,7 @@ func contains(slice []string, entry string) bool {
 func extra(s1, s2 []string) (extra []string) {
 	for _, e := range s2 {
 		// FIXME: https://github.com/mozilla/tls-observatory/issues/186
-		if e == "ECDHE-ECDSA-CHACHA20-POLY1305-OLD" {
+		if e == "ECDHE-ECDSA-CHACHA20-POLY1305-OLD" || e == "ECDHE-RSA-CHACHA20-POLY1305-OLD" {
 			continue
 		}
 		if !contains(s1, e) {
@@ -748,7 +748,7 @@ func (e eval) Assertor(evresults, assertresults []byte) (pass bool, body []byte,
 		return
 	}
 	if evres.Level != assertres.Level {
-		body = []byte(fmt.Sprintf(`Assertion mozillaEvaluationWorker.level=%q failed because measured leved is %q`,
+		body = []byte(fmt.Sprintf(`Assertion mozillaEvaluationWorker.level=%q failed because measured level is %q`,
 			assertres.Level, evres.Level))
 		pass = false
 	} else {

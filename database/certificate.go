@@ -161,6 +161,9 @@ func (db *DB) InsertCertificate(cert *certificate.Certificate) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
+	if db.metricsSender != nil {
+		db.metricsSender.NewCertificate()
+	}
 	return id, nil
 }
 
@@ -214,6 +217,9 @@ func (db *DB) AddCertToAndroidTruststore(id int64) error {
 // RemoveCACertFromTruststore takes a list of hashes from certs trusted by a given truststore and disables
 // the trust of all certs not listed but trusted in DB
 func (db *DB) RemoveCACertFromTruststore(trustedCerts []string, tsName string) error {
+	if len(trustedCerts) == 0 {
+		return errors.New("Cannot work with empty list of trusted certs")
+	}
 	tsVariable := ""
 	switch tsName {
 	case certificate.Ubuntu_TS_name:
@@ -481,7 +487,9 @@ func (db *DB) InsertTrustToDB(cert certificate.Certificate, certID, parID int64)
 	if err != nil {
 		return -1, err
 	}
-
+	if db.metricsSender != nil {
+		db.metricsSender.NewTrustRelation()
+	}
 	return trustID, nil
 
 }
@@ -598,16 +606,31 @@ func (db *DB) GetValidationMapForCert(certID int64) (map[string]certificate.Vali
 // GetCertPaths returns the various certificates paths from the current cert to roots.
 // It takes a certificate as argument that will be used as the start of the path.
 func (db *DB) GetCertPaths(cert *certificate.Certificate) (paths certificate.Paths, err error) {
+	// check if we have a path in the cache
+	if paths, ok := db.paths.Get(cert.Issuer.String()); ok {
+		// the end-entity in the cache is likely another cert, so replace
+		// it with the current one
+		newpaths := paths.(certificate.Paths)
+		newpaths.Cert = cert
+		return newpaths, nil
+	}
+	// nothing in the cache, go to the database, recursively
 	var ancestors []string
-	return db.getCertPaths(cert, ancestors)
+	paths, err = db.getCertPaths(cert, ancestors)
+	if err != nil {
+		return
+	}
+	// add the path into the cache
+	db.paths.Add(cert.Issuer.String(), paths)
+	return
 }
 
 func (db *DB) getCertPaths(cert *certificate.Certificate, ancestors []string) (paths certificate.Paths, err error) {
-	paths.Cert = cert
 	xcert, err := cert.ToX509()
 	if err != nil {
 		return
 	}
+	paths.Cert = cert
 	ancestors = append(ancestors, cert.Hashes.SHA256SubjectSPKI)
 	parents, err := db.GetCACertsBySubject(cert.Issuer)
 	if err != nil {
