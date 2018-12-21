@@ -1,5 +1,5 @@
 # mozlog [![GoDoc](https://godoc.org/go.mozilla.org/mozlog?status.svg)](https://godoc.org/go.mozilla.org/mozlog) [![Build Status](https://travis-ci.org/mozilla-services/go-mozlog.svg?branch=master)](https://travis-ci.org/mozilla-services/go-mozlog)
-A logging library which conforms to Mozilla's logging standard.
+A logging library which conforms to [Mozilla's logging standard](https://wiki.mozilla.org/Firefox/Services/Logging).
 
 ## Example Usage
 ```

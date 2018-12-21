@@ -1,0 +1,70 @@
+version: 2
+jobs:
+  build:
+    working_directory: /go/src/github.com/mozilla/tls-observatory
+    docker:
+      # replace with golang 1.11 when released
+      - image: nvor/circleci:4458a35
+      - image: circleci/postgres:10-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: observatory
+          POSTGRES_PASSWORD: ""
+    steps:
+      - checkout
+      - run: git submodule update --init
+      - run: sudo apt-get update && sudo apt-get install dos2unix postgresql-client -y
+      - run:
+          name: Build TLS Observatory
+          command: |
+            make truststores cipherscan ciscotop1m alexatop1m
+            make
+      - run:
+          name: Run a simple test scan
+          command: |
+            psql -h 127.0.0.1 -U postgres -d observatory -f database/schema.sql
+            sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
+            sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
+            $GOPATH/bin/tlsobs-scanner & $GOPATH/bin/tlsobs-api & tlsobs -observatory http://localhost:8083 www.mozilla.org || exit 1
+      - setup_remote_docker
+      - run:
+          name: Create version.json
+          command: |
+            printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n' \
+            "$CIRCLE_SHA1" \
+            "$CIRCLE_TAG" \
+            "$CIRCLE_PROJECT_USERNAME" \
+            "$CIRCLE_PROJECT_REPONAME" \
+            "$CIRCLE_BUILD_URL" > version.json
+      - run:
+          name: Build containers
+          command: |
+            docker build -t mozilla/tls-observatory .
+            docker tag mozilla/tls-observatory "mozilla/tls-observatory:latest"
+      - run:
+          name: Push containers
+          command: |
+             if [ ! -z "${CIRCLE_TAG}" ]; then
+                 docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+                 docker tag mozilla/tls-observatory "mozilla/tls-observatory:$CIRCLE_TAG"
+                 docker push "mozilla/tls-observatory:latest"
+                 docker push "mozilla/tls-observatory:$CIRCLE_TAG"
+             fi
+
+workflows:
+  version: 2
+
+  # workflow jobs are _not_ run in tag builds by default
+  # we use filters to whitelist jobs that should be run for tags
+
+  # workflow jobs are run in _all_ branch builds by default
+  # we use filters to blacklist jobs that shouldn't be run for a branch
+
+  # see: https://circleci.com/docs/2.0/workflows/#git-tag-job-execution
+
+  build-test-push:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/

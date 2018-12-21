@@ -18,6 +18,8 @@ import (
 	"regexp"
 )
 
+// FileContent is used to perform tests against the content of a given file
+// on the file system.
 type FileContent struct {
 	Path       string `json:"path,omitempty" yaml:"path,omitempty"`
 	File       string `json:"file,omitempty" yaml:"file,omitempty"`

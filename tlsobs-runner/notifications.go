@@ -6,8 +6,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"net/smtp"
 	"time"
 )
@@ -21,6 +24,7 @@ type Notification struct {
 func processNotifications(notifchan chan Notification, done chan bool) {
 	emailntfs := make(map[string][]byte)
 	ircntfs := make(map[string][]byte)
+	slackntfs := make(map[string][]byte)
 	for n := range notifchan {
 		log.Printf("[info] received notification for target %q with body: %s", n.Target, n.Body)
 		for _, rcpt := range n.Conf.Email.Recipients {
@@ -37,12 +41,29 @@ func processNotifications(notifchan chan Notification, done chan bool) {
 			}
 			ircntfs[rcpt] = []byte(fmt.Sprintf("%s\n%s: %s", body, n.Target, n.Body))
 		}
+		for _, rcpt := range n.Conf.Slack.Channels {
+			var body []byte
+			if _, ok := slackntfs[rcpt]; ok {
+				body = slackntfs[rcpt]
+			}
+			slackntfs[rcpt] = []byte(fmt.Sprintf("%s\n%s: %s", body, n.Target, n.Body))
+		}
 	}
 	for rcpt, body := range emailntfs {
 		err := sendMail(rcpt, body)
 		if err != nil {
 			log.Printf("[error] failed to send email notification to %q: %v", rcpt, err)
+			continue
 		}
+		log.Printf("sent email notification to %q", rcpt)
+	}
+	for rcpt, body := range slackntfs {
+		err := sendSlackMessage(rcpt, body)
+		if err != nil {
+			log.Printf("[error] failed to send slack notification to channel %q: %v", rcpt, err)
+			continue
+		}
+		log.Printf("sent slack message to %q", rcpt)
 	}
 	done <- true
 }
@@ -67,5 +88,21 @@ Date: %s
 
 %s`, conf.Smtp.From, rcpt, time.Now().Format("Mon, 2 Jan 2006 15:04:05 -0700"), body)),
 	)
+	return
+}
+
+func sendSlackMessage(rcpt string, body []byte) (err error) {
+	debugprint("Publishing notification to slack channel %q", rcpt)
+	raw := map[string]string{
+		"channel":    rcpt,
+		"text":       fmt.Sprintf("%s", body),
+		"username":   conf.Slack.Username,
+		"icon_emoji": conf.Slack.IconEmoji,
+	}
+	payload, err := json.Marshal(&raw)
+	if err != nil {
+		return
+	}
+	_, err = http.Post(conf.Slack.Webhook, "application/json", bytes.NewReader(payload))
 	return
 }

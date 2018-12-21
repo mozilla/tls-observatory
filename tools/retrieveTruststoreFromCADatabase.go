@@ -20,10 +20,10 @@ func main() {
 	truststore = os.Args[1]
 	switch truststore {
 	case "mozilla":
-		csvURL = "https://mozillacaprogram.secure.force.com/CA/IncludedCACertificateReportPEMCSV"
+		csvURL = "https://ccadb-public.secure.force.com/mozilla/IncludedCACertificateReportPEMCSV"
 		csvPEMPos = 28
 	case "microsoft":
-		csvURL = "https://mozillacaprogram.secure.force.com/CA/apex/IncludedCACertificateReportForMSFTCSVPEM"
+		csvURL = "https://ccadb-public.secure.force.com/microsoft/IncludedCACertificateReportForMSFTCSVPEM"
 		csvPEMPos = 6
 	}
 	resp, err := http.Get(csvURL)

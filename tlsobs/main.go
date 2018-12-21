@@ -17,9 +17,15 @@ import (
 	"github.com/mozilla/tls-observatory/connection"
 	"github.com/mozilla/tls-observatory/database"
 	"github.com/mozilla/tls-observatory/worker"
+	_ "github.com/mozilla/tls-observatory/worker/awsCertlint"
+	_ "github.com/mozilla/tls-observatory/worker/caaWorker"
+	_ "github.com/mozilla/tls-observatory/worker/crlWorker"
 	_ "github.com/mozilla/tls-observatory/worker/mozillaEvaluationWorker"
 	_ "github.com/mozilla/tls-observatory/worker/mozillaGradingWorker"
+	_ "github.com/mozilla/tls-observatory/worker/ocspStatus"
 	_ "github.com/mozilla/tls-observatory/worker/sslLabsClientSupport"
+	_ "github.com/mozilla/tls-observatory/worker/symantecDistrust"
+	_ "github.com/mozilla/tls-observatory/worker/top1m"
 )
 
 func usage() {
@@ -73,6 +79,7 @@ func main() {
 	// also trim http:// prefix ( in case someone has a really wrong idea of what
 	// the observatory does...)
 	target = strings.TrimPrefix(target, "http://")
+	target = strings.TrimSuffix(target, "/") // trailing slash
 
 	if *rescan {
 		rescanP = "&rescan=true"
@@ -115,6 +122,10 @@ getresults:
 		err = json.Unmarshal(body, &results)
 		if err != nil {
 			panic(err)
+		}
+		if results.Complperc == 100 && results.ScanError != "" {
+			fmt.Printf("Scan failed with error: %s\n", results.ScanError)
+			os.Exit(81)
 		}
 		if results.Complperc == 100 && !has_cert {
 			// completion is already 100% and we have not yet retrieved the cert,
@@ -247,11 +258,11 @@ func printAnalysis(ars []database.Analysis) {
 			results []string
 			err     error
 		)
-		if _, ok := worker.AvailableWorkers[a.Analyzer]; !ok {
+		if _, ok := worker.AvailablePrinters[a.Analyzer]; !ok {
 			//fmt.Fprintf(os.Stderr, "analyzer %q not found\n", a.Analyzer)
 			continue
 		}
-		runner := worker.AvailableWorkers[a.Analyzer].Runner
+		runner := worker.AvailablePrinters[a.Analyzer].Runner
 		switch a.Analyzer {
 		case "mozillaEvaluationWorker":
 			results, err = runner.(worker.HasAnalysisPrinter).AnalysisPrinter([]byte(a.Result), *targetLevel)

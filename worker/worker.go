@@ -20,6 +20,7 @@ type Result struct {
 
 // Input holds all the info that is given as input to each scanner.
 type Input struct {
+	Target           string
 	Certificate      certificate.Certificate
 	CertificateChain *certificate.Chain
 	Connection       connection.Stored
@@ -47,6 +48,19 @@ func RegisterWorker(name string, info Info) {
 		os.Exit(1)
 	}
 	AvailableWorkers[name] = info
+}
+
+// AvailablePrinters is the global variable that contains all the workers printers
+// that have registered themselves as available.
+var AvailablePrinters = make(map[string]Info)
+
+// RegisterPrinter is called by each worker in order to register itself as available.
+func RegisterPrinter(name string, info Info) {
+	if _, exist := AvailablePrinters[name]; exist {
+		fmt.Fprintf(os.Stderr, "RegisterPrinter: a printer named %q has already been registered.\nAre you trying to import the same printer twice?\n", name)
+		os.Exit(1)
+	}
+	AvailablePrinters[name] = info
 }
 
 // RemoveWorker is called in case any worker needs to make itself unavailable ( due to unrecoverable errors ).

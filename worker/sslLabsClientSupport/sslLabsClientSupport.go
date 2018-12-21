@@ -25,6 +25,7 @@ var (
 
 func init() {
 	runner := new(slabscrunner)
+	worker.RegisterPrinter(workerName, worker.Info{Runner: runner, Description: workerDesc})
 	cs, err := getConffromURL(sslLabsClientDataURL)
 	if err != nil {
 		log.Printf("Failed to initialize %s: %v", workerName, err)
@@ -309,7 +310,7 @@ func (w slabscrunner) AnalysisPrinter(r []byte, printAll interface{}) (results [
 		prevClient := productsSupport[client.Name]
 		// compare the version of the previous and current clients,
 		// if the current client is older, store it instead of the previous one
-		isOlder, err := scribe.TestEvrCompare(scribe.EVROP_LESS_THAN, client.Version, prevClient.Version)
+		isOlder, err := scribe.TestEvrCompare(scribe.EvropLessThan, client.Version, prevClient.Version)
 		if err != nil {
 			log.Printf("Failed to compare version %s with version %s for client %s: %v",
 				client.Version, prevClient.Version, client.Name, err)

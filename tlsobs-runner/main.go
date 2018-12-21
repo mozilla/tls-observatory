@@ -36,7 +36,11 @@ type Configuration struct {
 			User, Pass string
 		}
 	}
+	Slack struct {
+		Username, IconEmoji, Webhook string
+	}
 }
+
 type Run struct {
 	Targets       []string
 	Assertions    []Assertion
@@ -63,6 +67,9 @@ type NotificationsConf struct {
 	}
 	Email struct {
 		Recipients []string
+	}
+	Slack struct {
+		Channels []string
 	}
 }
 
@@ -131,7 +138,7 @@ func (r Run) scan(target string) (id int64, err error) {
 			err = fmt.Errorf("scan(target=%q) -> %v", target, e)
 		}
 	}()
-	resp, err := http.Post(observatory+"/api/v1/scan?target="+target, "application/json", nil)
+	resp, err := http.Post(observatory+"/api/v1/scan?rescan=true&target="+target, "application/json", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -207,7 +214,7 @@ func (r Run) evaluate(id int64, notifchan chan Notification, wg *sync.WaitGroup)
 func getCert(id int64) (cert certificate.Certificate, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("getCert(id=%q) -> %v", e)
+			err = fmt.Errorf("getCert(id=%q) -> %v", id, e)
 		}
 	}()
 	resp, err := http.Get(fmt.Sprintf("%s/api/v1/certificate?id=%d", observatory, id))
@@ -276,6 +283,15 @@ func getConf(cfg string) (c Configuration) {
 	}
 	if os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS") != "" {
 		c.Smtp.Auth.Pass = os.Getenv("TLSOBS_RUNNER_SMTP_AUTH_PASS")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SLACK_USERNAME") != "" {
+		c.Slack.Username = os.Getenv("TLSOBS_RUNNER_USERNAME")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SLACK_ICONEMOJI") != "" {
+		c.Slack.IconEmoji = os.Getenv("TLSOBS_RUNNER_SLACK_ICONEMOJI")
+	}
+	if os.Getenv("TLSOBS_RUNNER_SLACK_WEBHOOK") != "" {
+		c.Slack.Webhook = os.Getenv("TLSOBS_RUNNER_SLACK_WEBHOOK")
 	}
 	return c
 }

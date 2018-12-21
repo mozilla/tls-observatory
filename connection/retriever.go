@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"os/exec"
+	"time"
 )
 
 type NoTLSConnErr string
@@ -17,11 +18,10 @@ func (f NoTLSConnErr) Error() string {
 }
 
 func Connect(domain, cipherscanbinPath string) ([]byte, error) {
-
 	ip := getRandomIP(domain)
 
 	if ip == "" {
-		e := fmt.Errorf("Could not resolve ip for: ", domain)
+		e := fmt.Errorf("Could not resolve ip for: %s", domain)
 		log.Println(e)
 		return nil, e
 	}
@@ -33,10 +33,25 @@ func Connect(domain, cipherscanbinPath string) ([]byte, error) {
 	var stderr bytes.Buffer
 	comm.Stdout = &out
 	comm.Stderr = &stderr
-	err := comm.Run()
+	err := comm.Start()
 	if err != nil {
+		log.Println(stderr.String())
 		log.Println(err)
 		return nil, err
+	}
+	waiter := make(chan error, 1)
+	go func() {
+		waiter <- comm.Wait()
+	}()
+	select {
+	case <-time.After(3 * time.Minute):
+		err = fmt.Errorf("cipherscan timed out after 3 minutes on target %s %s", domain, ip)
+		return nil, err
+	case err := <-waiter:
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
 	}
 
 	info := CipherscanOutput{}

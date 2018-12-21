@@ -18,13 +18,15 @@ import (
 
 	"crypto/x509"
 
-	"github.com/google/certificate-transparency/go"
-	"github.com/google/certificate-transparency/go/client"
-	"github.com/google/certificate-transparency/go/jsonclient"
-	ctx509 "github.com/google/certificate-transparency/go/x509"
+	"github.com/google/certificate-transparency-go"
+	"github.com/google/certificate-transparency-go/client"
+	"github.com/google/certificate-transparency-go/jsonclient"
+	ctx509 "github.com/google/certificate-transparency-go/x509"
 	"github.com/mozilla/tls-observatory/certificate"
 	pg "github.com/mozilla/tls-observatory/database"
 )
+
+const CTBATCHSIZE = 100
 
 func main() {
 	var (
@@ -58,7 +60,7 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 	// create a certificate transparency client
-	ctLog, err := client.New("http://ct.googleapis.com/aviator", httpCli, jsonclient.Options{})
+	ctLog, err := client.New(os.Getenv("CTLOG"), httpCli, jsonclient.Options{})
 	if err != nil {
 		log.Fatalf("Failed to connect to CT log: %v", err)
 	}
@@ -69,15 +71,15 @@ func main() {
 		}
 	}
 	for {
-		log.Printf("retrieving CT logs %d to %d", offset, offset+100)
-		rawEnts, err := ctLog.GetEntries(nil, int64(offset), int64(offset+100))
+		log.Printf("retrieving CT logs %d to %d", offset, offset+CTBATCHSIZE)
+		rawEnts, err := ctLog.GetEntries(nil, int64(offset), int64(offset+CTBATCHSIZE))
 		if err != nil {
-			log.Fatal(err)
+			log.Println("Failed to retrieve entries from CT log: ", err)
+			time.Sleep(10 * time.Second)
+			continue
 		}
-
 		// loop over CT records
 		for i, ent := range rawEnts {
-			fmt.Printf("\n")
 			log.Printf("CT index=%d", offset+i)
 			var ctcertX509 *ctx509.Certificate
 			switch ent.Leaf.TimestampedEntry.EntryType {
@@ -90,11 +92,8 @@ func main() {
 				log.Printf("Failed to parse CT certificate: %v", err)
 				continue
 			}
-			log.Printf("CN=%s", ctcertX509.Subject.CommonName)
-			log.Printf("Issuer=%s", ctcertX509.Issuer.CommonName)
-			log.Printf("Not Before=%s", ctcertX509.NotBefore)
-			log.Printf("Not After=%s", ctcertX509.NotAfter)
-
+			log.Printf("CN=%s; Issuer=%s", ctcertX509.Subject.CommonName, ctcertX509.Issuer.CommonName)
+			log.Printf("Not Before=%s; Not After=%s", ctcertX509.NotBefore, ctcertX509.NotAfter)
 			certHash := certificate.SHA256Hash(ctcertX509.Raw)
 			id, err := db.GetCertIDBySHA256Fingerprint(certHash)
 			if err != nil {
@@ -163,6 +162,6 @@ func main() {
 			}
 			log.Printf("URL = https://tls-observatory.services.mozilla.com/static/certsplainer.html?id=%d", id)
 		}
-		offset += 100
+		offset += CTBATCHSIZE
 	}
 }
