@@ -109,12 +109,14 @@ runs:
         - alerts.telemetry.mozilla.org
         - start.telemetry.mozilla.org
         - reports.telemetry.mozilla.org
-        - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
+        - missioncontrol.telemetry.mozilla.org
         - data.mozilla.com
+        - telemetry-coverage.mozilla.org
+        - coverage-bug1492656.mozilla.org
 
         # Misc
         - services.mozilla.com
@@ -512,12 +514,14 @@ runs:
         - alerts.telemetry.mozilla.org
         - start.telemetry.mozilla.org
         - reports.telemetry.mozilla.org
-        - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
+        - missioncontrol.telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - data.mozilla.com
+        - telemetry-coverage.mozilla.org
+        - coverage-bug1492656.mozilla.org
       assertions:
         - certificate:
             validity:

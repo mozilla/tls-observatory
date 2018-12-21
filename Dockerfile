@@ -44,7 +44,7 @@ RUN rm -rf $GOPATH/src/github.com/mozilla/tls-observatory/.git && \
     apt-get update -y && \
     apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang postgresql-client ruby ruby-dev -y && \
     chown app:app -R /var/lib/gems/ && \
-    git clone https://github.com/mozkeeler/ev-checker.git && \
+    git clone https://github.com/mozilla-services/ev-checker.git && \
     cd ev-checker && \
     make && \
     mv ./ev-checker /go/bin/ && \

@@ -44,7 +44,7 @@ func main() {
 		os.Getenv("TLSOBS_POSTGRESUSER"),
 		os.Getenv("TLSOBS_POSTGRESPASS"),
 		os.Getenv("TLSOBS_POSTGRES"),
-		"disable",
+		"require",
 	)
 	if err != nil {
 		log.Fatalf("Error connecting to database: %s", err)
