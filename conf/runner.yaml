@@ -57,6 +57,7 @@ runs:
 
         # Crash report (socorro)
         - crash-stats.mozilla.com
+        - crash-stats.mozilla.org
         - crash-stats.allizom.org
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
