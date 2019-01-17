@@ -61,7 +61,10 @@ runs:
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
         - crash-reports.allizom.org
-        - symbols.mozilla.org
+
+        # elmo
+        - l10n.mozilla.org
+        - l10n.allizom.org
 
         # everything.me
         - geodude.services.mozilla.com
@@ -131,8 +134,8 @@ runs:
 
         # Normandy
         - normandy.cdn.mozilla.net
-        - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
+        - classify-client.services.mozilla.com
         - self-repair.mozilla.org
         - normandy.stage.mozaws.net
         - normandy-cdn.stage.mozaws.net
@@ -194,6 +197,11 @@ runs:
         - stubattribution-default.stage.mozaws.net
         - stubdownloader.services.mozilla.com
         - stubdownloader.cdn.mozilla.net
+
+        # Symbols (tecken)
+        - symbols.mozilla.org
+        - symbols.stage.mozaws.net
+        - symbols.dev.mozaws.net
 
         # Sync
         - token.services.mozilla.com
