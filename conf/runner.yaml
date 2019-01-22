@@ -62,7 +62,10 @@ runs:
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
         - crash-reports.allizom.org
-        - symbols.mozilla.org
+
+        # elmo
+        - l10n.mozilla.org
+        - l10n.allizom.org
 
         # everything.me
         - geodude.services.mozilla.com
@@ -132,8 +135,8 @@ runs:
 
         # Normandy
         - normandy.cdn.mozilla.net
-        - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
+        - classify-client.services.mozilla.com
         - self-repair.mozilla.org
         - normandy.stage.mozaws.net
         - normandy-cdn.stage.mozaws.net
@@ -195,6 +198,11 @@ runs:
         - stubattribution-default.stage.mozaws.net
         - stubdownloader.services.mozilla.com
         - stubdownloader.cdn.mozilla.net
+
+        # Symbols (tecken)
+        - symbols.mozilla.org
+        - symbols.stage.mozaws.net
+        - symbols.dev.mozaws.net
 
         # Sync
         - token.services.mozilla.com
@@ -410,7 +418,6 @@ runs:
         - crash-stats.mozilla.com
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
-        - symbols.mozilla.org
       assertions:
         - certificate:
             validity:
@@ -420,6 +427,20 @@ runs:
           email:
               recipients:
                   - b64:c29jb3Jyb0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29t
+
+    #  Elmo paging
+    - targets:
+        - l10n.mozilla.org
+        - l10n.allizom.org
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64ZWxtb0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
 
     # everything.me paging
     - targets:
@@ -546,8 +567,8 @@ runs:
     # Normandy
     - targets:
         - normandy.cdn.mozilla.net
-        - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
+        - classify-client.services.mozilla.com
         - self-repair.mozilla.org
         - normandy.stage.mozaws.net
         - normandy-cdn.stage.mozaws.net
@@ -591,6 +612,21 @@ runs:
           email:
               recipients:
                   - b64:dGVzdHBpbG90QG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
+
+    #  Symbols (tecken) paging
+    - targets:
+        - symbols.mozilla.org
+        - symbols.stage.mozaws.net
+        - symbols.dev.mozaws.net
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:c3ltYm9sc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
 
     # Product Delivery paging
     - targets:
