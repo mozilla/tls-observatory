@@ -49,6 +49,10 @@ runs:
         - fxpartners.mozilla.com
 
         # Conduit
+        - lando.devsvcdev.mozaws.net
+        - lando.services.mozilla.com
+        - api.lando.devsvcdev.mozaws.net
+        - api.lando.services.mozilla.com
         - phabricator-dev.allizom.org
         - phabricator.allizom.org
         - phabricator.services.mozilla.com
