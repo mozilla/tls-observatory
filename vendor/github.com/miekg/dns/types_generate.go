@@ -193,6 +193,8 @@ func main() {
 				fallthrough
 			case st.Tag(i) == `dns:"hex"`:
 				o("l += len(rr.%s)/2 + 1\n")
+			case st.Tag(i) == `dns:"any"`:
+				o("l += len(rr.%s)\n")
 			case st.Tag(i) == `dns:"a"`:
 				o("l += net.IPv4len // %s\n")
 			case st.Tag(i) == `dns:"aaaa"`:
@@ -241,6 +243,13 @@ func main() {
 				if strings.Contains(t, ".") {
 					splits := strings.Split(t, ".")
 					t = splits[len(splits)-1]
+				}
+				// For the EDNS0 interface (used in the OPT RR), we need to call the copy method on each element.
+				if t == "EDNS0" {
+					fmt.Fprintf(b, "%s := make([]%s, len(rr.%s));\nfor i,e := range rr.%s {\n %s[i] = e.copy()\n}\n",
+						f, t, f, f, f)
+					fields = append(fields, f)
+					continue
 				}
 				fmt.Fprintf(b, "%s := make([]%s, len(rr.%s)); copy(%s, rr.%s)\n",
 					f, t, f, f, f)

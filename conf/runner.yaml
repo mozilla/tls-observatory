@@ -101,7 +101,6 @@ runs:
 
         # Locations
         - location.services.mozilla.com
-        - location-leaderboard.services.mozilla.com
 
         # Data Platform services
         - telemetry-experiment.cdn.mozilla.net
@@ -510,7 +509,6 @@ runs:
     # Locations paging
     - targets:
         - location.services.mozilla.com
-        - location-leaderboard.services.mozilla.com
       assertions:
         - certificate:
             validity:

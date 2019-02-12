@@ -51,6 +51,7 @@ test:
 	$(GO) test `go list ./... | grep -v tools`
 
 truststores:
+	git submodule update --init --recursive
 	cd truststores && git pull origin master && cd ..
 	cat truststores/data/apple/snapshot/*.pem > conf/truststores/CA_apple_latest.crt
 	cat truststores/data/java/snapshot/*.pem > conf/truststores/CA_java.crt
