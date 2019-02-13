@@ -52,11 +52,15 @@ runs:
         - fxpartners.mozilla.com
 
         # Conduit
-        - phabricator-dev.allizom.org
-        - phabricator.allizom.org
-        - phabricator.services.mozilla.com
+        - api.lando.devsvcdev.mozaws.net
+        - api.lando.services.mozilla.com
         - bugzilla.allizom.org
         - bugzilla.mozilla.org
+        - lando.devsvcdev.mozaws.net
+        - lando.services.mozilla.com
+        - phabricator.allizom.org
+        - phabricator-dev.allizom.org
+        - phabricator.services.mozilla.com
 
         # Crash report (socorro)
         - crash-stats.mozilla.com
@@ -415,11 +419,15 @@ runs:
 
     # Conduit paging
     - targets:
-        - phabricator-dev.allizom.org
-        - phabricator.allizom.org
-        - phabricator.services.mozilla.com
+        - api.lando.devsvcdev.mozaws.net
+        - api.lando.services.mozilla.com
         - bugzilla.allizom.org
         - bugzilla.mozilla.org
+        - lando.devsvcdev.mozaws.net
+        - lando.services.mozilla.com
+        - phabricator.allizom.org
+        - phabricator-dev.allizom.org
+        - phabricator.services.mozilla.com
       assertions:
         - certificate:
             validity:
