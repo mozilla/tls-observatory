@@ -44,6 +44,9 @@ runs:
         - aus4.mozilla.org
         - aus5.mozilla.org
         - aus.mozilla.org
+        
+        # Buildhub2
+        - buildhub.moz.tools
 
         # Cloudfront (Misc Static Sites)
         - fxpartners.mozilla.com
@@ -141,6 +144,9 @@ runs:
         - normandy.dev.mozaws.net
         - normandy-cdn.dev.mozaws.net
         - normandy-mock.dev.mozaws.net
+        
+        # Premium Services
+        - premium.firefox.com
 
         # Product Delivery
         - ftp.stage.mozaws.net
@@ -394,6 +400,19 @@ runs:
               recipients:
                   - b64:YmFscm9nLXRsc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
 
+    # BuildHub paging
+    - targets:
+        - buildhub.moz.tools
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:YnVpbGRodWIyQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20=
+
     # Conduit paging
     - targets:
         - phabricator-dev.allizom.org
@@ -639,6 +658,19 @@ runs:
           email:
               recipients:
                   - b64:cHJvZHVjdC1kZWxpdmVyeUBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
+    # Premium Services paging
+    - targets:
+        - premium.firefox.com
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:cHJlbWl1bS1zZXJ2aWNlcy12cG5AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQ==
 
     # Push paging
     - targets:
