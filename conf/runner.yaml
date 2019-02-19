@@ -416,6 +416,7 @@ runs:
     # Crash report paging
     - targets:
         - crash-stats.mozilla.com
+        - crash-stats.mozilla.org
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
       assertions:
