@@ -50,6 +50,7 @@ runs:
 
         # Cloudfront (Misc Static Sites)
         - fxpartners.mozilla.com
+        - mitmdetection.services.mozilla.com
 
         # Conduit
         - api.lando.devsvcdev.mozaws.net
@@ -587,6 +588,19 @@ runs:
           email:
               recipients:
                   - cloud-ops@mozilla.com
+    
+    # mitmdetection paging
+    - targets:
+        - mitmdetection.services.mozilla.com
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:bWl0bWRldGVjdGlvbkBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29t
 
     # Normandy
     - targets:
