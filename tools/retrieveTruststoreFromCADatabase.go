@@ -21,7 +21,7 @@ func main() {
 	switch truststore {
 	case "mozilla":
 		csvURL = "https://ccadb-public.secure.force.com/mozilla/IncludedCACertificateReportPEMCSV"
-		csvPEMPos = 28
+		csvPEMPos = 30
 	case "microsoft":
 		csvURL = "https://ccadb-public.secure.force.com/microsoft/IncludedCACertificateReportForMSFTCSVPEM"
 		csvPEMPos = 6
