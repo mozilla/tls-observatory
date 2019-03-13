@@ -170,7 +170,6 @@ runs:
         - download-akamai.cdn.mozilla.net
         - download-cloudfront.cdn.mozilla.net
         - download-installer-cloudfront.cdn.mozilla.net
-        - download-sha1.cdn.mozilla.net
         - bouncer-bouncer.stage.mozaws.net
         - bouncer-bouncer-releng.stage.mozaws.net
         - bucketlister-delivery.stage.mozaws.net
@@ -675,7 +674,6 @@ runs:
     - targets:
         - download.mozilla.org
         - download-installer.cdn.mozilla.net
-        - download-sha1.cdn.mozilla.net
         - stubattribution-default.stage.mozaws.net
         - stubdownloader.services.mozilla.com
         - cdn.stubdownloader.services.mozilla.com
@@ -802,19 +800,6 @@ runs:
         - analysis:
             analyzer: mozillaEvaluationWorker
             result: '{"level": "old"}'
-      cron: "0 19 * * *"
-      notifications:
-          email:
-              recipients:
-                  - cloud-ops@mozilla.com
-
-    # Cloud Services product delivery CDN always shows as bad because of RC4, AWS limitation
-    - targets:
-        - download-sha1.cdn.mozilla.net
-      assertions:
-        - analysis:
-            analyzer: mozillaEvaluationWorker
-            result: '{"level": "bad"}'
       cron: "0 19 * * *"
       notifications:
           email:
