@@ -676,6 +676,10 @@ runs:
         - download.mozilla.org
         - download-installer.cdn.mozilla.net
         - download-sha1.cdn.mozilla.net
+        - stubattribution-default.stage.mozaws.net
+        - stubdownloader.services.mozilla.com
+        - cdn.stubdownloader.services.mozilla.com
+        - stubdownloader.cdn.mozilla.net
       assertions:
         - certificate:
             validity:
