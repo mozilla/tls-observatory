@@ -206,6 +206,7 @@ runs:
         # Stub
         - stubattribution-default.stage.mozaws.net
         - stubdownloader.services.mozilla.com
+        - cdn.stubdownloader.services.mozilla.com
         - stubdownloader.cdn.mozilla.net
 
         # Symbols (tecken)
