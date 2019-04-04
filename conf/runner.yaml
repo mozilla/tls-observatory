@@ -186,6 +186,9 @@ runs:
         - updates.push.services.mozilla.com
         - ua.push.tefdigital.com
 
+        # Releng Services
+        - product-details.mozilla.org
+
         # Screenshots
         - pageshot.net
         - pageshot-usercontent.net
