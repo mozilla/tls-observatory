@@ -8,7 +8,7 @@ The Mozilla TLS Observatory is a suite of tools for analysis and inspection on T
 - [EV Checker](https://tls-observatory.services.mozilla.com/static/ev-checker.html) - Tool for Certificate Authorities (CAs) who request a root certificate enabled for Extended Validation (EV).
 - [Certificate Explainer](https://tls-observatory.services.mozilla.com/static/certsplainer.html) - Web UI that parses fields of X.509 certificates
 - `tlsobs` - CLI tool for issuing scans of a website
-- `tlsobs-api` - HTTP webserver receving website scan requests and displaying results
+- `tlsobs-api` - HTTP webserver receiving website scan requests and displaying results
 - `tlsobs-runner` - Service that schedules website scans
 - `tlsobs-scanner` - Service that performs scans and analysis of websites
 
@@ -212,7 +212,7 @@ following environment variables:
 
 Runs regular tests against target sites and sends notifications.
 
-See `conf/runnel.yaml` for an example of configuration. Some configuration
+See `conf/runner.yaml` for an example of configuration. Some configuration
 parameters can also be provided through environment variables:
 
 * `TLSOBS_RUNNER_SMTP_HOST` is the hostname of the smtp server (eg. `mypostfix.example.net`)
@@ -404,10 +404,6 @@ hourly scans
 2017-02-07T18:00:00Z    67
 2017-02-07T17:00:00Z    56
 ```
-
-## Database Queries
-
-### Find certificates signed by CAs identified by their SHA256 fingerprint
 
 ## Database Queries
 
