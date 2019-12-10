@@ -231,6 +231,9 @@ runs:
         - firefox-ci-tc.services.mozilla.com
         - community-tc.services.mozilla.com
         - stage.taskcluster.nonprod.cloudops.mozgcp.net
+        - firefoxci-websocktunnel.services.mozilla.com
+        - community-websocktunnel.services.mozilla.com
+        - websocktunnel-stage.taskcluster.nonprod.cloudops.mozgcp.net
 
         # Tiles
         - activity-stream-icons.services.mozilla.com
@@ -888,6 +891,8 @@ runs:
     - targets:
         - firefox-ci-tc.services.mozilla.com
         - community-tc.services.mozilla.com
+        - firefoxci-websocktunnel.services.mozilla.com
+        - community-websocktunnel.services.mozilla.com
       assertions:
         - certificate:
             validity:
