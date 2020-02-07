@@ -40,7 +40,6 @@ runs:
 
         # Balrog
         - aus2.mozilla.org
-        - aus3.mozilla.org
         - aus4.mozilla.org
         - aus5.mozilla.org
         - aus.mozilla.org
@@ -70,6 +69,9 @@ runs:
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
         - crash-reports.allizom.org
+        
+        # Detectportal
+        - detectportal.firefox.com
 
         # elmo
         - l10n.mozilla.org
