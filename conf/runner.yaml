@@ -40,7 +40,6 @@ runs:
 
         # Balrog
         - aus2.mozilla.org
-        - aus3.mozilla.org
         - aus4.mozilla.org
         - aus5.mozilla.org
         - aus.mozilla.org
@@ -70,6 +69,9 @@ runs:
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
         - crash-reports.allizom.org
+        
+        # Detectportal
+        - detectportal.firefox.com
 
         # elmo
         - l10n.mozilla.org
@@ -224,6 +226,14 @@ runs:
         - 401inator.sync.services.mozilla.com
         - eolinator.services.mozilla.com
         - sync-4-us-east-1.stage.mozaws.net
+
+        # Taskcluster
+        - firefox-ci-tc.services.mozilla.com
+        - community-tc.services.mozilla.com
+        - stage.taskcluster.nonprod.cloudops.mozgcp.net
+        - firefoxci-websocktunnel.services.mozilla.com
+        - community-websocktunnel.services.mozilla.com
+        - websocktunnel-stage.taskcluster.nonprod.cloudops.mozgcp.net
 
         # Tiles
         - activity-stream-icons.services.mozilla.com
@@ -877,35 +887,21 @@ runs:
               recipients:
                   - hostmaster+tlsobs@mozilla.com
 
-    # TaskCluster stuff
+    # Taskcluster paging
     - targets:
-        - auth.taskcluster.net
-        - aws-provisioner.taskcluster.net
-        - events.taskcluster.net
-        - hooks.taskcluster.net
-        - index.taskcluster.net
-        - purge-cache.taskcluster.net
-        - queue.taskcluster.net
-        - scheduler.taskcluster.net
-        - secrets.taskcluster.net
-        - taskcluster-github.herokuapp.com
-        - github.taskcluster.net
-        - tools.taskcluster.net
-        - docs.taskcluster.net
-        - login.taskcluster.net
-        - cors-proxy.taskcluster.net
+        - firefox-ci-tc.services.mozilla.com
+        - community-tc.services.mozilla.com
+        - firefoxci-websocktunnel.services.mozilla.com
+        - community-websocktunnel.services.mozilla.com
       assertions:
         - certificate:
             validity:
                 notafter: ">14d"
-        - analysis:
-            analyzer: mozillaEvaluationWorker
-            result: '{"level": "intermediate"}'
-      cron: "0 0 * * *"
+      cron: "30 18 * * *"
       notifications:
           email:
               recipients:
-                - b64:dGFza2NsdXN0ZXItbm90aWZpY2F0aW9ucyt0bHNvYnNAbW96aWxsYS5jb20=
+                  - b64:dGFza2NsdXN0ZXItZmlyZWZveGNpQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
 smtp:
     host: gator1
