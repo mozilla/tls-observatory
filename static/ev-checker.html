@@ -1,20 +1,27 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<link rel="stylesheet" type="text/css" href="style.css">
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <link rel="stylesheet" type="text/css" href="custom.css">
 </head>
+
 <body>
   <h1>EV-Readiness Check</h1>
-  <p id="result"/>
+  <p id="result" />
   <form name="form" class="pure-form pure-form-stacked">
     <fieldset>
       <table>
         <tr>
-          <td><h4>TLS Server&nbsp;</h4></td>
+          <td>
+            <h4>TLS Server&nbsp;</h4>
+          </td>
           <td><input id="target" placeholder="eg. www.mozilla.org"></td>
         </tr>
         <tr>
-          <td><h4>EV Policy OID&nbsp;</h4></td>
+          <td>
+            <h4>EV Policy OID&nbsp;</h4>
+          </td>
           <td><input id="oid" placeholder="eg. 2.16.840.1.114412.2.1"></td>
         <tr>
       </table>
@@ -27,4 +34,5 @@
   <script src="ev-checker.js"></script>
   <p>Documentation: <a href="https://wiki.mozilla.org/PSM:EV_Testing_Easy_Version">Wiki - PSM:EV_Testing_Easy_Version</a></p>
 </body>
+
 </html>

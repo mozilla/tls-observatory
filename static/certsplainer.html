@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="custom.css">
     <link rel="stylesheet" type="text/css" href="certsplainer.css">
     <meta charset="utf-8">
     <script async src="lib/cytoscape.min.js"></script>
     <script async src="certsplainer.js"></script>
     <title id="title">certsplainer: x509 certificate viewer</title>
 </head>
+
 <body>
     <h1>Mozilla TLS Observatory Certificate Explainer</h1>
-    <p id="logs"/>
+    <p id="logs" />
     <p id="help">
-    Upload a certificate PEM or add a certificate "id" or "sha256" in the URL.<br />
-    For example, this is <a href="/static/certsplainer.html?sha256=96BCEC06264976F37460779ACF28C5A7CFE8A3C0AAE11A8FFCEE05C0BDDF08C6">Let's Encrypt ISRG Root X1</a>.
+        Upload a certificate PEM or add a certificate "id" or "sha256" in the URL.<br />
+        For example, this is <a href="/static/certsplainer.html?sha256=96BCEC06264976F37460779ACF28C5A7CFE8A3C0AAE11A8FFCEE05C0BDDF08C6">Let's
+            Encrypt ISRG Root X1</a>.
     </p>
 
     <div id="main">
@@ -21,21 +25,70 @@
 
         <h2>Basic certificate information</h2>
         <table class="pure-table pure-table-striped">
-            <tr><td>version</td><td id="version"></td></tr>
-            <tr><td>serial number</td><td id="serialNumber"></td></tr>
-            <tr><td>subject</td><td id="subject"></td></tr>
-            <tr><td>issuer</td><td id="issuer"></td></tr>
-            <tr><td>not before</td><td id="notBefore"></td></tr>
-            <tr><td>not after</td><td id="notAfter"></td></tr>
-            <tr><td>signature algorithm</td><td id="signatureAlgorithm"></td></tr>
-            <tr id="keySizeRow"><td>key size</td><td id="keySize"></td></tr>
-            <tr id="exponentRow"><td>exponent</td><td id="exponent"></td></tr>
-            <tr id="curveRow"><td>curve</td><td id="curve"></td></tr>
-            <tr><td>sha1 hash</td><td id="sha1hash"></td></tr>
-            <tr><td>sha256 hash</td><td id="sha256hash"></td></tr>
-            <tr><td>spki sha256</td><td id="spki-sha256"></td></tr>
-            <tr><td>hpkp pin-sha256</td><td id="pin-sha256"></td></tr>
-            <tr><td>tls observatory id</td><td id="id"></td></tr>
+            <tr>
+                <td>version</td>
+                <td id="version"></td>
+            </tr>
+            <tr>
+                <td>serial number</td>
+                <td id="serialNumber"></td>
+            </tr>
+            <tr>
+                <td>subject</td>
+                <td id="subject"></td>
+            </tr>
+            <tr>
+                <td>issuer</td>
+                <td id="issuer"></td>
+            </tr>
+            <tr>
+                <td>not before</td>
+                <td id="notBefore"></td>
+            </tr>
+            <tr>
+                <td>not after</td>
+                <td id="notAfter"></td>
+            </tr>
+            <tr>
+                <td>signature algorithm</td>
+                <td id="signatureAlgorithm"></td>
+            </tr>
+            <tr id="keySizeRow">
+                <td>key size</td>
+                <td id="keySize"></td>
+            </tr>
+            <tr id="exponentRow">
+                <td>exponent</td>
+                <td id="exponent"></td>
+            </tr>
+            <tr id="curveRow">
+                <td>curve</td>
+                <td id="curve"></td>
+            </tr>
+            <tr>
+                <td>sha1 hash</td>
+                <td id="sha1hash"></td>
+            </tr>
+            <tr>
+                <td>sha256 hash</td>
+                <td id="sha256hash"></td>
+            </tr>
+            <tr>
+                <td>spki sha256</td>
+                <td id="spki-sha256"></td>
+            </tr>
+            <tr>
+                <td>subject spki sha256</td>
+                <td id="subject-spki-sha256"></td>
+            </tr>
+            <tr>
+                <td>hpkp pin-sha256</td>
+                <td id="pin-sha256"></td>
+            </tr>
+            <tr>
+                <td>tls observatory id</td>
+                <td id="id"></td>
+            </tr>
         </table>
 
         <h2>Certificate extensions</h2>
@@ -52,11 +105,11 @@
 
         <h2>Post a certificate</h2>
         <form name="form" id="certform" class="pure-form pure-form-stacked">
-        <fieldset>
-            <input type="file" class="pure-button" />
-            <textarea id="certificate" placeholder="Browse to load PEM file or paste it here" rows="10" cols="80"></textarea>
-            <button class="pure-button">Decode</button>
-        </fieldset>
+            <fieldset>
+                <input type="file" class="pure-button" />
+                <textarea id="certificate" placeholder="Browse to load PEM file or paste it here" rows="10" cols="80"></textarea>
+                <button class="pure-button">Decode</button>
+            </fieldset>
         </form>
     </div>
 
@@ -65,4 +118,5 @@
         <div id="cy"></div>
     </div>
 </body>
+
 </html>

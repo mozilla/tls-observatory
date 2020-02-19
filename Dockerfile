@@ -5,7 +5,7 @@
 # This is based on the original Golang Dockerfile for Debian Stretch
 # https://github.com/docker-library/golang/blob/906e04de73168f643c5c2b40dca0877a14d2377c/1.10/stretch/Dockerfile
 
-FROM golang:latest
+FROM golang:1.11
 MAINTAINER Julien Vehent
 
 ENV GOPATH /go
@@ -44,7 +44,7 @@ RUN rm -rf $GOPATH/src/github.com/mozilla/tls-observatory/.git && \
     apt-get update -y && \
     apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang postgresql-client ruby ruby-dev -y && \
     chown app:app -R /var/lib/gems/ && \
-    git clone https://github.com/mozkeeler/ev-checker.git && \
+    git clone https://github.com/mozilla-services/ev-checker.git && \
     cd ev-checker && \
     make && \
     mv ./ev-checker /go/bin/ && \

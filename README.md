@@ -1,11 +1,14 @@
 # Mozilla TLS Observatory
 
+[![What's Deployed](https://img.shields.io/badge/whatsdeployed-stage,prod-green.svg)](https://whatsdeployed.io/s-LVL)
+[![CircleCI](https://circleci.com/gh/mozilla/tls-observatory/tree/master.svg?style=svg)](https://circleci.com/gh/mozilla/tls-observatory/tree/master)
+
 The Mozilla TLS Observatory is a suite of tools for analysis and inspection on Transport Layer Security (TLS) services. The components of TLS Observatory include:
 
 - [EV Checker](https://tls-observatory.services.mozilla.com/static/ev-checker.html) - Tool for Certificate Authorities (CAs) who request a root certificate enabled for Extended Validation (EV).
 - [Certificate Explainer](https://tls-observatory.services.mozilla.com/static/certsplainer.html) - Web UI that parses fields of X.509 certificates
 - `tlsobs` - CLI tool for issuing scans of a website
-- `tlsobs-api` - HTTP webserver receving website scan requests and displaying results
+- `tlsobs-api` - HTTP webserver receiving website scan requests and displaying results
 - `tlsobs-runner` - Service that schedules website scans
 - `tlsobs-scanner` - Service that performs scans and analysis of websites
 
@@ -209,7 +212,7 @@ following environment variables:
 
 Runs regular tests against target sites and sends notifications.
 
-See `conf/runnel.yaml` for an example of configuration. Some configuration
+See `conf/runner.yaml` for an example of configuration. Some configuration
 parameters can also be provided through environment variables:
 
 * `TLSOBS_RUNNER_SMTP_HOST` is the hostname of the smtp server (eg. `mypostfix.example.net`)
@@ -406,10 +409,6 @@ hourly scans
 
 ### Find certificates signed by CAs identified by their SHA256 fingerprint
 
-## Database Queries
-
-### Find certificates signed by CAs identified by their SHA256 fingerprint
-
 ```sql
 SELECT certificates.id, certificates.subject, certificates.issuer
 FROM certificates INNER JOIN trust ON (certificates.id=trust.cert_id)
@@ -585,6 +584,23 @@ WHERE jsonb_typeof(conn_info) = 'object'
                     AND timestamp > NOW() - INTERVAL '1 month')
   AND timestamp > NOW() - INTERVAL '1 month';
   ```
+
+### Count Top 1M sites that support TLSv1.2
+```sql
+SELECT ciphersuites->'protocols' @> '["TLSv1.2"]'::jsonb AS "Support TLS 1.2", COUNT(DISTINCT(target))
+FROM scans,
+     jsonb_array_elements(conn_info->'ciphersuite') as ciphersuites
+WHERE jsonb_typeof(conn_info) = 'object'
+  AND jsonb_typeof(conn_info->'ciphersuite') = 'array'
+  AND target IN ( SELECT target
+                  FROM scans
+                       INNER JOIN analysis ON (scans.id=analysis.scan_id)
+                  WHERE worker_name='top1m'
+                    AND CAST(output->'target'->>'rank' AS INTEGER) < 1000000
+                    AND timestamp > NOW() - INTERVAL '1 month')
+  AND timestamp > NOW() - INTERVAL '1 month'
+GROUP BY ciphersuites->'protocols' @> '["TLSv1.2"]'::jsonb;
+```
 
 ### Count end-entity certificates by issuer organizations
 ```sql

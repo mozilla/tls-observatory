@@ -40,28 +40,42 @@ runs:
 
         # Balrog
         - aus2.mozilla.org
-        - aus3.mozilla.org
         - aus4.mozilla.org
         - aus5.mozilla.org
         - aus.mozilla.org
+        
+        # Buildhub2
+        - buildhub.moz.tools
 
         # Cloudfront (Misc Static Sites)
         - fxpartners.mozilla.com
+        - mitmdetection.services.mozilla.com
 
         # Conduit
-        - phabricator-dev.allizom.org
-        - phabricator.allizom.org
-        - phabricator.services.mozilla.com
+        - api.lando.devsvcdev.mozaws.net
+        - api.lando.services.mozilla.com
         - bugzilla.allizom.org
         - bugzilla.mozilla.org
+        - lando.devsvcdev.mozaws.net
+        - lando.services.mozilla.com
+        - phabricator.allizom.org
+        - phabricator-dev.allizom.org
+        - phabricator.services.mozilla.com
 
         # Crash report (socorro)
         - crash-stats.mozilla.com
+        - crash-stats.mozilla.org
         - crash-stats.allizom.org
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
         - crash-reports.allizom.org
-        - symbols.mozilla.org
+        
+        # Detectportal
+        - detectportal.firefox.com
+
+        # elmo
+        - l10n.mozilla.org
+        - l10n.allizom.org
 
         # everything.me
         - geodude.services.mozilla.com
@@ -94,7 +108,6 @@ runs:
 
         # Locations
         - location.services.mozilla.com
-        - location-leaderboard.services.mozilla.com
 
         # Data Platform services
         - telemetry-experiment.cdn.mozilla.net
@@ -109,12 +122,15 @@ runs:
         - alerts.telemetry.mozilla.org
         - start.telemetry.mozilla.org
         - reports.telemetry.mozilla.org
-        - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
+        - missioncontrol.telemetry.mozilla.org
         - data.mozilla.com
+        - fhr.data.mozilla.com
+        - telemetry-coverage.mozilla.org
+        - coverage-bug1492656.mozilla.org
 
         # Misc
         - services.mozilla.com
@@ -129,14 +145,17 @@ runs:
 
         # Normandy
         - normandy.cdn.mozilla.net
-        - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
+        - classify-client.services.mozilla.com
         - self-repair.mozilla.org
         - normandy.stage.mozaws.net
         - normandy-cdn.stage.mozaws.net
         - normandy.dev.mozaws.net
         - normandy-cdn.dev.mozaws.net
         - normandy-mock.dev.mozaws.net
+        
+        # Premium Services
+        - premium.firefox.com
 
         # Product Delivery
         - ftp.stage.mozaws.net
@@ -153,7 +172,6 @@ runs:
         - download-akamai.cdn.mozilla.net
         - download-cloudfront.cdn.mozilla.net
         - download-installer-cloudfront.cdn.mozilla.net
-        - download-sha1.cdn.mozilla.net
         - bouncer-bouncer.stage.mozaws.net
         - bouncer-bouncer-releng.stage.mozaws.net
         - bucketlister-delivery.stage.mozaws.net
@@ -169,6 +187,9 @@ runs:
         - push.services.mozilla.com
         - updates.push.services.mozilla.com
         - ua.push.tefdigital.com
+
+        # Releng Services
+        - product-details.mozilla.org
 
         # Screenshots
         - pageshot.net
@@ -191,7 +212,13 @@ runs:
         # Stub
         - stubattribution-default.stage.mozaws.net
         - stubdownloader.services.mozilla.com
+        - cdn.stubdownloader.services.mozilla.com
         - stubdownloader.cdn.mozilla.net
+
+        # Symbols (tecken)
+        - symbols.mozilla.org
+        - symbols.stage.mozaws.net
+        - symbols.dev.mozaws.net
 
         # Sync
         - token.services.mozilla.com
@@ -200,14 +227,18 @@ runs:
         - eolinator.services.mozilla.com
         - sync-4-us-east-1.stage.mozaws.net
 
+        # Taskcluster
+        - firefox-ci-tc.services.mozilla.com
+        - community-tc.services.mozilla.com
+        - stage.taskcluster.nonprod.cloudops.mozgcp.net
+        - firefoxci-websocktunnel.services.mozilla.com
+        - community-websocktunnel.services.mozilla.com
+        - websocktunnel-stage.taskcluster.nonprod.cloudops.mozgcp.net
+
         # Tiles
         - activity-stream-icons.services.mozilla.com
         - tiles.cdn.mozilla.net
         - tiles.services.mozilla.com
-
-        # Tigerblood IP Reputation
-        - tigerblood.prod.mozaws.net
-        - tigerblood.stage.mozaws.net
 
         # TLS Observatory
         - tls-observatory.services.mozilla.com
@@ -389,13 +420,30 @@ runs:
               recipients:
                   - b64:YmFscm9nLXRsc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
 
+    # BuildHub paging
+    - targets:
+        - buildhub.moz.tools
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:YnVpbGRodWIyQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20=
+
     # Conduit paging
     - targets:
-        - phabricator-dev.allizom.org
-        - phabricator.allizom.org
-        - phabricator.services.mozilla.com
+        - api.lando.devsvcdev.mozaws.net
+        - api.lando.services.mozilla.com
         - bugzilla.allizom.org
         - bugzilla.mozilla.org
+        - lando.devsvcdev.mozaws.net
+        - lando.services.mozilla.com
+        - phabricator.allizom.org
+        - phabricator-dev.allizom.org
+        - phabricator.services.mozilla.com
       assertions:
         - certificate:
             validity:
@@ -409,9 +457,9 @@ runs:
     # Crash report paging
     - targets:
         - crash-stats.mozilla.com
+        - crash-stats.mozilla.org
         - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
-        - symbols.mozilla.org
       assertions:
         - certificate:
             validity:
@@ -421,6 +469,20 @@ runs:
           email:
               recipients:
                   - b64:c29jb3Jyb0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29t
+
+    #  Elmo paging
+    - targets:
+        - l10n.mozilla.org
+        - l10n.allizom.org
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64ZWxtb0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
 
     # everything.me paging
     - targets:
@@ -487,7 +549,6 @@ runs:
     # Locations paging
     - targets:
         - location.services.mozilla.com
-        - location-leaderboard.services.mozilla.com
       assertions:
         - certificate:
             validity:
@@ -512,12 +573,15 @@ runs:
         - alerts.telemetry.mozilla.org
         - start.telemetry.mozilla.org
         - reports.telemetry.mozilla.org
-        - schemas.telemetry.mozilla.org
         - telemetry.mozilla.org
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
+        - missioncontrol.telemetry.mozilla.org
         - data-presto.data.mozaws.net
         - data.mozilla.com
+        - fhr.data.mozilla.com
+        - telemetry-coverage.mozilla.org
+        - coverage-bug1492656.mozilla.org
       assertions:
         - certificate:
             validity:
@@ -541,12 +605,25 @@ runs:
           email:
               recipients:
                   - cloud-ops@mozilla.com
+    
+    # mitmdetection paging
+    - targets:
+        - mitmdetection.services.mozilla.com
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:bWl0bWRldGVjdGlvbkBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29t
 
     # Normandy
     - targets:
         - normandy.cdn.mozilla.net
-        - normandy-cloudfront.cdn.mozilla.net
         - normandy.services.mozilla.com
+        - classify-client.services.mozilla.com
         - self-repair.mozilla.org
         - normandy.stage.mozaws.net
         - normandy-cdn.stage.mozaws.net
@@ -591,11 +668,29 @@ runs:
               recipients:
                   - b64:dGVzdHBpbG90QG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
+    #  Symbols (tecken) paging
+    - targets:
+        - symbols.mozilla.org
+        - symbols.stage.mozaws.net
+        - symbols.dev.mozaws.net
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:c3ltYm9sc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
     # Product Delivery paging
     - targets:
         - download.mozilla.org
         - download-installer.cdn.mozilla.net
-        - download-sha1.cdn.mozilla.net
+        - stubattribution-default.stage.mozaws.net
+        - stubdownloader.services.mozilla.com
+        - cdn.stubdownloader.services.mozilla.com
+        - stubdownloader.cdn.mozilla.net
       assertions:
         - certificate:
             validity:
@@ -605,6 +700,19 @@ runs:
           email:
               recipients:
                   - b64:cHJvZHVjdC1kZWxpdmVyeUBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+
+    # Premium Services paging
+    - targets:
+        - premium.firefox.com
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">14d"
+      cron: "30 18 * * *"
+      notifications:
+          email:
+              recipients:
+                  - b64:cHJlbWl1bS1zZXJ2aWNlcy12cG5AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQ==
 
     # Push paging
     - targets:
@@ -711,19 +819,6 @@ runs:
               recipients:
                   - cloud-ops@mozilla.com
 
-    # Cloud Services product delivery CDN always shows as bad because of RC4, AWS limitation
-    - targets:
-        - download-sha1.cdn.mozilla.net
-      assertions:
-        - analysis:
-            analyzer: mozillaEvaluationWorker
-            result: '{"level": "bad"}'
-      cron: "0 19 * * *"
-      notifications:
-          email:
-              recipients:
-                  - cloud-ops@mozilla.com
-
     # Julien's stuff
     - targets:
         - jve.linuxwall.info
@@ -778,36 +873,35 @@ runs:
           email:
               recipients:
                   - infosec-tlsobs@mozilla.com
-
-    # TaskCluster stuff
+                  
+    # IT SRE
     - targets:
-        - auth.taskcluster.net
-        - aws-provisioner.taskcluster.net
-        - events.taskcluster.net
-        - hooks.taskcluster.net
-        - index.taskcluster.net
-        - purge-cache.taskcluster.net
-        - queue.taskcluster.net
-        - scheduler.taskcluster.net
-        - secrets.taskcluster.net
-        - taskcluster-github.herokuapp.com
-        - github.taskcluster.net
-        - tools.taskcluster.net
-        - docs.taskcluster.net
-        - login.taskcluster.net
-        - cors-proxy.taskcluster.net
+        - start.mozilla.org
+      assertions:
+        - certificate:
+            validity:
+                notafter: ">15d"
+      cron: "13 13 * * *"
+      notifications:
+          email:
+              recipients:
+                  - hostmaster+tlsobs@mozilla.com
+
+    # Taskcluster paging
+    - targets:
+        - firefox-ci-tc.services.mozilla.com
+        - community-tc.services.mozilla.com
+        - firefoxci-websocktunnel.services.mozilla.com
+        - community-websocktunnel.services.mozilla.com
       assertions:
         - certificate:
             validity:
                 notafter: ">14d"
-        - analysis:
-            analyzer: mozillaEvaluationWorker
-            result: '{"level": "intermediate"}'
-      cron: "0 0 * * *"
+      cron: "30 18 * * *"
       notifications:
           email:
               recipients:
-                - b64:dGFza2NsdXN0ZXItbm90aWZpY2F0aW9ucyt0bHNvYnNAbW96aWxsYS5jb20=
+                  - b64:dGFza2NsdXN0ZXItZmlyZWZveGNpQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
 smtp:
     host: gator1

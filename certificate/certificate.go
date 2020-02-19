@@ -61,11 +61,12 @@ type MozillaPolicy struct {
 }
 
 type Hashes struct {
-	MD5        string `json:"md5,omitempty"`
-	SHA1       string `json:"sha1,omitempty"`
-	SHA256     string `json:"sha256,omitempty"`
-	SPKISHA256 string `json:"spki-sha256,omitempty"`
-	PKPSHA256  string `json:"pin-sha256,omitempty"`
+	MD5               string `json:"md5,omitempty"`
+	SHA1              string `json:"sha1,omitempty"`
+	SHA256            string `json:"sha256,omitempty"`
+	SPKISHA256        string `json:"spki-sha256,omitempty"`
+	SubjectSPKISHA256 string `json:"subject-spki-sha256,omitempty"`
+	PKPSHA256         string `json:"pin-sha256,omitempty"`
 }
 
 type Validity struct {
@@ -209,6 +210,13 @@ var PublicKeyAlgorithm = [...]string{
 	"RSA",
 	"DSA",
 	"ECDSA",
+}
+
+func SubjectSPKISHA256(cert *x509.Certificate) string {
+	h := sha256.New()
+	h.Write(cert.RawSubject)
+	h.Write(cert.RawSubjectPublicKeyInfo)
+	return fmt.Sprintf("%X", h.Sum(nil))
 }
 
 func SPKISHA256(cert *x509.Certificate) string {
@@ -572,6 +580,7 @@ func CertToStored(cert *x509.Certificate, parentSignature, domain, ip string, TS
 	stored.Hashes.SHA1 = SHA1Hash(cert.Raw)
 	stored.Hashes.SHA256 = SHA256Hash(cert.Raw)
 	stored.Hashes.SPKISHA256 = SPKISHA256(cert)
+	stored.Hashes.SubjectSPKISHA256 = SubjectSPKISHA256(cert)
 	stored.Hashes.PKPSHA256 = PKPSHA256Hash(cert)
 
 	stored.Raw = base64.StdEncoding.EncodeToString(cert.Raw)

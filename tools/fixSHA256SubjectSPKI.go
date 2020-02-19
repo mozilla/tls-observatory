@@ -25,7 +25,7 @@ func main() {
 		panic(err)
 	}
 	offset := 0
-	limit := 100
+	limit := 1000
 	if len(os.Args) > 1 {
 		offset, err = strconv.Atoi(os.Args[1])
 		if err != nil {
@@ -38,6 +38,7 @@ func main() {
 		rows, err := db.Query(`SELECT id, raw_cert
 					FROM certificates
 					WHERE id > $1
+					AND is_ca = false
 					ORDER BY id ASC LIMIT $2`, offset, limit)
 		if rows != nil {
 			defer rows.Close()
@@ -47,6 +48,7 @@ func main() {
 		}
 		i := 0
 		updates := make(map[int64]string)
+		newOffset := offset
 		for rows.Next() {
 			i++
 			var raw string
@@ -66,7 +68,11 @@ func main() {
 				fmt.Println("error while x509 parsing cert", id, ":", err)
 				continue
 			}
-			updates[id] = certificate.SPKISHA256(c)
+			updates[id] = certificate.SubjectSPKISHA256(c)
+			// move the offset forward to the highest ID
+			if int(id) > newOffset {
+				newOffset = int(id)
+			}
 		}
 		if i == 0 {
 			fmt.Println("done!")
@@ -87,7 +93,12 @@ func main() {
 		if err != nil {
 			fmt.Printf("error while updating certificates in database: %v\nSQL statement was:\n%s", err, sql)
 		}
-		offset += limit
+		if newOffset == offset {
+			log.Println("no certs to update found in this batch")
+			offset += limit
+		} else {
+			offset = newOffset
+		}
 		ioutil.WriteFile("/tmp/fixSHA256SubjectSPKI_offset", []byte(fmt.Sprintf("%d", offset)), 0700)
 	}
 }

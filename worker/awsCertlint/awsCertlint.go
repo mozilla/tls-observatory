@@ -49,8 +49,8 @@ func init() {
 	fullPath := filepath.Join(certlintDirectory, binaryPath)
 	_, err := os.Stat(fullPath)
 	if err != nil && os.IsNotExist(err) {
-		log.Printf("Could not find awslabs/certlint (tried %s), disabling worker\n", fullPath)
-		//return
+		log.Debugf("Could not find awslabs/certlint (tried %q), disabling worker\n", fullPath)
+		return
 	}
 	worker.RegisterWorker(workerName, worker.Info{Runner: runner, Description: workerDesc})
 }

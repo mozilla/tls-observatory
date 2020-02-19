@@ -6,7 +6,7 @@
 
 ![Gorilla Logo](http://www.gorillatoolkit.org/static/images/gorilla-icon-64.png)
 
-http://www.gorillatoolkit.org/pkg/mux
+https://www.gorillatoolkit.org/pkg/mux
 
 Package `gorilla/mux` implements a request router and dispatcher for matching incoming requests to
 their respective handler.
@@ -88,7 +88,7 @@ r := mux.NewRouter()
 // Only matches if domain is "www.example.com".
 r.Host("www.example.com")
 // Matches a dynamic subdomain.
-r.Host("{subdomain:[a-z]+}.domain.com")
+r.Host("{subdomain:[a-z]+}.example.com")
 ```
 
 There are several other matchers that can be added. To match path prefixes:
@@ -238,13 +238,13 @@ This also works for host and query value variables:
 
 ```go
 r := mux.NewRouter()
-r.Host("{subdomain}.domain.com").
+r.Host("{subdomain}.example.com").
   Path("/articles/{category}/{id:[0-9]+}").
   Queries("filter", "{filter}").
   HandlerFunc(ArticleHandler).
   Name("article")
 
-// url.String() will be "http://news.domain.com/articles/technology/42?filter=gorilla"
+// url.String() will be "http://news.example.com/articles/technology/42?filter=gorilla"
 url, err := r.Get("article").URL("subdomain", "news",
                                  "category", "technology",
                                  "id", "42",
@@ -264,7 +264,7 @@ r.HeadersRegexp("Content-Type", "application/(text|json)")
 There's also a way to build only the URL host or path for a route: use the methods `URLHost()` or `URLPath()` instead. For the previous route, we would do:
 
 ```go
-// "http://news.domain.com/"
+// "http://news.example.com/"
 host, err := r.Get("article").URLHost("subdomain", "news")
 
 // "/articles/technology/42"
@@ -275,12 +275,12 @@ And if you use subrouters, host and path defined separately can be built as well
 
 ```go
 r := mux.NewRouter()
-s := r.Host("{subdomain}.domain.com").Subrouter()
+s := r.Host("{subdomain}.example.com").Subrouter()
 s.Path("/articles/{category}/{id:[0-9]+}").
   HandlerFunc(ArticleHandler).
   Name("article")
 
-// "http://news.domain.com/articles/technology/42"
+// "http://news.example.com/articles/technology/42"
 url, err := r.Get("article").URL("subdomain", "news",
                                  "category", "technology",
                                  "id", "42")
@@ -503,8 +503,8 @@ package main
 
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
     // A very simple health check.
-    w.WriteHeader(http.StatusOK)
     w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
 
     // In the future we could report back on the status of our DB, or our cache
     // (e.g. Redis) by performing a simple PING, and include them in the response.
@@ -593,22 +593,25 @@ func TestMetricsHandler(t *testing.T) {
         {"adhadaeqm3k", false},
     }
 
-    for _, t := tt {
-        path := fmt.Sprintf("/metrics/%s", t.routeVariable)
+    for _, tc := range tt {
+        path := fmt.Sprintf("/metrics/%s", tc.routeVariable)
         req, err := http.NewRequest("GET", path, nil)
         if err != nil {
             t.Fatal(err)
         }
 
         rr := httptest.NewRecorder()
-        handler := http.HandlerFunc(MetricsHandler)
-        handler.ServeHTTP(rr, req)
+	
+	// Need to create a router that we can pass the request through so that the vars will be added to the context
+	router := mux.NewRouter()
+        router.HandleFunc("/metrics/{type}", MetricsHandler)
+        router.ServeHTTP(rr, req)
 
         // In this case, our MetricsHandler returns a non-200 response
         // for a route variable it doesn't know about.
-        if rr.Code == http.StatusOK && !t.shouldPass {
+        if rr.Code == http.StatusOK && !tc.shouldPass {
             t.Errorf("handler should have failed on routeVariable %s: got %v want %v",
-                t.routeVariable, rr.Code, http.StatusOK)
+                tc.routeVariable, rr.Code, http.StatusOK)
         }
     }
 }

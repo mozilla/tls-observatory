@@ -2,6 +2,7 @@ CREATE TABLE certificates(
     id                          serial primary key,
     sha1_fingerprint            varchar NOT NULL,
     sha256_fingerprint          varchar NOT NULL,
+    sha256_spki                 varchar NOT NULL,
     sha256_subject_spki         varchar NOT NULL,
     pkp_sha256                  varchar NOT NULL,
     serial_number               varchar NULL,
