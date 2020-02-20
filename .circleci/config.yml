@@ -12,7 +12,7 @@ jobs:
     steps:
       - checkout
       - run: git submodule update --init
-      - run: sudo apt-get update && sudo apt-get install dos2unix postgresql-client -y
+      - run: apt-get update && apt-get install -y dos2unix postgresql-client unzip docker.io
       - run:
           name: Build TLS Observatory
           command: |
@@ -22,10 +22,9 @@ jobs:
           name: Run a simple test scan
           command: |
             psql -h 127.0.0.1 -U postgres -d observatory -f database/schema.sql
-            sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
-            sudo ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
+            ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
+            ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
             $GOPATH/bin/tlsobs-scanner & $GOPATH/bin/tlsobs-api & tlsobs -observatory http://localhost:8083 www.mozilla.org || exit 1
-      - setup_remote_docker
       - run:
           name: Create version.json
           command: |
@@ -35,6 +34,7 @@ jobs:
             "$CIRCLE_PROJECT_USERNAME" \
             "$CIRCLE_PROJECT_REPONAME" \
             "$CIRCLE_BUILD_URL" > version.json
+      - setup_remote_docker
       - run:
           name: Build containers
           command: |
