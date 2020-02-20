@@ -16,31 +16,22 @@ WORKDIR $GOPATH
 COPY . $GOPATH/src/github.com/mozilla/tls-observatory
 
 RUN rm -rf $GOPATH/src/github.com/mozilla/tls-observatory/.git && \
-    # Build the latest Go from master
-    mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" && \
-    git clone https://github.com/golang/go.git /tmp/go && \
-	cd /tmp/go/src && \
-	#git checkout 4458a357ab819a612c0c4cafae88a65287254fe9 && \
-	./make.bash && \
-	rm -rf /usr/local/go; \
-	mv /tmp/go /usr/local/; \
-	rm -rf /usr/local/go/.git*; \
-	rm -rf /tmp/*; \
-	go version && \
     # Create a user
     addgroup -gid 10001 app && \
-    adduser --home /app --gecos "" --ingroup=app --uid=10001 --disabled-login app && \
-    # Build TLS Observatory
-    go install github.com/mozilla/tls-observatory/tlsobs-api && \
+    adduser --home /app --gecos "" --ingroup=app --uid=10001 --disabled-login app
+
+# Build TLS Observatory
+RUN go install github.com/mozilla/tls-observatory/tlsobs-api && \
     cp $GOPATH/bin/tlsobs-api /app/ && \
     go install github.com/mozilla/tls-observatory/tlsobs-scanner && \
     cp $GOPATH/bin/tlsobs-scanner /app/ && \
     go install github.com/mozilla/tls-observatory/tlsobs-runner && \
     cp $GOPATH/bin/tlsobs-runner /app/ && \
     go install github.com/mozilla/tls-observatory/tlsobs && \
-    cp $GOPATH/bin/tlsobs /app/ && \
-    # Compile ev-checker
-    cd $GOPATH && \
+    cp $GOPATH/bin/tlsobs /app/
+
+# Compile ev-checker
+RUN cd $GOPATH && \
     apt-get update -y && \
     apt-get install git libcurl4-nss-dev libnss3 libnss3-dev clang postgresql-client ruby ruby-dev -y && \
     chown app:app -R /var/lib/gems/ && \
@@ -50,16 +41,18 @@ RUN rm -rf $GOPATH/src/github.com/mozilla/tls-observatory/.git && \
     mv ./ev-checker /go/bin/ && \
     cp $GOPATH/bin/ev-checker /app/ && \
     cd .. && \
-    rm -rf ev-checker && \
-    # Compile AWS Certlint
-    cd $GOPATH && \
+    rm -rf ev-checker
+
+# Compile AWS Certlint
+RUN cd $GOPATH && \
     git clone https://github.com/awslabs/certlint.git && \
     cd certlint/ext && \
     gem install public_suffix simpleidn && \
     ruby extconf.rb && \
-    make && \
-    # Copy TLS Observatory configuration
-    cp $GOPATH/src/github.com/mozilla/tls-observatory/version.json /app && \
+    make
+
+# Copy TLS Observatory configuration
+RUN cp $GOPATH/src/github.com/mozilla/tls-observatory/version.json /app && \
     ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory && \
     ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
 
