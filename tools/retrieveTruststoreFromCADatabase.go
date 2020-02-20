@@ -24,7 +24,7 @@ func main() {
 		csvPEMPos = 30
 	case "microsoft":
 		csvURL = "https://ccadb-public.secure.force.com/microsoft/IncludedCACertificateReportForMSFTCSVPEM"
-		csvPEMPos = 6
+		csvPEMPos = 10
 	}
 	resp, err := http.Get(csvURL)
 	if err != nil {
