@@ -66,7 +66,6 @@ runs:
         - crash-stats.mozilla.com
         - crash-stats.mozilla.org
         - crash-stats.allizom.org
-        - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
         - crash-reports.allizom.org
         
@@ -458,7 +457,6 @@ runs:
     - targets:
         - crash-stats.mozilla.com
         - crash-stats.mozilla.org
-        - crash-reports-xpsp2.mozilla.com
         - crash-reports.mozilla.com
       assertions:
         - certificate:
@@ -808,7 +806,6 @@ runs:
     # Cloud Services product delivery, must remain on the old config for XPSP2
     - targets:
         - download-sha1.allizom.org
-        - crash-reports-xpsp2.mozilla.com
       assertions:
         - analysis:
             analyzer: mozillaEvaluationWorker
