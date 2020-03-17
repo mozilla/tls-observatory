@@ -9,6 +9,8 @@ information about the latest bug fixes, updates, and features added to the SDK.
 
 We [announced](https://aws.amazon.com/blogs/developer/aws-sdk-for-go-2-0-developer-preview/) the Developer Preview for the [v2 AWS SDK for Go](https://github.com/aws/aws-sdk-go-v2). The v2 SDK source is available at https://github.com/aws/aws-sdk-go-v2, and add it to your project with `go get github.com/aws/aws-sdk-go-v2`. Check out the v2 SDK's [changes and updates](https://github.com/aws/aws-sdk-go-v2/blob/master/CHANGELOG.md), and let us know what you think. We want your feedback.
 
+We have a pilot redesign of the [AWS SDK for Go API reference documentation](https://docs.aws.amazon.com/sdk-for-go/v1/api/gosdk-apiref.html). Let us know what you think.
+
 ## Installing
 
 Use `go get` to retrieve the SDK to add it to your `GOPATH` workspace, or
@@ -91,11 +93,10 @@ the SDK, and examples how to using the SDK, service client API operations, and
 API operation require parameters.
 
 [`Service Developer Guide`](https://aws.amazon.com/documentation/) - Use this
-documentation to learn how to interface with AWS services. These are great
-guides both, if you're getting started with a service, or looking for more
-information on a service. You should not need this document for coding, though
-in some cases, services may supply helpful samples that you might want to look
-out for.
+documentation to learn how to interface with AWS services. These guides are
+great for getting started with a service, or when looking for more 
+information about a service. While this document is not required for coding, 
+services may supply helpful samples to look out for.
 
 [`SDK Examples`](https://github.com/aws/aws-sdk-go/tree/master/example) -
 Included in the SDK's repo are several hand crafted examples using the SDK
@@ -468,7 +469,7 @@ response.
   	}
   	// Ensure the context is canceled to prevent leaking.
   	// See context package for more information, https://golang.org/pkg/context/
-	if cancelFn {
+	if cancelFn != nil {
   		defer cancelFn()
 	}
 
