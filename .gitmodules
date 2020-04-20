@@ -4,5 +4,5 @@
 	branch = master
 [submodule "cipherscan"]
 	path = cipherscan
-	url = git://github.com/jvehent/cipherscan
+	url = https://github.com/mozilla/cipherscan
 	branch = master
