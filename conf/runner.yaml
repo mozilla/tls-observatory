@@ -42,7 +42,7 @@ runs:
         - aus2.mozilla.org
         - aus5.mozilla.org
         - aus.mozilla.org
-        
+
         # Buildhub2
         - buildhub.moz.tools
 
@@ -67,7 +67,7 @@ runs:
         - crash-stats.allizom.org
         - crash-reports.mozilla.com
         - crash-reports.allizom.org
-        
+
         # Detectportal
         - detectportal.firefox.com
 
@@ -105,20 +105,13 @@ runs:
         - location.services.mozilla.com
 
         # Data Platform services
-        - telemetry-experiment.cdn.mozilla.net
         - incoming.telemetry.mozilla.org
-        - metrics.services.mozilla.com
-        - analysis.telemetry.mozilla.org
         - sql.telemetry.mozilla.org
-        - pipeline-dwl.prod.mozaws.net
         - docs.telemetry.mozilla.org
         - workflow.telemetry.mozilla.org
         - aggregates.telemetry.mozilla.org
-        - alerts.telemetry.mozilla.org
-        - start.telemetry.mozilla.org
         - reports.telemetry.mozilla.org
         - telemetry.mozilla.org
-        - data-presto.data.mozaws.net
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
         - missioncontrol.telemetry.mozilla.org
@@ -148,7 +141,7 @@ runs:
         - normandy.dev.mozaws.net
         - normandy-cdn.dev.mozaws.net
         - normandy-mock.dev.mozaws.net
-        
+
         # Premium Services
         - premium.firefox.com
 
@@ -525,19 +518,6 @@ runs:
               recipients:
                   - b64:ZnhhQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
 
-    # IT Hostmaster paging
-    - targets:
-        - telemetry-experiment.cdn.mozilla.net
-      assertions:
-        - certificate:
-            validity:
-                notafter: ">14d"
-      cron: "30 18 * * *"
-      notifications:
-          email:
-              recipients:
-                  - hostmaster@mozilla.com
-
     # Locations paging
     - targets:
         - location.services.mozilla.com
@@ -553,23 +533,16 @@ runs:
 
     # Data Platform services paging
     - targets:
-        - telemetry-experiment.cdn.mozilla.net
         - incoming.telemetry.mozilla.org
-        - metrics.services.mozilla.com
-        - analysis.telemetry.mozilla.org
         - sql.telemetry.mozilla.org
-        - pipeline-dwl.prod.mozaws.net
         - docs.telemetry.mozilla.org
         - workflow.telemetry.mozilla.org
         - aggregates.telemetry.mozilla.org
-        - alerts.telemetry.mozilla.org
-        - start.telemetry.mozilla.org
         - reports.telemetry.mozilla.org
         - telemetry.mozilla.org
         - probeinfo.telemetry.mozilla.org
         - public-data.telemetry.mozilla.org
         - missioncontrol.telemetry.mozilla.org
-        - data-presto.data.mozaws.net
         - data.mozilla.com
         - fhr.data.mozilla.com
         - telemetry-coverage.mozilla.org
@@ -597,7 +570,7 @@ runs:
           email:
               recipients:
                   - cloud-ops@mozilla.com
-    
+
     # mitmdetection paging
     - targets:
         - mitmdetection.services.mozilla.com
@@ -864,7 +837,7 @@ runs:
           email:
               recipients:
                   - infosec-tlsobs@mozilla.com
-                  
+
     # IT SRE
     - targets:
         - start.mozilla.org
