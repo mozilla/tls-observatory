@@ -75,9 +75,6 @@ runs:
         - l10n.mozilla.org
         - l10n.allizom.org
 
-        # everything.me
-        - geodude.services.mozilla.com
-
         # Firefox Accounts
         - accounts.firefox.com
         - api.accounts.firefox.com
