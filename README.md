@@ -651,7 +651,7 @@ $ make vendor
 
 ## Contributors
 
- * Julien Vehent (lead maintainer)
+ * Julien Vehent
  * Dimitris Bachtis (original dev)
  * Adrian Utrilla
 

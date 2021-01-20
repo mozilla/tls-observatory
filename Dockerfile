@@ -6,7 +6,7 @@
 # https://github.com/docker-library/golang/blob/906e04de73168f643c5c2b40dca0877a14d2377c/1.10/stretch/Dockerfile
 
 FROM golang:1.13
-MAINTAINER Julien Vehent
+MAINTAINER secops+tlsobs@mozilla.com
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
