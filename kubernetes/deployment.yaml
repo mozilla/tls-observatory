@@ -1,13 +1,18 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    service: db
   name: postgres
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      service: db
   template:
     metadata:
       labels:
-        app: postgres
+        service: db
     spec:
       containers:
       - name: postgres
@@ -30,20 +35,25 @@ spec:
   - port: 5432
     protocol: TCP
   selector:
-    app: postgres
+    service: db
 
 ---
 
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    service: api
   name: api
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      service: api
   template:
     metadata:
       labels:
-        app: api
+        service: api
     spec:
       containers:
       - name: api
@@ -73,20 +83,25 @@ spec:
   - port: 8083
     protocol: TCP
   selector:
-    app: api
+    service: api
 
 ---
 
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    service: scanner
   name: scanner
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      service: scanner
   template:
     metadata:
       labels:
-        app: scanner
+        service: scanner
     spec:
       containers:
       - name: scanner
