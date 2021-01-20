@@ -24,10 +24,10 @@ jobs:
             psql -h 127.0.0.1 -U postgres -d observatory -f database/schema.sql
             ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
             ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
-            # $GOPATH/bin/tlsobs-scanner &
-            # $GOPATH/bin/tlsobs-api &
-            # # send SIGKILL after 10m and SIGHUP after 5m
-            # timeout --kill-after=10m --signal=HUP 5m $GOPATH/bin/tlsobs -observatory http://localhost:8083 www.mozilla.org || exit 1
+            $GOPATH/bin/tlsobs-scanner &
+            $GOPATH/bin/tlsobs-api &
+            # send SIGKILL after 10m and SIGHUP after 5m
+            timeout --kill-after=10m --signal=HUP 5m $GOPATH/bin/tlsobs -observatory http://localhost:8083 www.mozilla.org || exit 1
       - run:
           name: Create version.json
           command: |
