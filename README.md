@@ -655,13 +655,9 @@ We're always happy to help new contributors. You can find us in `#observatory` o
 
 ### Dependencies
 
-We currently use [`govend`](https://github.com/govend/govend) for dependencies (and `vendor/` management). You'll need to install `govend` with the following and then you can vendor dependencies.
+We currently vendor dependencies in `vendor/`.
 
-```
-$ go get -u github.com/govend/govend
-...
-$ make vendor
-```
+Using a golang version with [`go mod`](https://golang.org/ref/mod#mod-commands),run `make vendor` update vendored dependencies.
 
 ## Contributors
 
