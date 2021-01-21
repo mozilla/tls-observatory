@@ -55,7 +55,7 @@ truststores:
 	cd truststores && git pull origin master && cd ..
 	cat truststores/data/apple/snapshot/*.pem > conf/truststores/CA_apple_latest.crt
 	cat truststores/data/java/snapshot/*.pem > conf/truststores/CA_java.crt
-	curl -o conf/truststores/CA_AOSP.crt https://pki.google.com/roots.pem
+	curl -o conf/truststores/CA_AOSP.crt https://pki.goog/roots.pem
 	$(GO) run tools/retrieveTruststoreFromCADatabase.go mozilla > conf/truststores/CA_mozilla_nss.crt
 	$(GO) run tools/retrieveTruststoreFromCADatabase.go microsoft > conf/truststores/CA_microsoft.crt
 
