@@ -26,7 +26,6 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	gnaming "google.golang.org/grpc/naming"
 )
@@ -35,7 +34,6 @@ import (
 const resolveRetryRate = 1
 
 type clusterProxy struct {
-	lg   *zap.Logger
 	clus clientv3.Cluster
 	ctx  context.Context
 	gr   *naming.GRPCResolver
@@ -51,12 +49,8 @@ type clusterProxy struct {
 // NewClusterProxy takes optional prefix to fetch grpc-proxy member endpoints.
 // The returned channel is closed when there is grpc-proxy endpoint registered
 // and the client's context is canceled so the 'register' loop returns.
-func NewClusterProxy(lg *zap.Logger, c *clientv3.Client, advaddr string, prefix string) (pb.ClusterServer, <-chan struct{}) {
-	if lg == nil {
-		lg = zap.NewNop()
-	}
+func NewClusterProxy(c *clientv3.Client, advaddr string, prefix string) (pb.ClusterServer, <-chan struct{}) {
 	cp := &clusterProxy{
-		lg:   lg,
 		clus: c.Cluster,
 		ctx:  c.Ctx(),
 		gr:   &naming.GRPCResolver{Client: c},
@@ -84,7 +78,7 @@ func (cp *clusterProxy) resolve(prefix string) {
 	for rm.Wait(cp.ctx) == nil {
 		wa, err := cp.gr.Resolve(prefix)
 		if err != nil {
-			cp.lg.Warn("failed to resolve prefix", zap.String("prefix", prefix), zap.Error(err))
+			plog.Warningf("failed to resolve %q (%v)", prefix, err)
 			continue
 		}
 		cp.monitor(wa)
@@ -95,7 +89,7 @@ func (cp *clusterProxy) monitor(wa gnaming.Watcher) {
 	for cp.ctx.Err() == nil {
 		ups, err := wa.Next()
 		if err != nil {
-			cp.lg.Warn("clusterProxy watcher error", zap.Error(err))
+			plog.Warningf("clusterProxy watcher error (%v)", err)
 			if rpctypes.ErrorDesc(err) == naming.ErrWatcherClosed.Error() {
 				return
 			}

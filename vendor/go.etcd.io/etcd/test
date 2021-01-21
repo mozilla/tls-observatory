@@ -391,7 +391,7 @@ function shellcheck_pass {
 
 function markdown_you_pass {
 	# eschew you
-	yous=$(find . -name \*.md ! -path './vendor/*' ! -path './Documentation/*' ! -path './gopath.proto/*' -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + || true)
+	yous=$(find . -name \*.md ! -path './vendor/*' ! -path './Documentation/v2/*' ! -path './gopath.proto/*' -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + || true)
 	if [ -n "$yous" ]; then
 		echo -e "found 'you' in documentation:\\n${yous}"
 		exit 255
@@ -460,12 +460,12 @@ function govet_shadow_pass {
 	# shellcheck disable=SC2206
 	fmtpkgs=($fmtpkgs)
 	# Golang 1.12 onwards the experimental -shadow option is no longer available with go vet
-	go get -v golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	go get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
 	export PATH=${GOPATH}/bin:${PATH}
 	shadow_tool=$(which shadow)
 	vetRes=$(go vet -all -vettool="${shadow_tool}" "${TEST[@]}")
 	if [ -n "${vetRes}" ]; then
-		echo -e "govet -shadow checking failed:\\n${vetRes}"
+		echo -e "govet -all -shadow checking failed:\\n${vetRes}"
 		exit 255
 	fi
 }
@@ -581,7 +581,7 @@ function receiver_name_pass {
 }
 
 function commit_title_pass {
-	git log --oneline "$(git merge-base HEAD master)"...HEAD | while read -r l; do
+	git log --oneline "$(git merge-base HEAD "$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}")")"...HEAD | while read -r l; do
 		commitMsg=$(echo "$l" | cut -f2- -d' ')
 		if [[ "$commitMsg" == Merge* ]]; then
 			# ignore "Merge pull" commits
@@ -613,9 +613,11 @@ function fmt_pass {
     # TODO: add "unparam"
 	for p in shellcheck \
 			markdown_you \
+			markdown_marker \
 			goword \
 			gofmt \
 			govet \
+			govet_shadow \
 			revive \
 			license_header \
 			receiver_name \

@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2016 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -162,7 +162,7 @@ func (c *JSONClient) BaseURI() string {
 	return c.uri
 }
 
-// GetAndParse makes a HTTP GET call to the given path, and attempta to parse
+// GetAndParse makes a HTTP GET call to the given path, and attempts to parse
 // the response as a JSON representation of the rsp structure.  Returns the
 // http.Response, the body of the response, and an error (which may be of
 // type RspError if the HTTP response was available).

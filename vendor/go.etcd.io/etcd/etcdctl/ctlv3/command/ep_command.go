@@ -25,7 +25,6 @@ import (
 	"go.etcd.io/etcd/pkg/flags"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 var epClusterEndpoints bool
@@ -86,11 +85,7 @@ type epHealth struct {
 
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
-	lg, err := zap.NewProduction()
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	flags.SetPflagsFromEnv(lg, "ETCDCTL", cmd.InheritedFlags())
+	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
 	initDisplayFromCmd(cmd)
 
 	sec := secureCfgFromCmd(cmd)
