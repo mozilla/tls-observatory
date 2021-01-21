@@ -43,6 +43,7 @@ Want the WebUI? Check out [Mozilla's Observatory](https://observatory.mozilla.or
 
 You can use the TLS Observatory to compare your site against the mozilla guidelines.
 It requires Golang 1.15+ to be installed:
+
 ```bash
 $ go version
 go version go1.15 linux/amd64
@@ -52,11 +53,15 @@ $ mkdir $GOPATH
 
 $ export PATH=$GOPATH/bin:$PATH
 ```
+
 Then get the binary:
+
 ```bash
 $ go get github.com/mozilla/tls-observatory/tlsobs
 ```
+
 And scan using our hosted service:
+
 ```bash
 $ tlsobs tls-observatory.services.mozilla.com
 Scanning tls-observatory.services.mozilla.com (id 13528951)
@@ -108,6 +113,7 @@ The analysis at the end tell you what need to be changed to reach the old, inter
 
 A docker container also exists that contains the CLI, API, Scanner and Runner.
 Fetch is from `docker pull mozilla/tls-observatory`.
+
 ```bash
 $ docker pull mozilla/tls-observatory
 $ docker run -it mozilla/tls-observatory tlsobs accounts.firefox.com
@@ -118,12 +124,14 @@ $ docker run -it mozilla/tls-observatory tlsobs accounts.firefox.com
 You can use the Kubernetes configuration provided in https://github.com/mozilla/tls-observatory/tree/master/kubernetes , or alternatively, you can do the following:
 
 You can use the `mozilla/tls-observatory` docker container for development:
+
 ```bash
 $ docker pull mozilla/tls-observatory
 $ docker run -it mozilla/tls-observatory /bin/bash
 root@05676e6789dd:~# cd $GOPATH/src/github.com/mozilla/tls-observatory
 root@05676e6789dd:/go/src/github.com/mozilla/tls-observatory# make
 ```
+
 However, even with the docker container, you will need to setup your own
 postgresql database. See below.
 
@@ -163,6 +171,7 @@ You are now connected to database "observatory" as user "postgres".
 
 postgres=# \i /go/src/github.com/mozilla/tls-observatory/database/schema.sql
 ```
+
 This automatically creates all tables, indexes, users and grants to work
 with the default configuration.
 
@@ -170,10 +179,12 @@ with the default configuration.
 
 First symlink the configuration to /etc/observatory and the cipherscan
 executable to /opt/cipherscan, as follows:
+
 ```bash
 root@c63f11b8852b:/# ln -s $GOPATH/src/github.com/mozilla/tls-observatory/conf /etc/tls-observatory
 root@c63f11b8852b:/# ln -s $GOPATH/src/github.com/mozilla/tls-observatory/cipherscan /opt/cipherscan
 ```
+
 Then start `tlsobs-api` and `tlsobs-scanner`. The API will listen on port 8083,
 on localhost (or 172.17.0.2 if you're running in Docker).
 
@@ -181,6 +192,7 @@ on localhost (or 172.17.0.2 if you're running in Docker).
 
 To run a scan using the local scanner, set the `-observatory` flag of the `tlsobs`
 client to use the local API, as follows:
+
 ```bash
 $ tlsobs -observatory http://172.17.0.2:8083 ulfr.io
 ```
@@ -191,6 +203,7 @@ $ tlsobs -observatory http://172.17.0.2:8083 ulfr.io
 
 Customize the configuration file under `conf/api.cfg` and using the following
 environment variables:
+
 * `TLSOBS_API_ENABLE` set to `on` or `off` to enable or disable the API
 * `TLSOBS_POSTGRES` is the hostname or IP of the database server (eg. `mypostgresdb.example.net`)
 * `TLSOBS_POSTGRESDB` is the name of the database (eg. `observatory`)
@@ -201,6 +214,7 @@ environment variables:
 
 Customize the configuration file under `conf/scanner.cfg` and using the
 following environment variables:
+
 * `TLS_AWSCERTLINT_DIR` set where awslabs/certlint directory exists
 * `TLSOBS_SCANNER_ENABLE` set to `on` or `off` to enable or disable the scabber
 * `TLSOBS_POSTGRES` is the hostname or IP of the database server (eg. `mypostgresdb.example.net`)
