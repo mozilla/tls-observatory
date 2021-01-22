@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 )
 
@@ -44,21 +43,17 @@ type GetProxyURLs func() []string
 // NewHandler creates a new HTTP handler, listening on the given transport,
 // which will proxy requests to an etcd cluster.
 // The handler will periodically update its view of the cluster.
-func NewHandler(lg *zap.Logger, t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler {
-	if lg == nil {
-		lg = zap.NewNop()
-	}
+func NewHandler(t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler {
 	if t.TLSClientConfig != nil {
 		// Enable http2, see Issue 5033.
 		err := http2.ConfigureTransport(t)
 		if err != nil {
-			lg.Info("Error enabling Transport HTTP/2 support", zap.Error(err))
+			plog.Infof("Error enabling Transport HTTP/2 support: %v", err)
 		}
 	}
 
 	p := &reverseProxy{
-		lg:        lg,
-		director:  newDirector(lg, urlsFunc, failureWait, refreshInterval),
+		director:  newDirector(urlsFunc, failureWait, refreshInterval),
 		transport: t,
 	}
 

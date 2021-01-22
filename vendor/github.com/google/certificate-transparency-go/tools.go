@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2016 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import (
 	_ "github.com/golang/mock/mockgen"
 	_ "github.com/golang/protobuf/proto"
 	_ "github.com/golang/protobuf/protoc-gen-go"
-	_ "github.com/google/monologue/incident"
 	_ "go.etcd.io/etcd"
 	_ "go.etcd.io/etcd/etcdctl"
 )

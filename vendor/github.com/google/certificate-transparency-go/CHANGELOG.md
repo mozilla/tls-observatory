@@ -2,13 +2,14 @@
 
 ## HEAD
 
-Not yet released; provisionally v1.2.0 (may change).
+## v1.1.1
+[Published 2020-10-06](https://github.com/google/certificate-transparency-go/releases/tag/v1.1.1)
 
 ### Tools
 
 #### CT Hammer
 
-Added a flag (--strict_sth_consistency_sizes) which when set to true enforces the current behaviour of only request consistency proofs between tree sizes for which the hammer has seen valid STHs.
+Added a flag (--strict_sth_consistency_size) which when set to true enforces the current behaviour of only request consistency proofs between tree sizes for which the hammer has seen valid STHs.
 When setting this flag to false, if no two usable STHs are available the hammer will attempt to request a consistency proof between the latest STH it's seen and a random smaller (but > 0) tree size.
 
 
@@ -19,6 +20,40 @@ When setting this flag to false, if no two usable STHs are available the hammer 
 The CTFE now includes a Cache-Control header in responses containing purely
 immutable data, e.g. those for get-entries and get-proof-by-hash. This allows
 clients and proxies to cache these responses for up to 24 hours.
+
+#### EKU Filtering
+
+> :warning: **It is not yet recommended to enable this option in a production CT Log!**
+
+CTFE now supports filtering logging submissions by leaf certificate EKU.
+This is enabled by adding an extKeyUsage list to a log's stanza in the
+config file.
+
+The format is a list of strings corresponding to the supported golang x509 EKUs:
+  |Config string               | Extended Key Usage                     |
+  |----------------------------|----------------------------------------|
+  |`Any`                       |  ExtKeyUsageAny                        |
+  |`ServerAuth`                |  ExtKeyUsageServerAuth                 |
+  |`ClientAuth`                |  ExtKeyUsageClientAuth                 |
+  |`CodeSigning`               |  ExtKeyUsageCodeSigning                |
+  |`EmailProtection`           |  ExtKeyUsageEmailProtection            |
+  |`IPSECEndSystem`            |  ExtKeyUsageIPSECEndSystem             |
+  |`IPSECTunnel`               |  ExtKeyUsageIPSECTunnel                |
+  |`IPSECUser`                 |  ExtKeyUsageIPSECUser                  |
+  |`TimeStamping`              |  ExtKeyUsageTimeStamping               |
+  |`OCSPSigning`               |  ExtKeyUsageOCSPSigning                |
+  |`MicrosoftServerGatedCrypto`|  ExtKeyUsageMicrosoftServerGatedCrypto |
+  |`NetscapeServerGatedCrypto` |  ExtKeyUsageNetscapeServerGatedCrypto  |
+
+When an extKeyUsage list is specified, the CT Log will reject logging
+submissions for leaf certificates that do not contain an EKU present in this
+list.
+
+When enabled, EKU filtering is only performed at the leaf level (i.e. there is
+no 'nested' EKU filtering performed).
+
+If no list is specified, or the list contains an `Any` entry, no EKU
+filtering will be performed.
 
 #### GetEntries
 Calls to `get-entries` which are at (or above) the maximum permitted number of
@@ -63,11 +98,33 @@ The `ct_server` binary changed the default of these flags:
 The `ct_server` binary added the following flags:
 -   `align_getentries` - See GetEntries section above for details
 
+Added `backend` flag to `migrillian`, which now replaces the deprecated
+"backend" feature of Migrillian configs.
+
+#### FixedBackendResolver Replaced
+
+This was previously used in situations where a comma separated list of
+backends was provided in the `rpcBackend` flag rather than a single value.
+
+It has been replaced by equivalent functionality using a newer gRPC API.
+However this support was only intended for use in integration tests. In
+production we recommend the use of etcd or a gRPC load balancer.
+
+### LogList
+
+Log list tools updated to use the correct v2 URL (from v2_beta previously).
+
 ### Libraries
 
 #### x509 fork
 
-Merged upstream Go 1.13 changes.
+Merged upstream Go 1.13 and Go 1.14 changes (with the exception
+of https://github.com/golang/go/commit/14521198679e, to allow
+old certs using a malformed root still to be logged).
+
+#### asn1 fork
+
+Merged upstream Go 1.14 changes.
 
 #### ctutil
 
@@ -81,6 +138,31 @@ now alternatively be binary-encoded instead.
 ### JSONClient
 
 - `PostAndParseWithRetry` error logging now includes log URI in messages.
+
+### Minimal Gossip Example
+
+All the code for this, except for the x509ext package, has been moved over
+to the [trillian-examples](https://github.com/google/trillian-examples) repository.
+
+This keeps the code together and removes a circular dependency between the
+two repositories. The package layout and structure remains the same so
+updating should just mean changing any relevant import paths.
+
+### Dependencies
+
+A circular dependency on the [monologue](https://github.com/google/monologue) repository has been removed.
+
+A circular dependency on the [trillian-examples](https://github.com/google/trillian-examples) repository has been removed.
+
+The version of trillian in use has been updated to 1.3.11. This has required
+various other dependency updates including gRPC and protobuf. This code now
+uses the v2 proto API. The Travis tests now expect the 3.11.4 version of
+protoc.
+
+The version of etcd in use has been switched to the one from `go.etcd.io`.
+
+Most of the above changes are to align versions more closely with the ones
+used in the trillian repository.
 
 ## v1.1.0
 
@@ -327,7 +409,7 @@ Commit [684d6eee6092774e54d301ccad0ed61bc8d010c1](https://api.github.com/repos/g
 
 Published 2018-06-01 14:15:37 +0000 UTC
 
-Support for SQLlite was removed. This motivation was ongoing test flakiness caused by multi-user access. This database may work for an embedded scenario but is not suitable for use in a server environment.
+Support for SQLite was removed. This motivation was ongoing test flakiness caused by multi-user access. This database may work for an embedded scenario but is not suitable for use in a server environment.
 
 A `LeafHashForLeaf` client API was added and is now used by the CT client and integration tests.
 

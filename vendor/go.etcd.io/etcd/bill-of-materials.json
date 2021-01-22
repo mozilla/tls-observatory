@@ -27,11 +27,20 @@
 		]
 	},
 	{
-		"project": "github.com/coreos/go-systemd/v22",
+		"project": "github.com/coreos/go-systemd",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
 				"confidence": 0.9966703662597114
+			}
+		]
+	},
+	{
+		"project": "github.com/coreos/pkg/capnslog",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},

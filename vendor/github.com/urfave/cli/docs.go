@@ -48,14 +48,15 @@ func (a *App) writeDocTemplate(w io.Writer) error {
 	return t.ExecuteTemplate(w, name, &cliTemplate{
 		App:          a,
 		Commands:     prepareCommands(a.Commands, 0),
-		GlobalArgs:   prepareArgsWithValues(a.VisibleFlags()),
-		SynopsisArgs: prepareArgsSynopsis(a.VisibleFlags()),
+		GlobalArgs:   prepareArgsWithValues(a.Flags),
+		SynopsisArgs: prepareArgsSynopsis(a.Flags),
 	})
 }
 
-func prepareCommands(commands []*Command, level int) []string {
-	var coms []string
-	for _, command := range commands {
+func prepareCommands(commands []Command, level int) []string {
+	coms := []string{}
+	for i := range commands {
+		command := &commands[i]
 		if command.Hidden {
 			continue
 		}
@@ -109,8 +110,7 @@ func prepareFlags(
 			continue
 		}
 		modifiedArg := opener
-
-		for _, s := range flag.Names() {
+		for _, s := range strings.Split(flag.GetName(), ",") {
 			trimmed := strings.TrimSpace(s)
 			if len(modifiedArg) > len(opener) {
 				modifiedArg += sep

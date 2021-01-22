@@ -69,8 +69,6 @@ Member:
     Maximum number of wal files to retain (0 is unlimited).
   --quota-backend-bytes '0'
     Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
-  --backend-bbolt-freelist-type 'map'
-    BackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
   --backend-batch-interval ''
     BackendBatchInterval is the maximum time before commit the backend transaction.
   --backend-batch-limit '0'
@@ -169,13 +167,13 @@ Profiling and Monitoring:
   --enable-pprof 'false'
     Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
   --metrics 'basic'
-    Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics.
+    Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
   --listen-metrics-urls ''
     List of URLs to listen on for the metrics and health endpoints.
 
 Logging:
-  --logger 'zap'
-    Currently only supports 'zap' for structured logging.
+  --logger 'capnslog'
+    Specify 'zap' for structured logging or 'capnslog'. [WARN] 'capnslog' will be deprecated in v3.5.
   --log-outputs 'default'
     Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
   --log-level 'info'
@@ -202,6 +200,8 @@ Experimental feature:
     Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
     Serve v2 requests through the v3 backend under a given prefix.
+  --experimental-backend-bbolt-freelist-type 'array'
+    ExperimentalBackendFreelistType specifies the type of freelist that boltdb backend uses(array and map are supported types).
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
   --experimental-compaction-batch-limit 1000
@@ -214,7 +214,12 @@ Unsafe feature:
     Force to create a new one-member cluster.
 
 CAUTIOUS with unsafe flag! It may break the guarantees given by the consensus protocol!
+
+TO BE DEPRECATED:
+
+  --debug 'false'
+    Enable debug-level logging for etcd. [WARN] Will be deprecated in v3.5. Use '--log-level=debug' instead.
+  --log-package-levels ''
+    Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
 `
 )
-
-// Add back "TO BE DEPRECATED" section if needed

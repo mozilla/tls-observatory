@@ -41,6 +41,8 @@ func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, ser
 			zap.String("srv-server", dns),
 			zap.Strings("endpoints", endpoints),
 		)
+	} else {
+		plog.Infof("discovered the cluster %s from %s", endpoints, dns)
 	}
 
 	if insecure {
@@ -58,6 +60,8 @@ func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, ser
 			zap.String("srv-server", dns),
 			zap.Strings("endpoints", endpoints),
 		)
+	} else {
+		plog.Infof("validating discovered endpoints %v", endpoints)
 	}
 
 	endpoints, err = transport.ValidateSecureEndpoints(tlsInfo, endpoints)
@@ -69,6 +73,8 @@ func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, ser
 				zap.Strings("endpoints", endpoints),
 				zap.Error(err),
 			)
+		} else {
+			plog.Warningf("%v", err)
 		}
 	} else {
 		if lg != nil {
@@ -78,6 +84,9 @@ func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, ser
 				zap.Strings("endpoints", endpoints),
 			)
 		}
+	}
+	if lg == nil {
+		plog.Infof("using discovered endpoints %v", endpoints)
 	}
 
 	// map endpoints back to SRVClients struct with SRV data

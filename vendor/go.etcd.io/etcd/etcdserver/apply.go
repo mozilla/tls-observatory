@@ -21,11 +21,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/auth"
-	"go.etcd.io/etcd/etcdserver/api"
-	"go.etcd.io/etcd/etcdserver/api/membership"
-	"go.etcd.io/etcd/etcdserver/api/membership/membershippb"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc"
@@ -51,12 +47,6 @@ type applyResult struct {
 	trace *traceutil.Trace
 }
 
-// applierV3Internal is the interface for processing internal V3 raft request
-type applierV3Internal interface {
-	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest)
-	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest)
-}
-
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
 	Apply(r *pb.InternalRaftRequest) *applyResult
@@ -78,7 +68,6 @@ type applierV3 interface {
 
 	AuthEnable() (*pb.AuthEnableResponse, error)
 	AuthDisable() (*pb.AuthDisableResponse, error)
-	AuthStatus() (*pb.AuthStatusResponse, error)
 
 	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
@@ -112,11 +101,6 @@ func (s *EtcdServer) newApplierV3Backend() applierV3 {
 	base.checkRange = func(rv mvcc.ReadView, req *pb.RequestOp) error {
 		return base.checkRequestRange(rv, req)
 	}
-	return base
-}
-
-func (s *EtcdServer) newApplierV3Internal() applierV3Internal {
-	base := &applierV3backend{s: s}
 	return base
 }
 
@@ -163,8 +147,6 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = a.s.applyV3.AuthEnable()
 	case r.AuthDisable != nil:
 		ar.resp, ar.err = a.s.applyV3.AuthDisable()
-	case r.AuthStatus != nil:
-		ar.resp, ar.err = a.s.applyV3.AuthStatus()
 	case r.AuthUserAdd != nil:
 		ar.resp, ar.err = a.s.applyV3.UserAdd(r.AuthUserAdd)
 	case r.AuthUserDelete != nil:
@@ -191,10 +173,6 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = a.s.applyV3.UserList(r.AuthUserList)
 	case r.AuthRoleList != nil:
 		ar.resp, ar.err = a.s.applyV3.RoleList(r.AuthRoleList)
-	case r.ClusterVersionSet != nil:
-		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet)
-	case r.ClusterMemberAttrSet != nil:
-		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet)
 	default:
 		panic("not implemented")
 	}
@@ -556,19 +534,31 @@ func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, rt *pb.TxnRequest, txnPat
 		case *pb.RequestOp_RequestRange:
 			resp, err := a.Range(context.TODO(), txn, tv.RequestRange)
 			if err != nil {
-				lg.Panic("unexpected error during txn", zap.Error(err))
+				if lg != nil {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				} else {
+					plog.Panicf("unexpected error during txn: %v", err)
+				}
 			}
 			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
 		case *pb.RequestOp_RequestPut:
 			resp, _, err := a.Put(txn, tv.RequestPut)
 			if err != nil {
-				lg.Panic("unexpected error during txn", zap.Error(err))
+				if lg != nil {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				} else {
+					plog.Panicf("unexpected error during txn: %v", err)
+				}
 			}
 			respi.(*pb.ResponseOp_ResponsePut).ResponsePut = resp
 		case *pb.RequestOp_RequestDeleteRange:
 			resp, err := a.DeleteRange(txn, tv.RequestDeleteRange)
 			if err != nil {
-				lg.Panic("unexpected error during txn", zap.Error(err))
+				if lg != nil {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				} else {
+					plog.Panicf("unexpected error during txn: %v", err)
+				}
 			}
 			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
 		case *pb.RequestOp_RequestTxn:
@@ -646,14 +636,22 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 			break
 		}
 
-		lg.Warn("alarm raised", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
+		if lg != nil {
+			lg.Warn("alarm raised", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
+		} else {
+			plog.Warningf("alarm %v raised by peer %s", m.Alarm, types.ID(m.MemberID))
+		}
 		switch m.Alarm {
 		case pb.AlarmType_CORRUPT:
 			a.s.applyV3 = newApplierV3Corrupt(a)
 		case pb.AlarmType_NOSPACE:
 			a.s.applyV3 = newApplierV3Capped(a)
 		default:
-			lg.Warn("unimplemented alarm activation", zap.String("alarm", fmt.Sprintf("%+v", m)))
+			if lg != nil {
+				lg.Warn("unimplemented alarm activation", zap.String("alarm", fmt.Sprintf("%+v", m)))
+			} else {
+				plog.Errorf("unimplemented alarm activation (%+v)", m)
+			}
 		}
 	case pb.AlarmRequest_DEACTIVATE:
 		m := a.s.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
@@ -669,10 +667,18 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 		switch m.Alarm {
 		case pb.AlarmType_NOSPACE, pb.AlarmType_CORRUPT:
 			// TODO: check kv hash before deactivating CORRUPT?
-			lg.Warn("alarm disarmed", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
+			if lg != nil {
+				lg.Warn("alarm disarmed", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
+			} else {
+				plog.Infof("alarm disarmed %+v", ar)
+			}
 			a.s.applyV3 = a.s.newApplierV3()
 		default:
-			lg.Warn("unimplemented alarm deactivation", zap.String("alarm", fmt.Sprintf("%+v", m)))
+			if lg != nil {
+				lg.Warn("unimplemented alarm deactivation", zap.String("alarm", fmt.Sprintf("%+v", m)))
+			} else {
+				plog.Errorf("unimplemented alarm deactivation (%+v)", m)
+			}
 		}
 	default:
 		return nil, nil
@@ -715,12 +721,6 @@ func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
 func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
 	a.s.AuthStore().AuthDisable()
 	return &pb.AuthDisableResponse{Header: newHeader(a.s)}, nil
-}
-
-func (a *applierV3backend) AuthStatus() (*pb.AuthStatusResponse, error) {
-	enabled := a.s.AuthStore().IsAuthEnabled()
-	authRevision := a.s.AuthStore().Revision()
-	return &pb.AuthStatusResponse{Header: newHeader(a.s), Enabled: enabled, AuthRevision: authRevision}, nil
 }
 
 func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {
@@ -834,20 +834,6 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 		resp.Header = newHeader(a.s)
 	}
 	return resp, err
-}
-
-func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest) {
-	a.s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Ver)), api.UpdateCapability)
-}
-
-func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest) {
-	a.s.cluster.UpdateAttributes(
-		types.ID(r.Member_ID),
-		membership.Attributes{
-			Name:       r.MemberAttributes.Name,
-			ClientURLs: r.MemberAttributes.ClientUrls,
-		},
-	)
 }
 
 type quotaApplierV3 struct {
@@ -1012,7 +998,7 @@ func mkGteRange(rangeEnd []byte) []byte {
 }
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {
-	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
+	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil
 }
 
 func removeNeedlessRangeReqs(txn *pb.TxnRequest) {

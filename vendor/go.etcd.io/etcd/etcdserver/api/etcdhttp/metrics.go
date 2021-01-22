@@ -50,6 +50,7 @@ func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			plog.Warningf("/health error (status code %d)", http.StatusMethodNotAllowed)
 			return
 		}
 		h := hfunc()
@@ -91,33 +92,39 @@ type Health struct {
 
 // TODO: server NOSPACE, etcdserver.ErrNoLeader in health API
 
-func checkHealth(srv etcdserver.ServerV2) (h Health) {
-	h.Health = "true"
-
-	defer func() {
-		if h.Health == "true" {
-			healthSuccess.Inc()
-		} else {
-			healthFailed.Inc()
-		}
-	}()
+func checkHealth(srv etcdserver.ServerV2) Health {
+	h := Health{Health: "true"}
 
 	as := srv.Alarms()
 	if len(as) > 0 {
 		h.Health = "false"
-		return
+		for _, v := range as {
+			plog.Warningf("/health error due to an alarm %s", v.String())
+		}
 	}
 
-	if uint64(srv.Leader()) == raft.None {
-		h.Health = "false"
-		return
+	if h.Health == "true" {
+		if uint64(srv.Leader()) == raft.None {
+			h.Health = "false"
+			plog.Warningf("/health error; no leader (status code %d)", http.StatusServiceUnavailable)
+		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
-	cancel()
-	if err != nil {
-		h.Health = "false"
+	if h.Health == "true" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
+		cancel()
+		if err != nil {
+			h.Health = "false"
+			plog.Warningf("/health error; QGET failed %v (status code %d)", err, http.StatusServiceUnavailable)
+		}
 	}
-	return
+
+	if h.Health == "true" {
+		healthSuccess.Inc()
+		plog.Infof("/health OK (status code %d)", http.StatusOK)
+	} else {
+		healthFailed.Inc()
+	}
+	return h
 }

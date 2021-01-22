@@ -15,40 +15,25 @@ var OsExiter = os.Exit
 var ErrWriter io.Writer = os.Stderr
 
 // MultiError is an error that wraps multiple errors.
-type MultiError interface {
-	error
-	// Errors returns a copy of the errors slice
-	Errors() []error
+type MultiError struct {
+	Errors []error
 }
 
 // NewMultiError creates a new MultiError. Pass in one or more errors.
-func newMultiError(err ...error) MultiError {
-	ret := multiError(err)
-	return &ret
+func NewMultiError(err ...error) MultiError {
+	return MultiError{Errors: err}
 }
 
-type multiError []error
-
 // Error implements the error interface.
-func (m *multiError) Error() string {
-	errs := make([]string, len(*m))
-	for i, err := range *m {
+func (m MultiError) Error() string {
+	errs := make([]string, len(m.Errors))
+	for i, err := range m.Errors {
 		errs[i] = err.Error()
 	}
 
 	return strings.Join(errs, "\n")
 }
 
-// Errors returns a copy of the errors slice
-func (m *multiError) Errors() []error {
-	errs := make([]error, len(*m))
-	for _, err := range *m {
-		errs = append(errs, err)
-	}
-	return errs
-}
-
-// ErrorFormatter is the interface that will suitably format the error output
 type ErrorFormatter interface {
 	Format(s fmt.State, verb rune)
 }
@@ -60,30 +45,29 @@ type ExitCoder interface {
 	ExitCode() int
 }
 
-type exitError struct {
+// ExitError fulfills both the builtin `error` interface and `ExitCoder`
+type ExitError struct {
 	exitCode int
 	message  interface{}
 }
 
-// NewExitError makes a new *exitError
-func NewExitError(message interface{}, exitCode int) ExitCoder {
-	return Exit(message, exitCode)
-}
-
-// Exit wraps a message and exit code into an ExitCoder suitable for handling by
-// HandleExitCoder
-func Exit(message interface{}, exitCode int) ExitCoder {
-	return &exitError{
-		message:  message,
+// NewExitError makes a new *ExitError
+func NewExitError(message interface{}, exitCode int) *ExitError {
+	return &ExitError{
 		exitCode: exitCode,
+		message:  message,
 	}
 }
 
-func (ee *exitError) Error() string {
+// Error returns the string message, fulfilling the interface required by
+// `error`
+func (ee *ExitError) Error() string {
 	return fmt.Sprintf("%v", ee.message)
 }
 
-func (ee *exitError) ExitCode() int {
+// ExitCode returns the exit code, fulfilling the interface required by
+// `ExitCoder`
+func (ee *ExitError) ExitCode() int {
 	return ee.exitCode
 }
 
@@ -99,9 +83,9 @@ func HandleExitCoder(err error) {
 	if exitErr, ok := err.(ExitCoder); ok {
 		if err.Error() != "" {
 			if _, ok := exitErr.(ErrorFormatter); ok {
-				_, _ = fmt.Fprintf(ErrWriter, "%+v\n", err)
+				fmt.Fprintf(ErrWriter, "%+v\n", err)
 			} else {
-				_, _ = fmt.Fprintln(ErrWriter, err)
+				fmt.Fprintln(ErrWriter, err)
 			}
 		}
 		OsExiter(exitErr.ExitCode())
@@ -117,10 +101,10 @@ func HandleExitCoder(err error) {
 
 func handleMultiError(multiErr MultiError) int {
 	code := 1
-	for _, merr := range multiErr.Errors() {
+	for _, merr := range multiErr.Errors {
 		if multiErr2, ok := merr.(MultiError); ok {
 			code = handleMultiError(multiErr2)
-		} else if merr != nil {
+		} else {
 			fmt.Fprintln(ErrWriter, merr)
 			if exitErr, ok := merr.(ExitCoder); ok {
 				code = exitErr.ExitCode()

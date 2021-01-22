@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	bufferPool *sync.Pool
 
 	// qualified package name, cached at first use
 	logrusPackage string
@@ -31,12 +30,6 @@ const (
 )
 
 func init() {
-	bufferPool = &sync.Pool{
-		New: func() interface{} {
-			return new(bytes.Buffer)
-		},
-	}
-
 	// start at the bottom of the stack before the package-name cache is primed
 	minimumCallerDepth = 1
 }
@@ -122,8 +115,6 @@ func (entry *Entry) WithField(key string, value interface{}) *Entry {
 
 // Add a map of fields to the Entry.
 func (entry *Entry) WithFields(fields Fields) *Entry {
-	entry.Logger.mu.Lock()
-	defer entry.Logger.mu.Unlock()
 	data := make(Fields, len(entry.Data)+len(fields))
 	for k, v := range entry.Data {
 		data[k] = v
@@ -180,15 +171,20 @@ func getPackageName(f string) string {
 
 // getCaller retrieves the name of the first non-logrus calling function
 func getCaller() *runtime.Frame {
-
 	// cache this package's fully-qualified name
 	callerInitOnce.Do(func() {
-		pcs := make([]uintptr, 2)
+		pcs := make([]uintptr, maximumCallerDepth)
 		_ = runtime.Callers(0, pcs)
-		logrusPackage = getPackageName(funcName(pcs))
 
-		// now that we have the cache, we can skip a minimum count of known-logrus functions
-		// XXX this is dubious, the number of frames may vary
+		// dynamic get the package name and the minimum caller depth
+		for i := 0; i < maximumCallerDepth; i++ {
+			funcName := runtime.FuncForPC(pcs[i]).Name()
+			if strings.Contains(funcName, "getCaller") {
+				logrusPackage = getPackageName(funcName)
+				break
+			}
+		}
+
 		minimumCallerDepth = knownLogrusFrames
 	})
 
@@ -232,15 +228,20 @@ func (entry Entry) log(level Level, msg string) {
 
 	entry.Level = level
 	entry.Message = msg
+	entry.Logger.mu.Lock()
 	if entry.Logger.ReportCaller {
 		entry.Caller = getCaller()
 	}
+	entry.Logger.mu.Unlock()
 
 	entry.fireHooks()
 
-	buffer = bufferPool.Get().(*bytes.Buffer)
+	buffer = getBuffer()
+	defer func() {
+		entry.Buffer = nil
+		putBuffer(buffer)
+	}()
 	buffer.Reset()
-	defer bufferPool.Put(buffer)
 	entry.Buffer = buffer
 
 	entry.write()

@@ -18,9 +18,13 @@ package osutil
 import (
 	"os"
 	"strings"
+
+	"github.com/coreos/pkg/capnslog"
 )
 
 var (
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "pkg/osutil")
+
 	// support to override setting SIG_DFL so tests don't terminate early
 	setDflSignal = dflSignal
 )

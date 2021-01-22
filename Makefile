@@ -44,7 +44,8 @@ tlsobs-runner:
 	$(GO) build $(GOOPTS) -o $(GOPATH)/bin/tlsobs-runner$(BINSUFFIX) $(GOLDFLAGS) github.com/mozilla/tls-observatory/tlsobs-runner
 
 vendor:
-	govend -u --prune
+	go mod tidy -v
+	go mod vendor -v
 
 test:
 # Skip tools/ dir, it has multiple main method

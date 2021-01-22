@@ -113,10 +113,6 @@ func (*discardValue) Set(string) error { return nil }
 func (*discardValue) Type() string     { return "" }
 
 func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
-	lg, err := zap.NewProduction()
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
 	fs := cmd.InheritedFlags()
 	if strings.HasPrefix(cmd.Use, "watch") {
 		// silence "pkg/flags: unrecognized environment variable ETCDCTL_WATCH_KEY=foo" warnings
@@ -124,7 +120,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		fs.AddFlag(&pflag.Flag{Name: "watch-key", Value: &discardValue{}})
 		fs.AddFlag(&pflag.Flag{Name: "watch-range-end", Value: &discardValue{}})
 	}
-	flags.SetPflagsFromEnv(lg, "ETCDCTL", fs)
+	flags.SetPflagsFromEnv("ETCDCTL", fs)
 
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
