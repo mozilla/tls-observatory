@@ -31,6 +31,7 @@ import (
 	"go.etcd.io/etcd/pkg/schedule"
 	"go.etcd.io/etcd/pkg/traceutil"
 
+	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 )
 
@@ -45,6 +46,9 @@ var (
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
 	ErrCanceled  = errors.New("mvcc: watcher is canceled")
+	ErrClosed    = errors.New("mvcc: closed")
+
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "mvcc")
 )
 
 const (
@@ -113,9 +117,6 @@ type store struct {
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
 func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter, cfg StoreConfig) *store {
-	if lg == nil {
-		lg = zap.NewNop()
-	}
 	if cfg.CompactionBatchLimit == 0 {
 		cfg.CompactionBatchLimit = defaultCompactBatchLimit
 	}
@@ -162,21 +163,24 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentI
 
 func (s *store) compactBarrier(ctx context.Context, ch chan struct{}) {
 	if ctx == nil || ctx.Err() != nil {
-		s.mu.Lock()
 		select {
 		case <-s.stopc:
 		default:
+			// fix deadlock in mvcc,for more information, please refer to pr 11817.
+			// s.stopc is only updated in restore operation, which is called by apply
+			// snapshot call, compaction and apply snapshot requests are serialized by
+			// raft, and do not happen at the same time.
+			s.mu.Lock()
 			f := func(ctx context.Context) { s.compactBarrier(ctx, ch) }
 			s.fifoSched.Schedule(f)
+			s.mu.Unlock()
 		}
-		s.mu.Unlock()
 		return
 	}
 	close(ch)
 }
 
 func (s *store) Hash() (hash uint32, revision int64, err error) {
-	// TODO: hash and revision could be inconsistent, one possible fix is to add s.revMu.RLock() at the beginning of function, which is costly
 	start := time.Now()
 
 	s.b.ForceCommit()
@@ -294,7 +298,7 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 
 func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
 	ch, err := s.updateCompactRev(rev)
-	if err != nil {
+	if nil != err {
 		return ch, err
 	}
 
@@ -372,12 +376,16 @@ func (s *store) restore() error {
 	if len(finishedCompactBytes) != 0 {
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
 
-		s.lg.Info(
-			"restored last compact revision",
-			zap.String("meta-bucket-name", string(metaBucketName)),
-			zap.String("meta-bucket-name-key", string(finishedCompactKeyName)),
-			zap.Int64("restored-compact-revision", s.compactMainRev),
-		)
+		if s.lg != nil {
+			s.lg.Info(
+				"restored last compact revision",
+				zap.String("meta-bucket-name", string(metaBucketName)),
+				zap.String("meta-bucket-name-key", string(finishedCompactKeyName)),
+				zap.Int64("restored-compact-revision", s.compactMainRev),
+			)
+		} else {
+			plog.Printf("restore compact to %d", s.compactMainRev)
+		}
 	}
 	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
 	scheduledCompact := int64(0)
@@ -420,32 +428,37 @@ func (s *store) restore() error {
 
 	for key, lid := range keyToLease {
 		if s.le == nil {
-			tx.Unlock()
 			panic("no lessor to attach lease")
 		}
 		err := s.le.Attach(lid, []lease.LeaseItem{{Key: key}})
 		if err != nil {
-			s.lg.Error(
-				"failed to attach a lease",
-				zap.String("lease-id", fmt.Sprintf("%016x", lid)),
-				zap.Error(err),
-			)
+			if s.lg != nil {
+				s.lg.Warn(
+					"failed to attach a lease",
+					zap.String("lease-id", fmt.Sprintf("%016x", lid)),
+					zap.Error(err),
+				)
+			} else {
+				plog.Errorf("unexpected Attach error: %v", err)
+			}
 		}
 	}
 
 	tx.Unlock()
 
 	if scheduledCompact != 0 {
-		if _, err := s.compactLockfree(scheduledCompact); err != nil {
-			s.lg.Warn("compaction encountered error", zap.Error(err))
-		}
+		s.compactLockfree(scheduledCompact)
 
-		s.lg.Info(
-			"resume scheduled compaction",
-			zap.String("meta-bucket-name", string(metaBucketName)),
-			zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
-			zap.Int64("scheduled-compact-revision", scheduledCompact),
-		)
+		if s.lg != nil {
+			s.lg.Info(
+				"resume scheduled compaction",
+				zap.String("meta-bucket-name", string(metaBucketName)),
+				zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
+				zap.Int64("scheduled-compact-revision", scheduledCompact),
+			)
+		} else {
+			plog.Printf("resume scheduled compaction at %d", scheduledCompact)
+		}
 	}
 
 	return nil
@@ -488,9 +501,7 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 			currentRev = rev.main
 			if ok {
 				if isTombstone(rkv.key) {
-					if err := ki.tombstone(lg, rev.main, rev.sub); err != nil {
-						lg.Warn("tombstone encountered error", zap.Error(err))
-					}
+					ki.tombstone(lg, rev.main, rev.sub)
 					continue
 				}
 				ki.put(lg, rev.main, rev.sub)
@@ -508,7 +519,11 @@ func restoreChunk(lg *zap.Logger, kvc chan<- revKeyValue, keys, vals [][]byte, k
 	for i, key := range keys {
 		rkv := revKeyValue{key: key}
 		if err := rkv.kv.Unmarshal(vals[i]); err != nil {
-			lg.Fatal("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
+			if lg != nil {
+				lg.Fatal("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
+			} else {
+				plog.Fatalf("cannot unmarshal event: %v", err)
+			}
 		}
 		rkv.kstr = string(rkv.kv.Key)
 		if isTombstone(key) {
@@ -590,11 +605,15 @@ func (s *store) setupMetricsReporter() {
 // appendMarkTombstone appends tombstone mark to normal revision bytes.
 func appendMarkTombstone(lg *zap.Logger, b []byte) []byte {
 	if len(b) != revBytesLen {
-		lg.Panic(
-			"cannot append tombstone mark to non-normal revision bytes",
-			zap.Int("expected-revision-bytes-size", revBytesLen),
-			zap.Int("given-revision-bytes-size", len(b)),
-		)
+		if lg != nil {
+			lg.Panic(
+				"cannot append tombstone mark to non-normal revision bytes",
+				zap.Int("expected-revision-bytes-size", revBytesLen),
+				zap.Int("given-revision-bytes-size", len(b)),
+			)
+		} else {
+			plog.Panicf("cannot append mark to non normal revision bytes")
+		}
 	}
 	return append(b, markTombstone)
 }

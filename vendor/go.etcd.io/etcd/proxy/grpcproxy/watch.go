@@ -241,7 +241,6 @@ func (wps *watchProxyStream) recvLoop() error {
 				continue
 			}
 
-			wps.mu.Lock()
 			w := &watcher{
 				wr:  watchRange{string(cr.Key), string(cr.RangeEnd)},
 				id:  wps.nextWatcherID,
@@ -254,14 +253,12 @@ func (wps *watchProxyStream) recvLoop() error {
 			}
 			if !w.wr.valid() {
 				w.post(&pb.WatchResponse{WatchId: -1, Created: true, Canceled: true})
-				wps.mu.Unlock()
 				continue
 			}
 			wps.nextWatcherID++
 			w.nextrev = cr.StartRevision
 			wps.watchers[w.id] = w
 			wps.ranges.add(w)
-			wps.mu.Unlock()
 		case *pb.WatchRequest_CancelRequest:
 			wps.delete(uv.CancelRequest.WatchId)
 		default:

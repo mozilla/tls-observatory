@@ -70,7 +70,6 @@ type Lessor interface {
 type Authenticator interface {
 	AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error)
 	AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error)
-	AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error)
 	Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error)
 	UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 	UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
@@ -399,14 +398,6 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 	return resp.(*pb.AuthDisableResponse), nil
 }
 
-func (s *EtcdServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthStatus: r})
-	if err != nil {
-		return nil, err
-	}
-	return resp.(*pb.AuthStatusResponse), nil
-}
-
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
 	if err := s.linearizableReadNotify(ctx); err != nil {
 		return nil, err
@@ -419,11 +410,15 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
 		if err != nil {
 			if err != auth.ErrAuthNotEnabled {
-				lg.Warn(
-					"invalid authentication was requested",
-					zap.String("user", r.Name),
-					zap.Error(err),
-				)
+				if lg != nil {
+					lg.Warn(
+						"invalid authentication was requested",
+						zap.String("user", r.Name),
+						zap.Error(err),
+					)
+				} else {
+					plog.Errorf("invalid authentication request to user %s was issued", r.Name)
+				}
 			}
 			return nil, err
 		}
@@ -447,7 +442,11 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 			break
 		}
 
-		lg.Info("revision when password checked became stale; retrying")
+		if lg != nil {
+			lg.Info("revision when password checked became stale; retrying")
+		} else {
+			plog.Infof("revision when password checked is obsolete, retrying")
+		}
 	}
 
 	return resp.(*pb.AuthenticateResponse), nil
@@ -699,7 +698,11 @@ func (s *EtcdServer) linearizableReadLoop() {
 			if err == raft.ErrStopped {
 				return
 			}
-			lg.Warn("failed to get read index from Raft", zap.Error(err))
+			if lg != nil {
+				lg.Warn("failed to get read index from Raft", zap.Error(err))
+			} else {
+				plog.Errorf("failed to get read index from raft: %v", err)
+			}
 			readIndexFailed.Inc()
 			nr.notify(err)
 			continue
@@ -721,11 +724,15 @@ func (s *EtcdServer) linearizableReadLoop() {
 					if len(rs.RequestCtx) == 8 {
 						id2 = binary.BigEndian.Uint64(rs.RequestCtx)
 					}
-					lg.Warn(
-						"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
-						zap.Uint64("sent-request-id", id1),
-						zap.Uint64("received-request-id", id2),
-					)
+					if lg != nil {
+						lg.Warn(
+							"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
+							zap.Uint64("sent-request-id", id1),
+							zap.Uint64("received-request-id", id2),
+						)
+					} else {
+						plog.Warningf("ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader (request ID want %d, got %d)", id1, id2)
+					}
 					slowReadIndex.Inc()
 				}
 			case <-leaderChangedNotifier:
@@ -734,7 +741,11 @@ func (s *EtcdServer) linearizableReadLoop() {
 				// return a retryable error.
 				nr.notify(ErrLeaderChanged)
 			case <-time.After(s.Cfg.ReqTimeout()):
-				lg.Warn("timed out waiting for read index response (local node might have slow network)", zap.Duration("timeout", s.Cfg.ReqTimeout()))
+				if lg != nil {
+					lg.Warn("timed out waiting for read index response (local node might have slow network)", zap.Duration("timeout", s.Cfg.ReqTimeout()))
+				} else {
+					plog.Warningf("timed out waiting for read index response (local node might have slow network)")
+				}
 				nr.notify(ErrTimeout)
 				timeout = true
 				slowReadIndex.Inc()

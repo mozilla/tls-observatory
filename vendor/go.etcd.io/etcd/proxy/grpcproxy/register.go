@@ -22,7 +22,6 @@ import (
 	"go.etcd.io/etcd/clientv3/concurrency"
 	"go.etcd.io/etcd/clientv3/naming"
 
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	gnaming "google.golang.org/grpc/naming"
 )
@@ -33,7 +32,7 @@ const registerRetryRate = 1
 // Register registers itself as a grpc-proxy server by writing prefixed-key
 // with session of specified TTL (in seconds). The returned channel is closed
 // when the client's context is canceled.
-func Register(lg *zap.Logger, c *clientv3.Client, prefix string, addr string, ttl int) <-chan struct{} {
+func Register(c *clientv3.Client, prefix string, addr string, ttl int) <-chan struct{} {
 	rm := rate.NewLimiter(rate.Limit(registerRetryRate), registerRetryRate)
 
 	donec := make(chan struct{})
@@ -41,9 +40,9 @@ func Register(lg *zap.Logger, c *clientv3.Client, prefix string, addr string, tt
 		defer close(donec)
 
 		for rm.Wait(c.Ctx()) == nil {
-			ss, err := registerSession(lg, c, prefix, addr, ttl)
+			ss, err := registerSession(c, prefix, addr, ttl)
 			if err != nil {
-				lg.Warn("failed to create a session", zap.Error(err))
+				plog.Warningf("failed to create a session %v", err)
 				continue
 			}
 			select {
@@ -52,8 +51,8 @@ func Register(lg *zap.Logger, c *clientv3.Client, prefix string, addr string, tt
 				return
 
 			case <-ss.Done():
-				lg.Warn("session expired; possible network partition or server restart")
-				lg.Warn("creating a new session to rejoin")
+				plog.Warning("session expired; possible network partition or server restart")
+				plog.Warning("creating a new session to rejoin")
 				continue
 			}
 		}
@@ -62,7 +61,7 @@ func Register(lg *zap.Logger, c *clientv3.Client, prefix string, addr string, tt
 	return donec
 }
 
-func registerSession(lg *zap.Logger, c *clientv3.Client, prefix string, addr string, ttl int) (*concurrency.Session, error) {
+func registerSession(c *clientv3.Client, prefix string, addr string, ttl int) (*concurrency.Session, error) {
 	ss, err := concurrency.NewSession(c, concurrency.WithTTL(ttl))
 	if err != nil {
 		return nil, err
@@ -73,11 +72,7 @@ func registerSession(lg *zap.Logger, c *clientv3.Client, prefix string, addr str
 		return nil, err
 	}
 
-	lg.Info(
-		"registered session with lease",
-		zap.String("addr", addr),
-		zap.Int("lease-ttl", ttl),
-	)
+	plog.Infof("registered %q with %d-second lease", addr, ttl)
 	return ss, nil
 }
 

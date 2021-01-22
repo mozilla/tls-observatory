@@ -31,6 +31,7 @@ import (
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/wal/walpb"
 
+	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 )
 
@@ -52,6 +53,8 @@ var (
 	// value should be used, but this is defined as an exported variable
 	// so that tests can set a different segment size.
 	SegmentSizeBytes int64 = 64 * 1000 * 1000 // 64MB
+
+	plog = capnslog.NewPackageLogger("go.etcd.io/etcd", "wal")
 
 	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
 	ErrFileNotFound     = errors.New("wal: file not found")
@@ -96,10 +99,6 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		return nil, os.ErrExist
 	}
 
-	if lg == nil {
-		lg = zap.NewNop()
-	}
-
 	// keep temporary wal directory so WAL initialization appears atomic
 	tmpdirpath := filepath.Clean(dirpath) + ".tmp"
 	if fileutil.Exist(tmpdirpath) {
@@ -108,40 +107,48 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		}
 	}
 	if err := fileutil.CreateDirAll(tmpdirpath); err != nil {
-		lg.Warn(
-			"failed to create a temporary WAL directory",
-			zap.String("tmp-dir-path", tmpdirpath),
-			zap.String("dir-path", dirpath),
-			zap.Error(err),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to create a temporary WAL directory",
+				zap.String("tmp-dir-path", tmpdirpath),
+				zap.String("dir-path", dirpath),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 
 	p := filepath.Join(tmpdirpath, walName(0, 0))
 	f, err := fileutil.LockFile(p, os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode)
 	if err != nil {
-		lg.Warn(
-			"failed to flock an initial WAL file",
-			zap.String("path", p),
-			zap.Error(err),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to flock an initial WAL file",
+				zap.String("path", p),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 	if _, err = f.Seek(0, io.SeekEnd); err != nil {
-		lg.Warn(
-			"failed to seek an initial WAL file",
-			zap.String("path", p),
-			zap.Error(err),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to seek an initial WAL file",
+				zap.String("path", p),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 	if err = fileutil.Preallocate(f.File, SegmentSizeBytes, true); err != nil {
-		lg.Warn(
-			"failed to preallocate an initial WAL file",
-			zap.String("path", p),
-			zap.Int64("segment-bytes", SegmentSizeBytes),
-			zap.Error(err),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to preallocate an initial WAL file",
+				zap.String("path", p),
+				zap.Int64("segment-bytes", SegmentSizeBytes),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 
@@ -166,12 +173,14 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	}
 
 	if w, err = w.renameWAL(tmpdirpath); err != nil {
-		lg.Warn(
-			"failed to rename the temporary WAL directory",
-			zap.String("tmp-dir-path", tmpdirpath),
-			zap.String("dir-path", w.dir),
-			zap.Error(err),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to rename the temporary WAL directory",
+				zap.String("tmp-dir-path", tmpdirpath),
+				zap.String("dir-path", w.dir),
+				zap.Error(err),
+			)
+		}
 		return nil, err
 	}
 
@@ -185,30 +194,39 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	// directory was renamed; sync parent dir to persist rename
 	pdir, perr := fileutil.OpenDir(filepath.Dir(w.dir))
 	if perr != nil {
-		lg.Warn(
-			"failed to open the parent data directory",
-			zap.String("parent-dir-path", filepath.Dir(w.dir)),
-			zap.String("dir-path", w.dir),
-			zap.Error(perr),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to open the parent data directory",
+				zap.String("parent-dir-path", filepath.Dir(w.dir)),
+				zap.String("dir-path", w.dir),
+				zap.Error(perr),
+			)
+		}
 		return nil, perr
 	}
+	start := time.Now()
 	if perr = fileutil.Fsync(pdir); perr != nil {
-		lg.Warn(
-			"failed to fsync the parent data directory file",
-			zap.String("parent-dir-path", filepath.Dir(w.dir)),
-			zap.String("dir-path", w.dir),
-			zap.Error(perr),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to fsync the parent data directory file",
+				zap.String("parent-dir-path", filepath.Dir(w.dir)),
+				zap.String("dir-path", w.dir),
+				zap.Error(perr),
+			)
+		}
 		return nil, perr
 	}
+	walFsyncSec.Observe(time.Since(start).Seconds())
+
 	if perr = pdir.Close(); perr != nil {
-		lg.Warn(
-			"failed to close the parent data directory file",
-			zap.String("parent-dir-path", filepath.Dir(w.dir)),
-			zap.String("dir-path", w.dir),
-			zap.Error(perr),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to close the parent data directory file",
+				zap.String("parent-dir-path", filepath.Dir(w.dir)),
+				zap.String("dir-path", w.dir),
+				zap.Error(perr),
+			)
+		}
 		return nil, perr
 	}
 
@@ -218,16 +236,24 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 func (w *WAL) cleanupWAL(lg *zap.Logger) {
 	var err error
 	if err = w.Close(); err != nil {
-		lg.Panic("failed to close WAL during cleanup", zap.Error(err))
+		if lg != nil {
+			lg.Panic("failed to close WAL during cleanup", zap.Error(err))
+		} else {
+			plog.Panicf("failed to close WAL during cleanup: %v", err)
+		}
 	}
 	brokenDirName := fmt.Sprintf("%s.broken.%v", w.dir, time.Now().Format("20060102.150405.999999"))
 	if err = os.Rename(w.dir, brokenDirName); err != nil {
-		lg.Panic(
-			"failed to rename WAL during cleanup",
-			zap.Error(err),
-			zap.String("source-path", w.dir),
-			zap.String("rename-path", brokenDirName),
-		)
+		if lg != nil {
+			lg.Panic(
+				"failed to rename WAL during cleanup",
+				zap.Error(err),
+				zap.String("source-path", w.dir),
+				zap.String("rename-path", brokenDirName),
+			)
+		} else {
+			plog.Panicf("failed to rename WAL during cleanup: %v", err)
+		}
 	}
 }
 
@@ -256,11 +282,15 @@ func (w *WAL) renameWAL(tmpdirpath string) (*WAL, error) {
 func (w *WAL) renameWALUnlock(tmpdirpath string) (*WAL, error) {
 	// rename of directory with locked files doesn't work on windows/cifs;
 	// close the WAL to release the locks so the directory can be renamed.
-	w.lg.Info(
-		"closing WAL to release flock and retry directory renaming",
-		zap.String("from", tmpdirpath),
-		zap.String("to", w.dir),
-	)
+	if w.lg != nil {
+		w.lg.Info(
+			"closing WAL to release flock and retry directory renaming",
+			zap.String("from", tmpdirpath),
+			zap.String("to", w.dir),
+		)
+	} else {
+		plog.Infof("releasing file lock to rename %q to %q", tmpdirpath, w.dir)
+	}
 	w.Close()
 
 	if err := os.Rename(tmpdirpath, w.dir); err != nil {
@@ -303,9 +333,6 @@ func OpenForRead(lg *zap.Logger, dirpath string, snap walpb.Snapshot) (*WAL, err
 }
 
 func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) {
-	if lg == nil {
-		lg = zap.NewNop()
-	}
 	names, nameIndex, err := selectWALFiles(lg, dirpath, snap)
 	if err != nil {
 		return nil, err
@@ -519,9 +546,6 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) error {
 
 	rec := &walpb.Record{}
 
-	if lg == nil {
-		lg = zap.NewNop()
-	}
 	names, nameIndex, err := selectWALFiles(lg, walDir, snap)
 	if err != nil {
 		return err
@@ -533,11 +557,6 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closer != nil {
-			closer()
-		}
-	}()
 
 	// create a new decoder from the readers on the WAL files
 	decoder := newDecoder(rs...)
@@ -573,6 +592,10 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) error {
 		default:
 			return fmt.Errorf("unexpected block type %d", rec.Type)
 		}
+	}
+
+	if closer != nil {
+		closer()
 	}
 
 	// We do not have to read out all the WAL entries
@@ -647,9 +670,11 @@ func (w *WAL) cut() error {
 	if err = os.Rename(newTail.Name(), fpath); err != nil {
 		return err
 	}
+	start := time.Now()
 	if err = fileutil.Fsync(w.dirFile); err != nil {
 		return err
 	}
+	walFsyncSec.Observe(time.Since(start).Seconds())
 
 	// reopen newTail with its new path so calls to Name() match the wal filename format
 	newTail.Close()
@@ -669,7 +694,11 @@ func (w *WAL) cut() error {
 		return err
 	}
 
-	w.lg.Info("created a new WAL segment", zap.String("path", fpath))
+	if w.lg != nil {
+		w.lg.Info("created a new WAL segment", zap.String("path", fpath))
+	} else {
+		plog.Infof("segmented wal file %v is created", fpath)
+	}
 	return nil
 }
 
@@ -684,11 +713,15 @@ func (w *WAL) sync() error {
 
 	took := time.Since(start)
 	if took > warnSyncDuration {
-		w.lg.Warn(
-			"slow fdatasync",
-			zap.Duration("took", took),
-			zap.Duration("expected-duration", warnSyncDuration),
-		)
+		if w.lg != nil {
+			w.lg.Warn(
+				"slow fdatasync",
+				zap.Duration("took", took),
+				zap.Duration("expected-duration", warnSyncDuration),
+			)
+		} else {
+			plog.Warningf("sync duration of %v, expected less than %v", took, warnSyncDuration)
+		}
 	}
 	walFsyncSec.Observe(took.Seconds())
 
@@ -762,7 +795,11 @@ func (w *WAL) Close() error {
 			continue
 		}
 		if err := l.Close(); err != nil {
-			w.lg.Error("failed to close WAL", zap.Error(err))
+			if w.lg != nil {
+				w.lg.Warn("failed to close WAL", zap.Error(err))
+			} else {
+				plog.Errorf("failed to unlock during closing wal: %s", err)
+			}
 		}
 	}
 
@@ -860,7 +897,11 @@ func (w *WAL) seq() uint64 {
 	}
 	seq, _, err := parseWALName(filepath.Base(t.Name()))
 	if err != nil {
-		w.lg.Fatal("failed to parse WAL name", zap.String("name", t.Name()), zap.Error(err))
+		if w.lg != nil {
+			w.lg.Fatal("failed to parse WAL name", zap.String("name", t.Name()), zap.Error(err))
+		} else {
+			plog.Fatalf("bad wal name %s (%v)", t.Name(), err)
+		}
 	}
 	return seq
 }

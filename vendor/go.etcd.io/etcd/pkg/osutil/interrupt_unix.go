@@ -61,6 +61,8 @@ func HandleInterrupts(lg *zap.Logger) {
 
 		if lg != nil {
 			lg.Info("received signal; shutting down", zap.String("signal", sig.String()))
+		} else {
+			plog.Noticef("received %v signal, shutting down...", sig)
 		}
 
 		for _, h := range ihs {

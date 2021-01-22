@@ -19,8 +19,6 @@ import (
 	"net/url"
 	"sync"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 // defaultRefreshInterval is the default proxyRefreshIntervalMs value
@@ -33,12 +31,8 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
-	if lg == nil {
-		lg = zap.NewNop()
-	}
+func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
 	d := &director{
-		lg:          lg,
 		uf:          urlsFunc,
 		failureWait: failureWait,
 	}
@@ -62,7 +56,7 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 					for _, e := range es {
 						sl = append(sl, e.URL.String())
 					}
-					lg.Info("endpoints found", zap.Strings("endpoints", sl))
+					plog.Infof("endpoints found %q", sl)
 				})
 			}
 			time.Sleep(ri)
@@ -74,7 +68,6 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 
 type director struct {
 	sync.Mutex
-	lg          *zap.Logger
 	ep          []*endpoint
 	uf          GetProxyURLs
 	failureWait time.Duration
@@ -88,10 +81,10 @@ func (d *director) refresh() {
 	for _, u := range urls {
 		uu, err := url.Parse(u)
 		if err != nil {
-			d.lg.Info("upstream URL invalid", zap.Error(err))
+			plog.Printf("upstream URL invalid: %v", err)
 			continue
 		}
-		endpoints = append(endpoints, newEndpoint(d.lg, *uu, d.failureWait))
+		endpoints = append(endpoints, newEndpoint(*uu, d.failureWait))
 	}
 
 	// shuffle array to avoid connections being "stuck" to a single endpoint
@@ -116,9 +109,8 @@ func (d *director) endpoints() []*endpoint {
 	return filtered
 }
 
-func newEndpoint(lg *zap.Logger, u url.URL, failureWait time.Duration) *endpoint {
+func newEndpoint(u url.URL, failureWait time.Duration) *endpoint {
 	ep := endpoint{
-		lg:        lg,
 		URL:       u,
 		Available: true,
 		failFunc:  timedUnavailabilityFunc(failureWait),
@@ -130,7 +122,6 @@ func newEndpoint(lg *zap.Logger, u url.URL, failureWait time.Duration) *endpoint
 type endpoint struct {
 	sync.Mutex
 
-	lg        *zap.Logger
 	URL       url.URL
 	Available bool
 
@@ -147,17 +138,10 @@ func (ep *endpoint) Failed() {
 	ep.Available = false
 	ep.Unlock()
 
-	if ep.lg != nil {
-		ep.lg.Info("marked endpoint unavailable", zap.String("endpoint", ep.URL.String()))
-	}
+	plog.Printf("marked endpoint %s unavailable", ep.URL.String())
 
 	if ep.failFunc == nil {
-		if ep.lg != nil {
-			ep.lg.Info(
-				"no failFunc defined, endpoint will be unavailable forever",
-				zap.String("endpoint", ep.URL.String()),
-			)
-		}
+		plog.Printf("no failFunc defined, endpoint %s will be unavailable forever.", ep.URL.String())
 		return
 	}
 
@@ -168,12 +152,7 @@ func timedUnavailabilityFunc(wait time.Duration) func(*endpoint) {
 	return func(ep *endpoint) {
 		time.AfterFunc(wait, func() {
 			ep.Available = true
-			if ep.lg != nil {
-				ep.lg.Info(
-					"marked endpoint available, to retest connectivity",
-					zap.String("endpoint", ep.URL.String()),
-				)
-			}
+			plog.Printf("marked endpoint %s available, to retest connectivity", ep.URL.String())
 		})
 	}
 }

@@ -74,18 +74,34 @@ func readWAL(lg *zap.Logger, waldir string, snap walpb.Snapshot) (w *wal.WAL, id
 	repaired := false
 	for {
 		if w, err = wal.Open(lg, waldir, snap); err != nil {
-			lg.Fatal("failed to open WAL", zap.Error(err))
+			if lg != nil {
+				lg.Fatal("failed to open WAL", zap.Error(err))
+			} else {
+				plog.Fatalf("open wal error: %v", err)
+			}
 		}
 		if wmetadata, st, ents, err = w.ReadAll(); err != nil {
 			w.Close()
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || err != io.ErrUnexpectedEOF {
-				lg.Fatal("failed to read WAL, cannot be repaired", zap.Error(err))
+				if lg != nil {
+					lg.Fatal("failed to read WAL, cannot be repaired", zap.Error(err))
+				} else {
+					plog.Fatalf("read wal error (%v) and cannot be repaired", err)
+				}
 			}
 			if !wal.Repair(lg, waldir) {
-				lg.Fatal("failed to repair WAL", zap.Error(err))
+				if lg != nil {
+					lg.Fatal("failed to repair WAL", zap.Error(err))
+				} else {
+					plog.Fatalf("WAL error (%v) cannot be repaired", err)
+				}
 			} else {
-				lg.Info("repaired WAL", zap.Error(err))
+				if lg != nil {
+					lg.Info("repaired WAL", zap.Error(err))
+				} else {
+					plog.Infof("repaired WAL error (%v)", err)
+				}
 				repaired = true
 			}
 			continue

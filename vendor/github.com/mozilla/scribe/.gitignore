@@ -1,0 +1,4 @@
+*.swp
+test/*/test.json
+pkg/
+bin/

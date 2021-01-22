@@ -185,7 +185,11 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	available := make(map[revision]struct{})
-	ti.lg.Info("compact tree index", zap.Int64("revision", rev))
+	if ti.lg != nil {
+		ti.lg.Info("compact tree index", zap.Int64("revision", rev))
+	} else {
+		plog.Printf("store.index: compact %d", rev)
+	}
 	ti.Lock()
 	clone := ti.tree.Clone()
 	ti.Unlock()
@@ -199,7 +203,11 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 		if keyi.isEmpty() {
 			item := ti.tree.Delete(keyi)
 			if item == nil {
-				ti.lg.Panic("failed to delete during compaction")
+				if ti.lg != nil {
+					ti.lg.Panic("failed to delete during compaction")
+				} else {
+					plog.Panic("store.index: unexpected delete failure during compaction")
+				}
 			}
 		}
 		ti.Unlock()

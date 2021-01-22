@@ -50,6 +50,7 @@ func inTables(r rune, ts ...table) bool {
 }
 
 func inTable(r rune, t table) bool {
+	// func (t table) IncludesRune(r rune) bool {
 	if r < t[0].first {
 		return false
 	}
@@ -101,9 +102,11 @@ func NewCondition() *Condition {
 // See http://www.unicode.org/reports/tr11/
 func (c *Condition) RuneWidth(r rune) int {
 	switch {
-	case r < 0 || r > 0x10FFFF || inTables(r, nonprint, combining, notassigned):
+	case r < 0 || r > 0x10FFFF ||
+		inTables(r, nonprint, combining, notassigned):
 		return 0
-	case (c.EastAsianWidth && IsAmbiguousWidth(r)) || inTables(r, doublewidth):
+	case (c.EastAsianWidth && IsAmbiguousWidth(r)) ||
+		inTables(r, doublewidth, emoji):
 		return 2
 	default:
 		return 1
@@ -125,12 +128,9 @@ func (c *Condition) stringWidthZeroJoiner(s string) (width int) {
 		}
 		w := c.RuneWidth(r)
 		if r2 == 0x200D && inTables(r, emoji) && inTables(r1, emoji) {
-			if width < w {
-				width = w
-			}
-		} else {
-			width += w
+			w = 0
 		}
+		width += w
 		r1, r2 = r2, r
 	}
 	return width

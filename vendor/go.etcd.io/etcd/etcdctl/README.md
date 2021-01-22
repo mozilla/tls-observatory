@@ -16,7 +16,7 @@ ETCDCTL_CERT=/tmp/cert.pem
 ETCDCTL_KEY=/tmp/key.pem
 ```
 
-Prefix flag strings with `ETCDCTL_`, convert all letters to upper-case, and replace dash(`-`) with underscore(`_`). Note that the environment variables with the prefix `ETCDCTL_` can only be used with the etcdctl global flags. Also, the environment variable `ETCDCTL_API` is a special case variable for etcdctl internal use only.
+Prefix flag strings with `ETCDCTL_`, convert all letters to upper-case, and replace dash(`-`) with underscore(`_`).
 
 ## Key-value commands
 
@@ -533,8 +533,8 @@ Prints a message with the granted lease ID.
 #### Example
 
 ```bash
-./etcdctl lease grant 60
-# lease 32695410dcc0ca06 granted with TTL(60s)
+./etcdctl lease grant 10
+# lease 32695410dcc0ca06 granted with TTL(10s)
 ```
 
 ### LEASE REVOKE \<leaseID\>
@@ -609,8 +609,8 @@ Prints a message with a list of active leases.
 #### Example
 
 ```bash
-./etcdctl lease grant 60
-# lease 32695410dcc0ca06 granted with TTL(60s)
+./etcdctl lease grant 10
+# lease 32695410dcc0ca06 granted with TTL(10s)
 
 ./etcdctl lease list
 32695410dcc0ca06
