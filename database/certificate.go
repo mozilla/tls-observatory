@@ -359,7 +359,7 @@ func (db *DB) UpdateCertLastSeen(cert *certificate.Certificate) error {
 	return err
 }
 
-// UpdateCertLastSeenWithID updates the last_seen timestamp of the certificate with the given id.
+// UpdateCertLastSeenByID updates the last_seen timestamp of the certificate with the given id.
 // Outputs an error if it occurs.
 func (db *DB) UpdateCertLastSeenByID(id int64) error {
 	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE id=$2", time.Now(), id)
