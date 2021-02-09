@@ -372,6 +372,9 @@ func isChainValid(endEntity *x509.Certificate, intermediates []*x509.Certificate
 func storeCertificates(certmap map[string]certificate.Certificate) (EECertID int64, EETrustID int64, err error) {
 	EECertID, EETrustID = -1, -1
 
+	// certIDToVisited is the set of certs we see (golang does not have a builtin set/hashset type)
+	certIDToVisited := make(map[int64]bool)
+
 	for _, cert := range certmap {
 		certID, err := db.GetCertIDBySHA256Fingerprint(cert.Hashes.SHA256)
 		if err != nil {
@@ -400,7 +403,7 @@ func storeCertificates(certmap map[string]certificate.Certificate) (EECertID int
 				}).Debug("Inserted cert to db")
 			}
 		} else {
-			db.UpdateCertLastSeenByID(certID)
+			certIDToVisited[certID] = true
 		}
 
 		// If the certificate is not a CA Cert, stores its ID as the end entity
@@ -447,7 +450,7 @@ func storeCertificates(certmap map[string]certificate.Certificate) (EECertID int
 					}).Debug("Inserted issuer certificate in database")
 				}
 			} else {
-				db.UpdateCertLastSeenByID(issuerID)
+				certIDToVisited[issuerID] = true
 			}
 
 			// check if a trust entry already exists for this certificate and its issuer.
@@ -506,6 +509,15 @@ func storeCertificates(certmap map[string]certificate.Certificate) (EECertID int
 			}
 		}
 	}
+
+	// get slice of visitedCertIDs from certIDToVisited keys
+	visitedCertIDs := make([]int64, len(certIDToVisited))
+	i := 0
+	for certID := range certIDToVisited {
+		visitedCertIDs[i] = certID
+		i++
+	}
+	db.UpdateCertsLastSeenByID(visitedCertIDs)
 	return
 }
 

@@ -355,15 +355,21 @@ func (db *DB) UpdateCertificateRank(id, rank int64) error {
 // UpdateCertLastSeen updates the last_seen timestamp of the input certificate.
 // Outputs an error if it occurs.
 func (db *DB) UpdateCertLastSeen(cert *certificate.Certificate) error {
-
 	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE sha1_fingerprint=$2", cert.LastSeenTimestamp, cert.Hashes.SHA1)
 	return err
 }
 
-// UpdateCertLastSeenWithID updates the last_seen timestamp of the certificate with the given id.
+// UpdateCertLastSeenByID updates the last_seen timestamp of the certificate with the given id.
 // Outputs an error if it occurs.
 func (db *DB) UpdateCertLastSeenByID(id int64) error {
 	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE id=$2", time.Now(), id)
+	return err
+}
+
+// UpdateCertsLastSeenByID updates the last_seen timestamp for certificates with the given id.
+// Outputs an error if it occurs.
+func (db *DB) UpdateCertsLastSeenByID(ids []int64) error {
+	_, err := db.Exec("UPDATE certificates SET last_seen=$1 WHERE id = ANY($2)", time.Now(), pq.Array(ids))
 	return err
 }
 
