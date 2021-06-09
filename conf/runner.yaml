@@ -71,10 +71,6 @@ runs:
         # Detectportal
         - detectportal.firefox.com
 
-        # elmo
-        - l10n.mozilla.org
-        - l10n.allizom.org
-
         # Firefox Accounts
         - accounts.firefox.com
         - api.accounts.firefox.com
@@ -454,20 +450,6 @@ runs:
           email:
               recipients:
                   - b64:c29jb3Jyb0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29t
-
-    #  Elmo paging
-    - targets:
-        - l10n.mozilla.org
-        - l10n.allizom.org
-      assertions:
-        - certificate:
-            validity:
-                notafter: ">14d"
-      cron: "30 18 * * *"
-      notifications:
-          email:
-              recipients:
-                  - b64ZWxtb0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
 
     # everything.me paging
     - targets:
