@@ -3,7 +3,7 @@ module github.com/mozilla/tls-observatory
 go 1.15
 
 require (
-	github.com/aws/aws-sdk-go v1.36.30
+	github.com/aws/aws-sdk-go v1.39.0
 	github.com/fatih/color v1.12.0
 	github.com/google/certificate-transparency-go v1.1.1
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
