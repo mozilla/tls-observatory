@@ -11,7 +11,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
-	github.com/lib/pq v1.9.0
+	github.com/lib/pq v1.10.2
 	github.com/miekg/dns v1.1.35
 	github.com/mozilla/scribe v0.0.0-20180711195314-fb71baf557c1
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect

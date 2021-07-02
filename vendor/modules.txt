@@ -131,7 +131,7 @@ github.com/jonboulle/clockwork
 github.com/json-iterator/go
 # github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88
 ## explicit
-# github.com/lib/pq v1.9.0
+# github.com/lib/pq v1.10.2
 ## explicit
 github.com/lib/pq
 github.com/lib/pq/oid
