@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/aws/aws-sdk-go v1.36.30
-	github.com/fatih/color v1.10.0
+	github.com/fatih/color v1.12.0
 	github.com/google/certificate-transparency-go v1.1.1
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
 	github.com/gorilla/mux v1.8.0
