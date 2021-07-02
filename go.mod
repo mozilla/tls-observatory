@@ -15,7 +15,7 @@ require (
 	github.com/miekg/dns v1.1.35
 	github.com/mozilla/scribe v0.0.0-20180711195314-fb71baf557c1
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/viki-org/dnscache v0.0.0-20130720023526-c70c1f23c5d8
 	github.com/yudai/gojsondiff v1.0.0
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
