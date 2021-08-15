@@ -54,6 +54,14 @@ $ mkdir $GOPATH
 $ export PATH=$GOPATH/bin:$PATH
 ```
 
+Also required is bash >=v4.
+```bash
+$ /usr/bin/env bash
+$ echo ${BASH_VERSINFO[0]}
+4
+```
+Version 4 or more is ok.
+
 Then get the binary:
 
 ```bash
