@@ -646,7 +646,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:cHJvZHVjdC1kZWxpdmVyeUBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+                  - b64:cHJvZHVjdC1kZWxpdmVyeUBtb3ppbGxhLnBhZ2VyZHV0eS5jb20=
 
     # Premium Services paging
     - targets:
