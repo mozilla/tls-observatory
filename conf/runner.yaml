@@ -349,7 +349,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # AMO paging
     - targets:
@@ -373,7 +373,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:bWFya2V0cGxhY2VAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # Autograph paging
     - targets:
@@ -387,7 +387,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:Zm94c2VjQG1vemlsbGEuY29tCg==
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t==
 
     # Balrog paging
     - targets:
@@ -400,7 +400,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:YmFscm9nLXRsc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t==
 
     # BuildHub paging
     - targets:
@@ -413,7 +413,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:YnVpbGRodWIyQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20=
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # Conduit paging
     - targets:
@@ -449,7 +449,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:c29jb3Jyb0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29t
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # everything.me paging
     - targets:
@@ -462,7 +462,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:bG9jYXRpb25AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # Firefox Settings (Kinto)
     - targets:
@@ -477,7 +477,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:Y2xvdWRvcHNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
     # Fxa paging
     - targets:
         - accounts.firefox.com
@@ -498,7 +498,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:ZnhhQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # Locations paging
     - targets:
@@ -511,7 +511,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:bG9jYXRpb25AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # Data Platform services paging
     - targets:
@@ -537,7 +537,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:ZGF0YS1vcGVyYXRpb25zLWdlbmVyYWxAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQ==
+                  - b64:bW96aWxsYXRlbGVtZXRyeUBtb3ppbGxhLnBhZ2VyZHV0eS5jb20==
 
     # Misc paging
     - targets:
@@ -564,7 +564,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:bWl0bWRldGVjdGlvbkBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29t
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # Normandy
     - targets:
@@ -585,7 +585,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:c2hpZWxkQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20=
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # Screenshots
     - targets:
@@ -613,7 +613,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:dGVzdHBpbG90QG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     #  Symbols (tecken) paging
     - targets:
@@ -628,7 +628,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:c3ltYm9sc0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t==
 
     # Product Delivery paging
     - targets:
@@ -646,7 +646,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:cHJvZHVjdC1kZWxpdmVyeUBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t==
 
     # Premium Services paging
     - targets:
@@ -659,7 +659,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:cHJlbWl1bS1zZXJ2aWNlcy12cG5AbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQ==
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t==
 
     # Push paging
     - targets:
@@ -673,7 +673,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:c2ltcGxlcHVzaEBtb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t==
 
     # Sync paging
     - targets:
@@ -689,7 +689,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:c3luY0Btb3otc3ZjLW9wcy5wYWdlcmR1dHkuY29tCg==
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t==
 
     # Tiles paging
     - targets:
@@ -704,7 +704,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:dGlsZXNAbW96LXN2Yy1vcHMucGFnZXJkdXR5LmNvbQo=
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # TestPilot paging
     - targets:
@@ -720,7 +720,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:dGVzdHBpbG90QG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t=
 
     # Security services paging
     - targets:
@@ -750,7 +750,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:c2hhdmFyQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t
 
     # Cloud Services product delivery, must remain on the old config for XPSP2
     - targets:
@@ -847,7 +847,7 @@ runs:
       notifications:
           email:
               recipients:
-                  - b64:dGFza2NsdXN0ZXItZmlyZWZveGNpQG1vei1zdmMtb3BzLnBhZ2VyZHV0eS5jb20K
+                  - b64:Zm91bmRhdGlvbmFsZW5naW5lZXJpbmdAbW96aWxsYS5wYWdlcmR1dHkuY29t
 
 smtp:
     host: gator1
