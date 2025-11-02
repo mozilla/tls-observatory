@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -34,10 +35,6 @@ func usage() {
 		os.Args[0], os.Args[0])
 }
 
-type scan struct {
-	ID int64 `json:"scan_id"`
-}
-
 var (
 	observatory = flag.String("observatory", "https://tls-observatory.services.mozilla.com", "URL of the observatory")
 	scanid      = flag.Int64("scanid", 0, "View results from a previous scan instead of starting a new one. eg `1234`")
@@ -54,55 +51,26 @@ var exitCode int = 0
 func main() {
 	var (
 		err     error
-		scan    scan
-		rescanP string
 		results database.Scan
 		resp    *http.Response
 		body    []byte
-		target  string
 	)
 	flag.Usage = func() {
 		usage()
 		flag.PrintDefaults()
 	}
 	flag.Parse()
-	if *scanid > 0 {
-		goto getresults
-	}
-	if len(flag.Args()) != 1 {
-		fmt.Println("error: must take only 1 non-flag argument as the target")
-		usage()
-		os.Exit(1)
-	}
 
-	target = strings.TrimPrefix(flag.Arg(0), "https://")
-	// also trim http:// prefix ( in case someone has a really wrong idea of what
-	// the observatory does...)
-	target = strings.TrimPrefix(target, "http://")
-	target = strings.TrimSuffix(target, "/") // trailing slash
-
-	if *rescan {
-		rescanP = "&rescan=true"
+	if *scanid == 0 {
+		exitOnInvalidArg()
+		targetURL := mustURL(buildScanURL(*observatory, flag.Arg(0), *rescan))
+		*scanid, err = postScan(targetURL)
+		if err != nil {
+			panic(err)
+		}
 	}
-	resp, err = http.Post(*observatory+"/api/v1/scan?target="+target+rescanP, "application/json", nil)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("Scan failed. HTTP %d: %s", resp.StatusCode, body)
-	}
-	err = json.Unmarshal(body, &scan)
-	if err != nil {
-		log.Fatalf("Scan initiation failed: %s", body)
-	}
-	*scanid = scan.ID
 	fmt.Printf("Scanning %s (id %d)\n", flag.Arg(0), *scanid)
-getresults:
+
 	has_cert := false
 	for {
 		resp, err = http.Get(fmt.Sprintf("%s/api/v1/results?id=%d", *observatory, *scanid))
@@ -147,7 +115,7 @@ getresults:
 	}
 	fmt.Printf("\n")
 	if !results.Has_tls {
-		fmt.Printf("%s does not support SSL/TLS\n", target)
+		fmt.Printf("%s does not support SSL/TLS\n", results.Target)
 		exitCode = 5
 	} else {
 		if *printRaw {
@@ -158,6 +126,35 @@ getresults:
 	}
 
 	os.Exit(exitCode)
+}
+
+func postScan(scanURL *url.URL) (int64, error) {
+	type scan struct {
+		ID int64 `json:"scan_id"`
+	}
+
+	resp, err := http.Post(scanURL.String(), "application/json", nil)
+	if err != nil {
+		log.Printf("unable to post to '%s': %v", scanURL, err)
+		return 0, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("unable to read response from '%s': %v", scanURL, err)
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("scan failed with error code %d: %s", resp.StatusCode, body)
+	}
+
+	var scanJSON scan
+	err = json.Unmarshal(body, &scanJSON)
+	if err != nil {
+		return 0, fmt.Errorf("unexpected scan response  %s: %v", body, err)
+
+	}
+	return scanJSON.ID, nil
 }
 
 func printCert(id int64) {
@@ -325,4 +322,42 @@ func getPaths(id int64) (paths certificate.Paths) {
 		log.Fatal(err)
 	}
 	return
+}
+
+func mustURL(u string) *url.URL {
+	parsed, err := url.Parse(u)
+	if err != nil {
+		log.Fatalf("url '%s' is invalid: %v", u, err)
+	}
+	return parsed
+}
+
+func buildScanURL(observatoryURL string, targetURL string, rescan bool) string {
+	//goland:noinspection HttpUrlsUsage
+	normalizedTargetURL := string(trim(targetURL).
+		TrimPrefix("https://").
+		TrimPrefix("http://"). //someone has a really wrong idea of what the observatory does...
+		TrimSuffix("/"))       // trailing slash
+	rescanP := ""
+	if rescan {
+		rescanP = "&rescan=true"
+	}
+	return observatoryURL + "/api/v1/scan?target=" + normalizedTargetURL + rescanP
+}
+
+func exitOnInvalidArg() {
+	if len(flag.Args()) != 1 {
+		fmt.Println("error: must take only 1 non-flag argument as the target")
+		usage()
+		os.Exit(1)
+	}
+}
+
+type trim string
+
+func (t trim) TrimPrefix(prefix string) trim {
+	return trim(strings.TrimPrefix(string(t), prefix))
+}
+func (t trim) TrimSuffix(suffix string) trim {
+	return trim(strings.TrimSuffix(string(t), suffix))
 }
